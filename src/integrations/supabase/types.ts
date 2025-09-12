@@ -14,13 +14,148 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      clientes: {
+        Row: {
+          created_at: string
+          endereco: string | null
+          id: string
+          nome: string
+          observacoes: string | null
+          telefone: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          endereco?: string | null
+          id?: string
+          nome: string
+          observacoes?: string | null
+          telefone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          endereco?: string | null
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          telefone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      contratos: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          data_emprestimo: string
+          id: string
+          numero_parcelas: number
+          percentual: number
+          periodicidade: string
+          status: string
+          updated_at: string
+          valor_emprestado: number
+          valor_total: number
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          data_emprestimo: string
+          id?: string
+          numero_parcelas: number
+          percentual: number
+          periodicidade: string
+          status?: string
+          updated_at?: string
+          valor_emprestado: number
+          valor_total: number
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          data_emprestimo?: string
+          id?: string
+          numero_parcelas?: number
+          percentual?: number
+          periodicidade?: string
+          status?: string
+          updated_at?: string
+          valor_emprestado?: number
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contratos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parcelas: {
+        Row: {
+          contrato_id: string
+          created_at: string
+          data_pagamento: string | null
+          data_vencimento: string
+          id: string
+          numero_parcela: number
+          status: string
+          updated_at: string
+          valor: number
+          valor_pago: number | null
+        }
+        Insert: {
+          contrato_id: string
+          created_at?: string
+          data_pagamento?: string | null
+          data_vencimento: string
+          id?: string
+          numero_parcela: number
+          status?: string
+          updated_at?: string
+          valor: number
+          valor_pago?: number | null
+        }
+        Update: {
+          contrato_id?: string
+          created_at?: string
+          data_pagamento?: string | null
+          data_vencimento?: string
+          id?: string
+          numero_parcela?: number
+          status?: string
+          updated_at?: string
+          valor?: number
+          valor_pago?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parcelas_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      gerar_parcelas: {
+        Args: {
+          p_contrato_id: string
+          p_data_inicio: string
+          p_numero_parcelas: number
+          p_periodicidade: string
+          p_valor_parcela: number
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
