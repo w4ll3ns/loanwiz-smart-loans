@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -62,6 +63,11 @@ export default function Parcelas() {
   const [tipoPagamento, setTipoPagamento] = useState<string>("total");
   const [valorPagamento, setValorPagamento] = useState<string>("");
   const { toast } = useToast();
+
+  // Função para formatar data corretamente (evita problema de timezone)
+  const formatDate = (dateString: string) => {
+    return format(new Date(dateString + 'T00:00:00'), 'dd/MM/yyyy');
+  };
 
   useEffect(() => {
     loadParcelas();
@@ -427,7 +433,7 @@ export default function Parcelas() {
                       <TableCell className="font-medium">
                         {parcela.contratos?.clientes?.nome}
                         <div className="md:hidden text-xs text-muted-foreground mt-1">
-                          Parcela {parcela.numero_parcela} • {new Date(parcela.data_vencimento).toLocaleDateString('pt-BR')}
+                          Parcela {parcela.numero_parcela} • {formatDate(parcela.data_vencimento)}
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">{parcela.numero_parcela}</TableCell>
@@ -441,10 +447,10 @@ export default function Parcelas() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">{new Date(parcela.data_vencimento).toLocaleDateString('pt-BR')}</TableCell>
+                      <TableCell className="hidden md:table-cell">{formatDate(parcela.data_vencimento)}</TableCell>
                       <TableCell className="hidden lg:table-cell">
                         {parcela.data_pagamento 
-                          ? new Date(parcela.data_pagamento).toLocaleDateString('pt-BR')
+                          ? formatDate(parcela.data_pagamento)
                           : "-"
                         }
                       </TableCell>
@@ -623,8 +629,8 @@ export default function Parcelas() {
                             R$ {Number(pagamento.valor_pago).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            {new Date(pagamento.data_pagamento).toLocaleDateString('pt-BR')} às{' '}
-                            {new Date(pagamento.data_pagamento).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                            {format(new Date(pagamento.data_pagamento), 'dd/MM/yyyy')} às{' '}
+                            {format(new Date(pagamento.data_pagamento), 'HH:mm')}
                           </p>
                           {pagamento.observacao && (
                             <p className="text-sm text-muted-foreground mt-1">{pagamento.observacao}</p>
