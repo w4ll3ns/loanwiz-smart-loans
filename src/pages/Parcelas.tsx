@@ -231,14 +231,14 @@ export default function Parcelas() {
       if (error) throw error;
 
       toast({
-        title: "Pagamento desfeito",
-        description: "A parcela foi marcada como pendente e o histórico foi limpo.",
+        title: "Pagamentos desfeitos",
+        description: "A parcela foi resetada e o histórico foi limpo.",
       });
 
       loadParcelas();
     } catch (error: any) {
       toast({
-        title: "Não foi possível desfazer o pagamento",
+        title: "Não foi possível desfazer os pagamentos",
         description: "Verifique sua conexão com a internet e tente novamente.",
         variant: "destructive",
       });
@@ -310,11 +310,10 @@ export default function Parcelas() {
 
   const totalPendente = filteredParcelas
     .filter(p => p.status !== "pago")
-    .reduce((acc, p) => acc + Number(p.valor), 0);
+    .reduce((acc, p) => acc + (Number(p.valor_original || p.valor) - (Number(p.valor_pago) || 0)), 0);
 
   const totalPago = filteredParcelas
-    .filter(p => p.status === "pago")
-    .reduce((acc, p) => acc + Number(p.valor), 0);
+    .reduce((acc, p) => acc + (Number(p.valor_pago) || 0), 0);
 
   const totalVencido = filteredParcelas
     .filter(p => p.status === "pendente" && calcularDiasAtraso(p.data_vencimento) > 0)

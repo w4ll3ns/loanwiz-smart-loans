@@ -383,20 +383,29 @@ export default function Contratos() {
 
   const handleDesfazerPagamento = async (parcelaId: string) => {
     try {
+      // Deletar histórico de pagamentos
+      const { error: deleteHistoricoError } = await supabase
+        .from("parcelas_pagamentos")
+        .delete()
+        .eq("parcela_id", parcelaId);
+
+      if (deleteHistoricoError) throw deleteHistoricoError;
+
+      // Resetar parcela
       const { error } = await supabase
         .from("parcelas")
         .update({
           status: "pendente",
           data_pagamento: null,
-          valor_pago: null,
+          valor_pago: 0,
         })
         .eq("id", parcelaId);
 
       if (error) throw error;
 
       toast({
-        title: "Pagamento desfeito",
-        description: "A parcela foi marcada como pendente novamente.",
+        title: "Pagamentos desfeitos",
+        description: "A parcela foi resetada e o histórico foi limpo.",
       });
 
       if (selectedContrato) {
@@ -404,7 +413,7 @@ export default function Contratos() {
       }
     } catch (error: any) {
       toast({
-        title: "Não foi possível desfazer o pagamento",
+        title: "Não foi possível desfazer os pagamentos",
         description: "Verifique sua conexão com a internet e tente novamente.",
         variant: "destructive",
       });

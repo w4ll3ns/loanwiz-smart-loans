@@ -79,11 +79,10 @@ export default function Dashboard() {
       
       // Calcular total a receber considerando apenas parcelas pendentes
       const totalPendente = parcelas?.filter(p => p.status === "pendente")
-        .reduce((sum, p) => sum + Number(p.valor), 0) || 0;
+        .reduce((sum, p) => sum + (Number(p.valor_original || p.valor) - (Number(p.valor_pago) || 0)), 0) || 0;
       
-      // Calcular total já recebido somando valor_pago das parcelas pagas
-      const totalRecebido = parcelas?.filter(p => p.status === "pago")
-        .reduce((sum, p) => sum + Number(p.valor_pago || 0), 0) || 0;
+      // Calcular total já recebido somando TODOS os valor_pago (independente do status)
+      const totalRecebido = parcelas?.reduce((sum, p) => sum + (Number(p.valor_pago) || 0), 0) || 0;
       
       const totalReceber = totalPendente + totalRecebido;
       
