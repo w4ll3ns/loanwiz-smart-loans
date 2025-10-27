@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, Check, X, Calendar, AlertTriangle, Trash2 } from "lucide-react";
+import { Search, Check, X, Calendar, AlertTriangle, Trash2, Undo2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -214,15 +214,15 @@ export default function Parcelas() {
         .update({
           status: "pendente",
           data_pagamento: null,
+          valor_pago: null,
         })
         .eq("id", parcelaId);
 
       if (error) throw error;
 
       toast({
-        title: "Parcela marcada como pendente",
-        description: "O status foi atualizado.",
-        variant: "destructive"
+        title: "Pagamento desfeito",
+        description: "A parcela foi marcada como pendente novamente.",
       });
 
       loadParcelas();
@@ -424,6 +424,7 @@ export default function Parcelas() {
                               size="sm"
                               onClick={() => abrirModalPagamento(parcela)}
                               className="text-success hover:bg-success hover:text-success-foreground"
+                              title="Baixar parcela"
                             >
                               <Check className="h-4 w-4" />
                             </Button>
@@ -432,9 +433,10 @@ export default function Parcelas() {
                               variant="outline"
                               size="sm"
                               onClick={() => handleMarcarPendente(parcela.id)}
-                              className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                              className="text-warning hover:bg-warning hover:text-warning-foreground"
+                              title="Desfazer pagamento"
                             >
-                              <X className="h-4 w-4" />
+                              <Undo2 className="h-4 w-4" />
                             </Button>
                           )}
                           <Button
@@ -445,6 +447,7 @@ export default function Parcelas() {
                               setIsDeleteDialogOpen(true);
                             }}
                             className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                            title="Excluir parcela"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
