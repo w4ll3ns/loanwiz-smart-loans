@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -489,7 +490,7 @@ export default function Contratos() {
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <p><strong>Cliente:</strong> {previewData.cliente}</p>
-                    <p><strong>Data:</strong> {new Date(previewData.dataEmprestimo).toLocaleDateString('pt-BR')}</p>
+                    <p><strong>Data:</strong> {format(new Date(previewData.dataEmprestimo + 'T00:00:00'), 'dd/MM/yyyy')}</p>
                     <p><strong>Periodicidade:</strong> {previewData.periodicidade}</p>
                   </div>
                   <div>
@@ -518,7 +519,7 @@ export default function Contratos() {
                         {previewData.parcelas.map((parcela: PreviewParcela) => (
                           <TableRow key={parcela.numero}>
                             <TableCell>{parcela.numero}</TableCell>
-                            <TableCell>{new Date(parcela.data).toLocaleDateString('pt-BR')}</TableCell>
+                            <TableCell>{format(new Date(parcela.data + 'T00:00:00'), 'dd/MM/yyyy')}</TableCell>
                             <TableCell>R$ {parcela.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
                           </TableRow>
                         ))}
@@ -547,7 +548,7 @@ export default function Contratos() {
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <p><strong>Cliente:</strong> {selectedContrato.clientes?.nome}</p>
-                    <p><strong>Data:</strong> {new Date(selectedContrato.data_emprestimo).toLocaleDateString('pt-BR')}</p>
+                    <p><strong>Data:</strong> {format(new Date(selectedContrato.data_emprestimo + 'T00:00:00'), 'dd/MM/yyyy')}</p>
                     <p><strong>Periodicidade:</strong> {selectedContrato.periodicidade}</p>
                     <p><strong>Número de Parcelas:</strong> {selectedContrato.numero_parcelas}</p>
                   </div>
@@ -581,7 +582,7 @@ export default function Contratos() {
                         {parcelas.map((parcela) => (
                           <TableRow key={parcela.id}>
                             <TableCell>{parcela.numero_parcela}</TableCell>
-                            <TableCell>{new Date(parcela.data_vencimento).toLocaleDateString('pt-BR')}</TableCell>
+                            <TableCell>{format(new Date(parcela.data_vencimento + 'T00:00:00'), 'dd/MM/yyyy')}</TableCell>
                             <TableCell>R$ {Number(parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
                             <TableCell>
                               <Badge variant={parcela.status === 'pago' ? 'default' : 'secondary'}>
@@ -591,7 +592,7 @@ export default function Contratos() {
                             <TableCell>
                               {parcela.data_pagamento ? (
                                 <div className="text-sm">
-                                  <div>{new Date(parcela.data_pagamento).toLocaleDateString('pt-BR')}</div>
+                                  <div>{format(new Date(parcela.data_pagamento + 'T00:00:00'), 'dd/MM/yyyy')}</div>
                                   <div className="text-muted-foreground">R$ {Number(parcela.valor_pago).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
                                 </div>
                               ) : (
