@@ -12,7 +12,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, Check, X, Calendar, AlertTriangle } from "lucide-react";
+import { Search, Check, X, Calendar, AlertTriangle, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -36,6 +37,8 @@ export default function Parcelas() {
   const [parcelas, setParcelas] = useState<Parcela[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("todos");
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [parcelaToDelete, setParcelaToDelete] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -131,6 +134,34 @@ export default function Parcelas() {
     } catch (error: any) {
       toast({
         title: "Erro",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!parcelaToDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from("parcelas")
+        .delete()
+        .eq("id", parcelaToDelete);
+
+      if (error) throw error;
+
+      toast({
+        title: "Parcela excluída",
+        description: "Parcela removida com sucesso.",
+      });
+
+      setIsDeleteDialogOpen(false);
+      setParcelaToDelete(null);
+      loadParcelas();
+    } catch (error: any) {
+      toast({
+        title: "Erro ao excluir",
         description: error.message,
         variant: "destructive",
       });
@@ -311,6 +342,17 @@ export default function Parcelas() {
                               <X className="h-4 w-4" />
                             </Button>
                           )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setParcelaToDelete(parcela.id);
+                              setIsDeleteDialogOpen(true);
+                            }}
+                            className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -321,6 +363,24 @@ export default function Parcelas() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Dialog de Confirmação de Exclusão */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir esta parcela? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

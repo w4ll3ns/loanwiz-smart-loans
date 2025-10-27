@@ -21,7 +21,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, FileText, Eye } from "lucide-react";
+import { Plus, FileText, Eye, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -65,6 +66,8 @@ export default function Contratos() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isContratoDetailsOpen, setIsContratoDetailsOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [contratoToDelete, setContratoToDelete] = useState<string | null>(null);
   const [selectedContrato, setSelectedContrato] = useState<Contrato | null>(null);
   const [parcelas, setParcelas] = useState<Parcela[]>([]);
   const [previewData, setPreviewData] = useState<any>(null);
@@ -279,6 +282,44 @@ export default function Contratos() {
     } catch (error: any) {
       toast({
         title: "Erro ao baixar parcela",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteContrato = async () => {
+    if (!contratoToDelete) return;
+
+    try {
+      // Primeiro excluir as parcelas do contrato
+      const { error: parcelasError } = await supabase
+        .from("parcelas")
+        .delete()
+        .eq("contrato_id", contratoToDelete);
+
+      if (parcelasError) throw parcelasError;
+
+      // Depois excluir o contrato
+      const { error: contratoError } = await supabase
+        .from("contratos")
+        .delete()
+        .eq("id", contratoToDelete);
+
+      if (contratoError) throw contratoError;
+
+      toast({
+        title: "Contrato excluído",
+        description: "Contrato e parcelas foram removidos com sucesso.",
+      });
+
+      setIsDeleteDialogOpen(false);
+      setContratoToDelete(null);
+      setIsContratoDetailsOpen(false);
+      loadContratos();
+    } catch (error: any) {
+      toast({
+        title: "Erro ao excluir contrato",
         description: error.message,
         variant: "destructive",
       });
@@ -575,7 +616,20 @@ export default function Contratos() {
       <Dialog open={isContratoDetailsOpen} onOpenChange={setIsContratoDetailsOpen}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Detalhes do Contrato</DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle>Detalhes do Contrato</DialogTitle>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  setContratoToDelete(selectedContrato.id);
+                  setIsDeleteDialogOpen(true);
+                }}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Excluir Contrato
+              </Button>
+            </div>
           </DialogHeader>
           {selectedContrato && (
             <div className="space-y-4">
@@ -653,8 +707,27 @@ export default function Contratos() {
                     </Table>
                   </div>
                 </CardContent>
-              </Card>
-            </div>
+      </Card>
+
+      {/* Dialog de Confirmação de Exclusão */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este contrato? Esta ação não pode ser desfeita.
+              Todas as parcelas associadas também serão excluídas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteContrato} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
           )}
         </DialogContent>
       </Dialog>

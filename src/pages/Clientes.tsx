@@ -20,6 +20,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, Search } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -35,6 +36,8 @@ export default function Clientes() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [clienteToDelete, setClienteToDelete] = useState<string | null>(null);
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
   const { toast } = useToast();
 
@@ -136,14 +139,14 @@ export default function Clientes() {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Tem certeza que deseja excluir este cliente?")) return;
+  const handleDelete = async () => {
+    if (!clienteToDelete) return;
 
     try {
       const { error } = await supabase
         .from("clientes")
         .delete()
-        .eq("id", id);
+        .eq("id", clienteToDelete);
 
       if (error) throw error;
 
@@ -151,6 +154,9 @@ export default function Clientes() {
         title: "Cliente excluído",
         description: "Cliente removido com sucesso.",
       });
+      
+      setIsDeleteDialogOpen(false);
+      setClienteToDelete(null);
       loadClientes();
     } catch (error: any) {
       toast({
@@ -294,7 +300,10 @@ export default function Clientes() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleDelete(cliente.id)}
+                            onClick={() => {
+                              setClienteToDelete(cliente.id);
+                              setIsDeleteDialogOpen(true);
+                            }}
                             className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -309,6 +318,24 @@ export default function Clientes() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Dialog de Confirmação de Exclusão */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este cliente? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
