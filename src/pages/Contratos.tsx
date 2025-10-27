@@ -419,73 +419,43 @@ export default function Contratos() {
                 </div>
 
                 <div>
-                  <Label htmlFor="tipoJuros" className="flex items-center gap-2">
-                    Tipo de Juros
-                  </Label>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Label htmlFor="tipoJuros">Tipo de Juros</Label>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent side="right" className="max-w-sm p-4">
+                          <div className="space-y-3">
+                            <div>
+                              <p className="font-semibold">Juros Fixo (Simples)</p>
+                              <p className="text-sm text-muted-foreground">Percentual fixo sobre o valor emprestado.</p>
+                              <p className="text-xs mt-1">Ex: R$ 10.000 a 10% = R$ 1.000 de juros</p>
+                            </div>
+                            <div>
+                              <p className="font-semibold">Juros por Parcela</p>
+                              <p className="text-sm text-muted-foreground">Percentual multiplicado pelo número de parcelas.</p>
+                              <p className="text-xs mt-1">Ex: R$ 10.000 a 10% em 3x = 30% = R$ 3.000</p>
+                            </div>
+                            <div>
+                              <p className="font-semibold">Juros Composto</p>
+                              <p className="text-sm text-muted-foreground">Juros sobre juros (capitalização).</p>
+                              <p className="text-xs mt-1">Ex: R$ 10.000 a 10% em 3x = R$ 13.310</p>
+                            </div>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                   <Select value={formData.tipoJuros} onValueChange={(value: any) => setFormData({ ...formData, tipoJuros: value })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="simples">
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="flex items-center gap-2 cursor-help">
-                                Juros Fixo
-                                <Info className="h-3 w-3 text-muted-foreground" />
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent side="right" className="max-w-xs">
-                              <p className="font-semibold mb-1">Juros Fixo (Simples)</p>
-                              <p className="text-sm">Percentual fixo sobre o valor emprestado.</p>
-                              <p className="text-sm mt-2">Exemplo: R$ 10.000 a 10%</p>
-                              <p className="text-sm">Juros = R$ 1.000 (fixo)</p>
-                              <p className="text-sm">Total = R$ 11.000</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </SelectItem>
-                      <SelectItem value="parcela">
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="flex items-center gap-2 cursor-help">
-                                Juros por Parcela
-                                <Info className="h-3 w-3 text-muted-foreground" />
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent side="right" className="max-w-xs">
-                              <p className="font-semibold mb-1">Juros por Parcela</p>
-                              <p className="text-sm">Percentual multiplicado pelo número de parcelas.</p>
-                              <p className="text-sm mt-2">Exemplo: R$ 10.000 a 10% em 3 meses</p>
-                              <p className="text-sm">Juros = 10% × 3 = 30% total</p>
-                              <p className="text-sm">Juros = R$ 3.000</p>
-                              <p className="text-sm">Total = R$ 13.000</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </SelectItem>
-                      <SelectItem value="composto">
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="flex items-center gap-2 cursor-help">
-                                Juros Composto
-                                <Info className="h-3 w-3 text-muted-foreground" />
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent side="right" className="max-w-xs">
-                              <p className="font-semibold mb-1">Juros Composto</p>
-                              <p className="text-sm">Juros sobre juros (capitalização).</p>
-                              <p className="text-sm mt-2">Exemplo: R$ 10.000 a 10% em 3 meses</p>
-                              <p className="text-sm">Mês 1: R$ 11.000</p>
-                              <p className="text-sm">Mês 2: R$ 12.100</p>
-                              <p className="text-sm">Mês 3: R$ 13.310</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </SelectItem>
+                      <SelectItem value="simples">Juros Fixo</SelectItem>
+                      <SelectItem value="parcela">Juros por Parcela</SelectItem>
+                      <SelectItem value="composto">Juros Composto</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
