@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,7 +22,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Plus, FileText, Eye } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -159,6 +157,29 @@ export default function Contratos() {
       valorParcela,
       lucro: valorTotal - valor
     };
+  };
+
+  const getExplicacaoJuros = () => {
+    const valor = parseFloat(formData.valorEmprestado) || 10000;
+    const percent = parseFloat(formData.percentual) || 10;
+    const parcelas = parseInt(formData.numeroParcelas) || 3;
+
+    switch (formData.tipoJuros) {
+      case "simples":
+        const jurosSimples = valor * (percent / 100);
+        return `Juros Fixo: O percentual (${percent}%) é aplicado uma única vez sobre o valor emprestado. Exemplo: ${percent}% de R$ ${valor.toLocaleString('pt-BR')} = R$ ${jurosSimples.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} de juros total.`;
+      
+      case "parcela":
+        const jurosParcela = valor * (percent / 100) * parcelas;
+        return `Juros por Parcela: O percentual (${percent}%) é multiplicado pelo número de parcelas (${parcelas}x). Exemplo: ${percent}% × ${parcelas} parcelas = ${percent * parcelas}% total. Juros = R$ ${jurosParcela.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`;
+      
+      case "composto":
+        const valorFinal = valor * Math.pow(1 + (percent / 100), parcelas);
+        return `Juros Composto: Os juros incidem sobre o montante do mês anterior (juros sobre juros). Exemplo com ${parcelas} meses: Mês 1: R$ ${(valor * (1 + percent/100)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}, Mês 2: R$ ${(valor * Math.pow(1 + percent/100, 2)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}, Mês 3: R$ ${valorFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`;
+      
+      default:
+        return "";
+    }
   };
 
   const gerarParcelas = (dataInicio: string, periodicidade: string, numeroParcelas: number): PreviewParcela[] => {
@@ -418,36 +439,8 @@ export default function Contratos() {
                   />
                 </div>
 
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Label htmlFor="tipoJuros">Tipo de Juros</Label>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent side="right" className="max-w-sm p-4">
-                          <div className="space-y-3">
-                            <div>
-                              <p className="font-semibold">Juros Fixo (Simples)</p>
-                              <p className="text-sm text-muted-foreground">Percentual fixo sobre o valor emprestado.</p>
-                              <p className="text-xs mt-1">Ex: R$ 10.000 a 10% = R$ 1.000 de juros</p>
-                            </div>
-                            <div>
-                              <p className="font-semibold">Juros por Parcela</p>
-                              <p className="text-sm text-muted-foreground">Percentual multiplicado pelo número de parcelas.</p>
-                              <p className="text-xs mt-1">Ex: R$ 10.000 a 10% em 3x = 30% = R$ 3.000</p>
-                            </div>
-                            <div>
-                              <p className="font-semibold">Juros Composto</p>
-                              <p className="text-sm text-muted-foreground">Juros sobre juros (capitalização).</p>
-                              <p className="text-xs mt-1">Ex: R$ 10.000 a 10% em 3x = R$ 13.310</p>
-                            </div>
-                          </div>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tipoJuros">Tipo de Juros</Label>
                   <Select value={formData.tipoJuros} onValueChange={(value: any) => setFormData({ ...formData, tipoJuros: value })}>
                     <SelectTrigger>
                       <SelectValue />
@@ -458,6 +451,11 @@ export default function Contratos() {
                       <SelectItem value="composto">Juros Composto</SelectItem>
                     </SelectContent>
                   </Select>
+                  {formData.tipoJuros && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {getExplicacaoJuros()}
+                    </p>
+                  )}
                 </div>
               </div>
 
