@@ -76,6 +76,17 @@ export default function Clientes() {
     e.preventDefault();
     
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast({
+          title: "Erro de autenticação",
+          description: "Você precisa estar autenticado para realizar esta ação.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       if (editingCliente) {
         const { error } = await supabase
           .from("clientes")
@@ -91,7 +102,7 @@ export default function Clientes() {
       } else {
         const { error } = await supabase
           .from("clientes")
-          .insert([formData]);
+          .insert([{ ...formData, user_id: user.id }]);
 
         if (error) throw error;
 
