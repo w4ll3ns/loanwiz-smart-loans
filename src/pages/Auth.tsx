@@ -10,6 +10,7 @@ export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLogin, setIsLogin] = useState(true);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -36,7 +37,19 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      if (isLogin) {
+      if (isForgotPassword) {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/auth`,
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: 'Email enviado!',
+          description: 'Verifique seu email para redefinir sua senha.',
+        });
+        setIsForgotPassword(false);
+      } else if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -79,9 +92,13 @@ export default function Auth() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>{isLogin ? 'Login' : 'Cadastro'}</CardTitle>
+          <CardTitle>
+            {isForgotPassword ? 'Redefinir Senha' : isLogin ? 'Login' : 'Cadastro'}
+          </CardTitle>
           <CardDescription>
-            {isLogin
+            {isForgotPassword
+              ? 'Digite seu email para receber o link de redefinição'
+              : isLogin
               ? 'Entre com suas credenciais para acessar o sistema'
               : 'Crie sua conta para começar'}
           </CardDescription>
@@ -101,31 +118,61 @@ export default function Auth() {
                 required
               />
             </div>
-            <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium">
-                Senha
-              </label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-              />
-            </div>
+            {!isForgotPassword && (
+              <div className="space-y-2">
+                <label htmlFor="password" className="text-sm font-medium">
+                  Senha
+                </label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                />
+              </div>
+            )}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Processando...' : isLogin ? 'Entrar' : 'Cadastrar'}
+              {loading
+                ? 'Processando...'
+                : isForgotPassword
+                ? 'Enviar Email'
+                : isLogin
+                ? 'Entrar'
+                : 'Cadastrar'}
             </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              className="w-full"
-              onClick={() => setIsLogin(!isLogin)}
-            >
-              {isLogin ? 'Não tem conta? Cadastre-se' : 'Já tem conta? Faça login'}
-            </Button>
+            {isLogin && !isForgotPassword && (
+              <Button
+                type="button"
+                variant="link"
+                className="w-full"
+                onClick={() => setIsForgotPassword(true)}
+              >
+                Esqueci minha senha
+              </Button>
+            )}
+            {isForgotPassword && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                onClick={() => setIsForgotPassword(false)}
+              >
+                Voltar para o login
+              </Button>
+            )}
+            {!isForgotPassword && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                onClick={() => setIsLogin(!isLogin)}
+              >
+                {isLogin ? 'Não tem conta? Cadastre-se' : 'Já tem conta? Faça login'}
+              </Button>
+            )}
           </form>
         </CardContent>
       </Card>
