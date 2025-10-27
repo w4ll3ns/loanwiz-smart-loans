@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,60 +20,37 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Calculator, FileText, Eye } from "lucide-react";
+import { Plus, FileText, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Contrato {
   id: string;
-  clienteId: string;
-  clienteNome: string;
-  valorEmprestado: number;
+  cliente_id: string;
+  clientes?: { nome: string };
+  valor_emprestado: number;
   percentual: number;
   periodicidade: "diario" | "semanal" | "quinzenal" | "mensal";
-  numeroParcelas: number;
-  dataEmprestimo: string;
-  valorTotal: number;
-  valorParcela: number;
-  status: "ativo" | "quitado" | "vencido";
+  numero_parcelas: number;
+  data_emprestimo: string;
+  valor_total: number;
+  status: string;
 }
 
-const mockContratos: Contrato[] = [
-  {
-    id: "1",
-    clienteId: "1",
-    clienteNome: "João Silva",
-    valorEmprestado: 5000,
-    percentual: 20,
-    periodicidade: "mensal",
-    numeroParcelas: 12,
-    dataEmprestimo: "2024-01-01",
-    valorTotal: 6000,
-    valorParcela: 500,
-    status: "ativo"
-  },
-  {
-    id: "2",
-    clienteId: "2", 
-    clienteNome: "Maria Santos",
-    valorEmprestado: 3000,
-    percentual: 15,
-    periodicidade: "quinzenal",
-    numeroParcelas: 8,
-    dataEmprestimo: "2024-01-15",
-    valorTotal: 3450,
-    valorParcela: 431.25,
-    status: "ativo"
-  }
-];
+interface Cliente {
+  id: string;
+  nome: string;
+}
 
-const mockClientes = [
-  { id: "1", nome: "João Silva" },
-  { id: "2", nome: "Maria Santos" },
-  { id: "3", nome: "Pedro Costa" }
-];
+interface PreviewParcela {
+  numero: number;
+  data: string;
+  valor: number;
+}
 
 export default function Contratos() {
-  const [contratos, setContratos] = useState<Contrato[]>(mockContratos);
+  const [contratos, setContratos] = useState<Contrato[]>([]);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewData, setPreviewData] = useState<any>(null);
@@ -87,6 +64,50 @@ export default function Contratos() {
     numeroParcelas: "",
     dataEmprestimo: ""
   });
+
+  useEffect(() => {
+    loadContratos();
+    loadClientes();
+  }, []);
+
+  const loadContratos = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("contratos")
+        .select(`
+          *,
+          clientes(nome)
+        `)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setContratos((data || []) as Contrato[]);
+    } catch (error: any) {
+      toast({
+        title: "Erro ao carregar contratos",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const loadClientes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("clientes")
+        .select("id, nome")
+        .order("nome");
+
+      if (error) throw error;
+      setClientes(data || []);
+    } catch (error: any) {
+      toast({
+        title: "Erro ao carregar clientes",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
 
   const calcularContrato = () => {
     const valor = parseFloat(formData.valorEmprestado);
@@ -105,8 +126,8 @@ export default function Contratos() {
     };
   };
 
-  const gerarParcelas = (dataInicio: string, periodicidade: string, numeroParcelas: number) => {
-    const parcelas = [];
+  const gerarParcelas = (dataInicio: string, periodicidade: string, numeroParcelas: number): PreviewParcela[] => {
+    const parcelas: PreviewParcela[] = [];
     const dataBase = new Date(dataInicio);
     
     for (let i = 1; i <= numeroParcelas; i++) {
@@ -141,7 +162,7 @@ export default function Contratos() {
     const calculo = calcularContrato();
     if (!calculo) return;
 
-    const cliente = mockClientes.find(c => c.id === formData.clienteId);
+    const cliente = clientes.find(c => c.id === formData.clienteId);
     const parcelas = gerarParcelas(formData.dataEmprestimo, formData.periodicidade, parseInt(formData.numeroParcelas));
 
     setPreviewData({
@@ -153,7 +174,7 @@ export default function Contratos() {
     setIsPreviewOpen(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const calculo = calcularContrato();
@@ -166,59 +187,79 @@ export default function Contratos() {
       return;
     }
 
-    const cliente = mockClientes.find(c => c.id === formData.clienteId);
-    
-    const novoContrato: Contrato = {
-      id: Date.now().toString(),
-      clienteId: formData.clienteId,
-      clienteNome: cliente?.nome || "",
-      valorEmprestado: parseFloat(formData.valorEmprestado),
-      percentual: parseFloat(formData.percentual),
-      periodicidade: formData.periodicidade as any,
-      numeroParcelas: parseInt(formData.numeroParcelas),
-      dataEmprestimo: formData.dataEmprestimo,
-      valorTotal: calculo.valorTotal,
-      valorParcela: calculo.valorParcela,
-      status: "ativo"
-    };
+    try {
+      const { data: contrato, error: contratoError } = await supabase
+        .from("contratos")
+        .insert([{
+          cliente_id: formData.clienteId,
+          valor_emprestado: parseFloat(formData.valorEmprestado),
+          percentual: parseFloat(formData.percentual),
+          periodicidade: formData.periodicidade,
+          numero_parcelas: parseInt(formData.numeroParcelas),
+          data_emprestimo: formData.dataEmprestimo,
+          valor_total: calculo.valorTotal,
+          status: "ativo"
+        }])
+        .select()
+        .single();
 
-    setContratos([...contratos, novoContrato]);
-    
-    setFormData({
-      clienteId: "",
-      valorEmprestado: "",
-      percentual: "",
-      periodicidade: "",
-      numeroParcelas: "",
-      dataEmprestimo: ""
-    });
-    
-    setIsDialogOpen(false);
-    
-    toast({
-      title: "Contrato criado",
-      description: "Novo contrato adicionado com sucesso.",
-    });
+      if (contratoError) throw contratoError;
+
+      // Gerar parcelas usando a função do banco de dados
+      const { error: parcelasError } = await supabase.rpc("gerar_parcelas", {
+        p_contrato_id: contrato.id,
+        p_numero_parcelas: parseInt(formData.numeroParcelas),
+        p_valor_parcela: calculo.valorParcela,
+        p_data_inicio: formData.dataEmprestimo,
+        p_periodicidade: formData.periodicidade
+      });
+
+      if (parcelasError) throw parcelasError;
+
+      setFormData({
+        clienteId: "",
+        valorEmprestado: "",
+        percentual: "",
+        periodicidade: "",
+        numeroParcelas: "",
+        dataEmprestimo: ""
+      });
+      
+      setIsDialogOpen(false);
+      
+      toast({
+        title: "Contrato criado",
+        description: "Novo contrato e parcelas geradas com sucesso.",
+      });
+
+      loadContratos();
+    } catch (error: any) {
+      toast({
+        title: "Erro ao criar contrato",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Gestão de Contratos</h1>
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <h1 className="text-2xl md:text-3xl font-bold">Gestão de Contratos</h1>
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button size="sm" className="w-full md:w-auto">
               <Plus className="h-4 w-4 mr-2" />
               Novo Contrato
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Novo Contrato de Empréstimo</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="cliente">Cliente</Label>
                   <Select value={formData.clienteId} onValueChange={(value) => setFormData({ ...formData, clienteId: value })}>
@@ -226,7 +267,7 @@ export default function Contratos() {
                       <SelectValue placeholder="Selecione o cliente" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockClientes.map((cliente) => (
+                      {clientes.map((cliente) => (
                         <SelectItem key={cliente.id} value={cliente.id}>
                           {cliente.nome}
                         </SelectItem>
@@ -247,7 +288,7 @@ export default function Contratos() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="valor">Valor Emprestado (R$)</Label>
                   <Input
@@ -302,7 +343,7 @@ export default function Contratos() {
               {calcularContrato() && (
                 <Card className="bg-muted">
                   <CardContent className="pt-4">
-                    <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                       <div>
                         <p className="text-muted-foreground">Valor Total</p>
                         <p className="font-semibold">R$ {calcularContrato()?.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
@@ -320,8 +361,8 @@ export default function Contratos() {
                 </Card>
               )}
 
-              <div className="flex gap-2 pt-4">
-                <Button type="button" variant="outline" onClick={handlePreview} disabled={!calcularContrato()}>
+              <div className="flex flex-col md:flex-row gap-2 pt-4">
+                <Button type="button" variant="outline" onClick={handlePreview} disabled={!calcularContrato()} className="flex-1">
                   <Eye className="h-4 w-4 mr-2" />
                   Preview
                 </Button>
@@ -350,7 +391,7 @@ export default function Contratos() {
                 <CardHeader>
                   <CardTitle>Dados do Contrato</CardTitle>
                 </CardHeader>
-                <CardContent className="grid grid-cols-2 gap-4">
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <p><strong>Cliente:</strong> {previewData.cliente}</p>
                     <p><strong>Data:</strong> {new Date(previewData.dataEmprestimo).toLocaleDateString('pt-BR')}</p>
@@ -369,24 +410,26 @@ export default function Contratos() {
                   <CardTitle>Cronograma de Parcelas</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Parcela</TableHead>
-                        <TableHead>Data de Vencimento</TableHead>
-                        <TableHead>Valor</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {previewData.parcelas.map((parcela: any) => (
-                        <TableRow key={parcela.numero}>
-                          <TableCell>{parcela.numero}</TableCell>
-                          <TableCell>{new Date(parcela.data).toLocaleDateString('pt-BR')}</TableCell>
-                          <TableCell>R$ {parcela.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Parcela</TableHead>
+                          <TableHead>Data de Vencimento</TableHead>
+                          <TableHead>Valor</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {previewData.parcelas.map((parcela: PreviewParcela) => (
+                          <TableRow key={parcela.numero}>
+                            <TableCell>{parcela.numero}</TableCell>
+                            <TableCell>{new Date(parcela.data).toLocaleDateString('pt-BR')}</TableCell>
+                            <TableCell>R$ {parcela.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -397,39 +440,52 @@ export default function Contratos() {
       {/* Lista de Contratos */}
       <Card>
         <CardHeader>
-          <CardTitle>Contratos Ativos ({contratos.length})</CardTitle>
+          <CardTitle className="text-base md:text-lg">Contratos Ativos ({contratos.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Valor Emprestado</TableHead>
-                <TableHead>Percentual</TableHead>
-                <TableHead>Periodicidade</TableHead>
-                <TableHead>Valor Total</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Data</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {contratos.map((contrato) => (
-                <TableRow key={contrato.id}>
-                  <TableCell className="font-medium">{contrato.clienteNome}</TableCell>
-                  <TableCell>R$ {contrato.valorEmprestado.toLocaleString('pt-BR')}</TableCell>
-                  <TableCell>{contrato.percentual}%</TableCell>
-                  <TableCell className="capitalize">{contrato.periodicidade}</TableCell>
-                  <TableCell>R$ {contrato.valorTotal.toLocaleString('pt-BR')}</TableCell>
-                  <TableCell>
-                    <Badge variant={contrato.status === "ativo" ? "default" : "secondary"}>
-                      {contrato.status === "ativo" ? "Ativo" : contrato.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{new Date(contrato.dataEmprestimo).toLocaleDateString('pt-BR')}</TableCell>
+          <div className="overflow-x-auto -mx-4 md:mx-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="min-w-[120px]">Cliente</TableHead>
+                  <TableHead className="hidden md:table-cell">Valor Emprestado</TableHead>
+                  <TableHead className="hidden lg:table-cell">Percentual</TableHead>
+                  <TableHead className="hidden md:table-cell">Periodicidade</TableHead>
+                  <TableHead>Valor Total</TableHead>
+                  <TableHead className="hidden md:table-cell">Status</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {contratos.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                      Nenhum contrato encontrado
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  contratos.map((contrato) => (
+                    <TableRow key={contrato.id}>
+                      <TableCell className="font-medium">
+                        {contrato.clientes?.nome}
+                        <div className="md:hidden text-xs text-muted-foreground mt-1">
+                          {contrato.periodicidade} • {contrato.percentual}%
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">R$ {Number(contrato.valor_emprestado).toLocaleString('pt-BR')}</TableCell>
+                      <TableCell className="hidden lg:table-cell">{Number(contrato.percentual)}%</TableCell>
+                      <TableCell className="hidden md:table-cell capitalize">{contrato.periodicidade}</TableCell>
+                      <TableCell>R$ {Number(contrato.valor_total).toLocaleString('pt-BR')}</TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <Badge variant={contrato.status === "ativo" ? "default" : "secondary"}>
+                          {contrato.status === "ativo" ? "Ativo" : contrato.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>
