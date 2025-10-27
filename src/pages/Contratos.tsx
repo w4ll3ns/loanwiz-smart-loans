@@ -134,10 +134,12 @@ export default function Contratos() {
     let valorTotal: number;
     
     if (formData.tipoJuros === "composto") {
-      // Juros compostos: M = C * (1 + i)^n
-      valorTotal = valor * Math.pow(1 + (percent / 100), parcelas);
+      // Juros por parcela: percentual x número de parcelas
+      // Exemplo: 10% x 3 parcelas = 30% total
+      valorTotal = valor + (valor * (percent / 100) * parcelas);
     } else {
-      // Juros simples: M = C + (C * i * n) / 100
+      // Juros simples: percentual fixo sobre o valor total
+      // Exemplo: 10% do valor = juros fixo
       valorTotal = valor + (valor * percent / 100);
     }
     
@@ -414,8 +416,8 @@ export default function Contratos() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="simples">Juros Simples</SelectItem>
-                      <SelectItem value="composto">Juros Compostos</SelectItem>
+                      <SelectItem value="simples">Juros Fixo</SelectItem>
+                      <SelectItem value="composto">Juros por Parcela</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
