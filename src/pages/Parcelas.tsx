@@ -113,47 +113,85 @@ export default function Parcelas() {
 
     try {
       let valorFinal = 0;
-      let novoStatus = "pago";
 
       if (tipoPagamento === "total") {
         valorFinal = Number(parcelaToPay.valor);
       } else if (tipoPagamento === "juros") {
         valorFinal = calcularJuros(parcelaToPay);
-        novoStatus = "pendente"; // Mantém pendente se pagar só juros
       } else if (tipoPagamento === "personalizado") {
         valorFinal = Number(valorPagamento);
-        if (valorFinal < Number(parcelaToPay.valor)) {
-          novoStatus = "pendente"; // Mantém pendente se pagamento parcial
-        }
       }
 
-      // Se for pagamento parcial (não total), recalcula o valor da parcela
       const valorRestante = Number(parcelaToPay.valor) - valorFinal;
 
-      const updateData: any = {
-        data_pagamento: new Date().toISOString().split('T')[0],
-        valor_pago: (parcelaToPay.valor_pago || 0) + valorFinal,
-        status: valorRestante <= 0 ? "pago" : "pendente",
-      };
+      // Se pagou o valor total ou mais, marca como pago
+      if (valorRestante <= 0) {
+        const { error } = await supabase
+          .from("parcelas")
+          .update({
+            data_pagamento: new Date().toISOString().split('T')[0],
+            valor_pago: Number(parcelaToPay.valor),
+            status: "pago",
+          })
+          .eq("id", parcelaToPay.id);
 
-      // Se ainda há valor restante, atualiza o valor da parcela
-      if (valorRestante > 0) {
-        updateData.valor = valorRestante;
+        if (error) throw error;
+
+        toast({
+          title: "Parcela paga com sucesso",
+          description: `Valor pago: R$ ${valorFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+        });
+      } else {
+        // Pagamento parcial - marca como pago e transfere saldo para próxima parcela
+        const { error: updateError } = await supabase
+          .from("parcelas")
+          .update({
+            data_pagamento: new Date().toISOString().split('T')[0],
+            valor_pago: valorFinal,
+            status: "pago",
+          })
+          .eq("id", parcelaToPay.id);
+
+        if (updateError) throw updateError;
+
+        // Buscar próxima parcela do mesmo contrato
+        const { data: proximaParcela, error: proximaError } = await supabase
+          .from("parcelas")
+          .select("*")
+          .eq("contrato_id", parcelaToPay.contrato_id)
+          .eq("status", "pendente")
+          .gt("numero_parcela", parcelaToPay.numero_parcela)
+          .order("numero_parcela", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        if (proximaError) throw proximaError;
+
+        if (proximaParcela) {
+          // Adiciona o valor restante à próxima parcela
+          const novoValorProxima = Number(proximaParcela.valor) + valorRestante;
+          
+          const { error: updateProximaError } = await supabase
+            .from("parcelas")
+            .update({
+              valor: novoValorProxima
+            })
+            .eq("id", proximaParcela.id);
+
+          if (updateProximaError) throw updateProximaError;
+
+          toast({
+            title: "Pagamento parcial registrado",
+            description: `Valor pago: R$ ${valorFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}. Saldo de R$ ${valorRestante.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} transferido para parcela ${proximaParcela.numero_parcela}.`,
+          });
+        } else {
+          toast({
+            title: "Pagamento parcial registrado",
+            description: `Valor pago: R$ ${valorFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}. Não há próxima parcela para transferir o saldo de R$ ${valorRestante.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`,
+            variant: "destructive",
+          });
+        }
       }
-
-      const { error } = await supabase
-        .from("parcelas")
-        .update(updateData)
-        .eq("id", parcelaToPay.id);
-
-      if (error) throw error;
-
-      toast({
-        title: valorRestante <= 0 ? "Parcela paga com sucesso" : "Pagamento parcial registrado",
-        description: valorRestante > 0 
-          ? `Valor pago: R$ ${valorFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}. Saldo restante: R$ ${valorRestante.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-          : `Valor pago: R$ ${valorFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      });
 
       setIsPagamentoDialogOpen(false);
       setParcelaToPay(null);

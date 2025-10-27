@@ -76,7 +76,16 @@ export default function Dashboard() {
 
       // Calcular estatísticas
       const totalEmprestado = contratos?.reduce((sum, c) => sum + Number(c.valor_emprestado), 0) || 0;
-      const totalReceber = contratos?.reduce((sum, c) => sum + Number(c.valor_total), 0) || 0;
+      
+      // Calcular total a receber considerando apenas parcelas pendentes
+      const totalPendente = parcelas?.filter(p => p.status === "pendente")
+        .reduce((sum, p) => sum + Number(p.valor), 0) || 0;
+      
+      // Calcular total já recebido somando valor_pago das parcelas pagas
+      const totalRecebido = parcelas?.filter(p => p.status === "pago")
+        .reduce((sum, p) => sum + Number(p.valor_pago || 0), 0) || 0;
+      
+      const totalReceber = totalPendente + totalRecebido;
       
       const hoje = new Date();
       hoje.setHours(0, 0, 0, 0);
