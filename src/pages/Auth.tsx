@@ -47,9 +47,19 @@ export default function Auth() {
         description: 'Bem-vindo de volta.',
       });
     } catch (error: any) {
+      let errorMessage = 'Verifique suas credenciais e tente novamente.';
+      
+      if (error.message?.includes('Invalid login credentials')) {
+        errorMessage = 'Email ou senha incorretos. Verifique seus dados e tente novamente.';
+      } else if (error.message?.includes('Email not confirmed')) {
+        errorMessage = 'Email não confirmado. Verifique sua caixa de entrada.';
+      } else if (error.message?.includes('Too many requests')) {
+        errorMessage = 'Muitas tentativas de login. Aguarde alguns minutos e tente novamente.';
+      }
+      
       toast({
-        title: 'Erro',
-        description: error.message || 'Ocorreu um erro ao processar sua solicitação.',
+        title: 'Não foi possível fazer login',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {

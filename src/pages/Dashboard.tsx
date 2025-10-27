@@ -129,8 +129,8 @@ export default function Dashboard() {
       setProximosVencimentos(proximos);
     } catch (error: any) {
       toast({
-        title: "Erro ao carregar dados",
-        description: error.message,
+        title: "Não foi possível carregar o dashboard",
+        description: "Verifique sua conexão com a internet e recarregue a página.",
         variant: "destructive",
       });
     }

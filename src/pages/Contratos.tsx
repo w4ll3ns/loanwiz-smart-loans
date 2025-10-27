@@ -110,8 +110,8 @@ export default function Contratos() {
       setContratos((data || []) as Contrato[]);
     } catch (error: any) {
       toast({
-        title: "Erro ao carregar contratos",
-        description: error.message,
+        title: "Não foi possível carregar os contratos",
+        description: "Verifique sua conexão com a internet e tente novamente.",
         variant: "destructive",
       });
     }
@@ -128,8 +128,8 @@ export default function Contratos() {
       setClientes(data || []);
     } catch (error: any) {
       toast({
-        title: "Erro ao carregar clientes",
-        description: error.message,
+        title: "Não foi possível carregar os clientes",
+        description: "Verifique sua conexão com a internet e tente novamente.",
         variant: "destructive",
       });
     }
@@ -253,8 +253,8 @@ export default function Contratos() {
       setParcelas(data || []);
     } catch (error: any) {
       toast({
-        title: "Erro ao carregar parcelas",
-        description: error.message,
+        title: "Não foi possível carregar as parcelas",
+        description: "Verifique sua conexão com a internet e tente novamente.",
         variant: "destructive",
       });
     }
@@ -374,8 +374,8 @@ export default function Contratos() {
       }
     } catch (error: any) {
       toast({
-        title: "Erro ao processar pagamento",
-        description: error.message,
+        title: "Não foi possível processar o pagamento",
+        description: "Verifique os valores informados e sua conexão com a internet.",
         variant: "destructive",
       });
     }
@@ -404,8 +404,8 @@ export default function Contratos() {
       }
     } catch (error: any) {
       toast({
-        title: "Erro ao desfazer pagamento",
-        description: error.message,
+        title: "Não foi possível desfazer o pagamento",
+        description: "Verifique sua conexão com a internet e tente novamente.",
         variant: "destructive",
       });
     }
@@ -442,8 +442,8 @@ export default function Contratos() {
       loadContratos();
     } catch (error: any) {
       toast({
-        title: "Erro ao excluir contrato",
-        description: error.message,
+        title: "Não foi possível excluir o contrato",
+        description: "Verifique sua conexão com a internet e tente novamente.",
         variant: "destructive",
       });
     }
@@ -455,8 +455,8 @@ export default function Contratos() {
     const calculo = calcularContrato();
     if (!calculo) {
       toast({
-        title: "Erro",
-        description: "Verifique os dados do contrato.",
+        title: "Dados incompletos",
+        description: "Preencha todos os campos obrigatórios: cliente, valor, percentual, periodicidade, número de parcelas e data.",
         variant: "destructive"
       });
       return;
@@ -512,8 +512,8 @@ export default function Contratos() {
       loadContratos();
     } catch (error: any) {
       toast({
-        title: "Erro ao criar contrato",
-        description: error.message,
+        title: "Não foi possível criar o contrato",
+        description: "Verifique todos os dados preenchidos e sua conexão com a internet.",
         variant: "destructive",
       });
     }

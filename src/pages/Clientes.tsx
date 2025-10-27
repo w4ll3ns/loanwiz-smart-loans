@@ -63,8 +63,8 @@ export default function Clientes() {
       setClientes(data || []);
     } catch (error: any) {
       toast({
-        title: "Erro ao carregar clientes",
-        description: error.message,
+        title: "Não foi possível carregar os clientes",
+        description: "Verifique sua conexão com a internet e tente novamente.",
         variant: "destructive",
       });
     }
@@ -121,8 +121,8 @@ export default function Clientes() {
       loadClientes();
     } catch (error: any) {
       toast({
-        title: "Erro",
-        description: error.message,
+        title: "Não foi possível salvar o cliente",
+        description: "Verifique se todos os campos foram preenchidos corretamente e tente novamente.",
         variant: "destructive",
       });
     }
@@ -160,8 +160,8 @@ export default function Clientes() {
       loadClientes();
     } catch (error: any) {
       toast({
-        title: "Erro ao excluir",
-        description: error.message,
+        title: "Não foi possível excluir o cliente",
+        description: "Este cliente pode ter contratos associados. Exclua os contratos primeiro ou verifique sua conexão.",
         variant: "destructive",
       });
     }

@@ -72,8 +72,8 @@ export default function Parcelas() {
       setParcelas(data || []);
     } catch (error: any) {
       toast({
-        title: "Erro ao carregar parcelas",
-        description: error.message,
+        title: "Não foi possível carregar as parcelas",
+        description: "Verifique sua conexão com a internet e tente novamente.",
         variant: "destructive",
       });
     }
@@ -200,8 +200,8 @@ export default function Parcelas() {
       loadParcelas();
     } catch (error: any) {
       toast({
-        title: "Erro ao processar pagamento",
-        description: error.message,
+        title: "Não foi possível processar o pagamento",
+        description: "Verifique os valores informados e sua conexão com a internet.",
         variant: "destructive",
       });
     }
@@ -228,8 +228,8 @@ export default function Parcelas() {
       loadParcelas();
     } catch (error: any) {
       toast({
-        title: "Erro",
-        description: error.message,
+        title: "Não foi possível desfazer o pagamento",
+        description: "Verifique sua conexão com a internet e tente novamente.",
         variant: "destructive",
       });
     }
@@ -256,8 +256,8 @@ export default function Parcelas() {
       loadParcelas();
     } catch (error: any) {
       toast({
-        title: "Erro ao excluir",
-        description: error.message,
+        title: "Não foi possível excluir a parcela",
+        description: "Verifique sua conexão com a internet e tente novamente.",
         variant: "destructive",
       });
     }
