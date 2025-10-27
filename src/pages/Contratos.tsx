@@ -48,11 +48,24 @@ interface PreviewParcela {
   valor: number;
 }
 
+interface Parcela {
+  id: string;
+  numero_parcela: number;
+  valor: number;
+  data_vencimento: string;
+  status: string;
+  data_pagamento: string | null;
+  valor_pago: number | null;
+}
+
 export default function Contratos() {
   const [contratos, setContratos] = useState<Contrato[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isContratoDetailsOpen, setIsContratoDetailsOpen] = useState(false);
+  const [selectedContrato, setSelectedContrato] = useState<Contrato | null>(null);
+  const [parcelas, setParcelas] = useState<Parcela[]>([]);
   const [previewData, setPreviewData] = useState<any>(null);
   const { toast } = useToast();
 
@@ -182,6 +195,61 @@ export default function Contratos() {
       parcelas
     });
     setIsPreviewOpen(true);
+  };
+
+  const loadParcelas = async (contratoId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("parcelas")
+        .select("*")
+        .eq("contrato_id", contratoId)
+        .order("numero_parcela");
+
+      if (error) throw error;
+      setParcelas(data || []);
+    } catch (error: any) {
+      toast({
+        title: "Erro ao carregar parcelas",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleContratoClick = async (contrato: Contrato) => {
+    setSelectedContrato(contrato);
+    await loadParcelas(contrato.id);
+    setIsContratoDetailsOpen(true);
+  };
+
+  const handleBaixarParcela = async (parcelaId: string, valor: number) => {
+    try {
+      const { error } = await supabase
+        .from("parcelas")
+        .update({
+          status: "pago",
+          data_pagamento: new Date().toISOString().split('T')[0],
+          valor_pago: valor
+        })
+        .eq("id", parcelaId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Parcela baixada",
+        description: "Pagamento registrado com sucesso.",
+      });
+
+      if (selectedContrato) {
+        await loadParcelas(selectedContrato.id);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erro ao baixar parcela",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -464,6 +532,94 @@ export default function Contratos() {
         </DialogContent>
       </Dialog>
 
+      {/* Detalhes do Contrato e Parcelas */}
+      <Dialog open={isContratoDetailsOpen} onOpenChange={setIsContratoDetailsOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detalhes do Contrato</DialogTitle>
+          </DialogHeader>
+          {selectedContrato && (
+            <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Informações do Contrato</CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p><strong>Cliente:</strong> {selectedContrato.clientes?.nome}</p>
+                    <p><strong>Data:</strong> {new Date(selectedContrato.data_emprestimo).toLocaleDateString('pt-BR')}</p>
+                    <p><strong>Periodicidade:</strong> {selectedContrato.periodicidade}</p>
+                    <p><strong>Número de Parcelas:</strong> {selectedContrato.numero_parcelas}</p>
+                  </div>
+                  <div>
+                    <p><strong>Valor Emprestado:</strong> R$ {Number(selectedContrato.valor_emprestado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                    <p><strong>Percentual:</strong> {Number(selectedContrato.percentual)}%</p>
+                    <p><strong>Valor Total:</strong> R$ {Number(selectedContrato.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                    <p><strong>Status:</strong> <Badge variant={selectedContrato.status === 'ativo' ? 'default' : 'secondary'}>{selectedContrato.status}</Badge></p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Parcelas</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Parcela</TableHead>
+                          <TableHead>Vencimento</TableHead>
+                          <TableHead>Valor</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Pagamento</TableHead>
+                          <TableHead>Ação</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {parcelas.map((parcela) => (
+                          <TableRow key={parcela.id}>
+                            <TableCell>{parcela.numero_parcela}</TableCell>
+                            <TableCell>{new Date(parcela.data_vencimento).toLocaleDateString('pt-BR')}</TableCell>
+                            <TableCell>R$ {Number(parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
+                            <TableCell>
+                              <Badge variant={parcela.status === 'pago' ? 'default' : 'secondary'}>
+                                {parcela.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {parcela.data_pagamento ? (
+                                <div className="text-sm">
+                                  <div>{new Date(parcela.data_pagamento).toLocaleDateString('pt-BR')}</div>
+                                  <div className="text-muted-foreground">R$ {Number(parcela.valor_pago).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {parcela.status !== 'pago' && (
+                                <Button 
+                                  size="sm" 
+                                  onClick={() => handleBaixarParcela(parcela.id, Number(parcela.valor))}
+                                >
+                                  Baixar
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Lista de Contratos */}
       <Card>
         <CardHeader>
@@ -491,7 +647,11 @@ export default function Contratos() {
                   </TableRow>
                 ) : (
                   contratos.map((contrato) => (
-                    <TableRow key={contrato.id}>
+                    <TableRow 
+                      key={contrato.id} 
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleContratoClick(contrato)}
+                    >
                       <TableCell className="font-medium">
                         {contrato.clientes?.nome}
                         <div className="md:hidden text-xs text-muted-foreground mt-1">
