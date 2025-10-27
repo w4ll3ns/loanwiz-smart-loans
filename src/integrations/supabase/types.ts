@@ -111,6 +111,7 @@ export type Database = {
           status: string
           updated_at: string
           valor: number
+          valor_original: number | null
           valor_pago: number | null
         }
         Insert: {
@@ -123,6 +124,7 @@ export type Database = {
           status?: string
           updated_at?: string
           valor: number
+          valor_original?: number | null
           valor_pago?: number | null
         }
         Update: {
@@ -135,6 +137,7 @@ export type Database = {
           status?: string
           updated_at?: string
           valor?: number
+          valor_original?: number | null
           valor_pago?: number | null
         }
         Relationships: [
@@ -143,6 +146,44 @@ export type Database = {
             columns: ["contrato_id"]
             isOneToOne: false
             referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parcelas_pagamentos: {
+        Row: {
+          created_at: string
+          data_pagamento: string
+          id: string
+          observacao: string | null
+          parcela_id: string
+          tipo_pagamento: string
+          valor_pago: number
+        }
+        Insert: {
+          created_at?: string
+          data_pagamento?: string
+          id?: string
+          observacao?: string | null
+          parcela_id: string
+          tipo_pagamento: string
+          valor_pago: number
+        }
+        Update: {
+          created_at?: string
+          data_pagamento?: string
+          id?: string
+          observacao?: string | null
+          parcela_id?: string
+          tipo_pagamento?: string
+          valor_pago?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parcelas_pagamentos_parcela_id_fkey"
+            columns: ["parcela_id"]
+            isOneToOne: false
+            referencedRelation: "parcelas"
             referencedColumns: ["id"]
           },
         ]
