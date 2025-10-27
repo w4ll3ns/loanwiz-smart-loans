@@ -1,7 +1,11 @@
-import { ReactNode } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { ReactNode, useEffect, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Calculator, Users, FileText, DollarSign } from "lucide-react";
+import { Calculator, Users, FileText, DollarSign, LogOut } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import type { User } from "@supabase/supabase-js";
 
 interface LayoutProps {
   children: ReactNode;
@@ -16,6 +20,50 @@ const navigation = [
 
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setUser(session?.user ?? null);
+        if (!session) {
+          navigate('/auth');
+        }
+      }
+    );
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      if (!session) {
+        navigate('/auth');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast({
+        title: 'Erro ao sair',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Logout realizado',
+        description: 'Até logo!',
+      });
+      navigate('/auth');
+    }
+  };
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -26,16 +74,25 @@ export default function Layout({ children }: LayoutProps) {
             <DollarSign className="h-6 w-6 text-primary" />
             <span className="text-lg font-semibold">SisEmpréstimos</span>
           </div>
+          <div className="ml-auto flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">{user?.email}</span>
+            <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair">
+              <LogOut className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
       </header>
 
       {/* Mobile Header */}
       <header className="md:hidden sticky top-0 z-50 w-full border-b bg-card shadow-sm">
-        <div className="flex h-14 items-center justify-center px-4">
+        <div className="flex h-14 items-center justify-between px-4">
           <div className="flex items-center gap-2">
             <DollarSign className="h-5 w-5 text-primary" />
             <span className="text-base font-semibold">SisEmpréstimos</span>
           </div>
+          <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair">
+            <LogOut className="h-4 w-4" />
+          </Button>
         </div>
       </header>
 
