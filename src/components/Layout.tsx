@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import type { User } from "@supabase/supabase-js";
+import logo from "@/assets/logo.png";
 
 interface LayoutProps {
   children: ReactNode;
@@ -70,9 +71,9 @@ export default function Layout({ children }: LayoutProps) {
       {/* Header - Desktop only */}
       <header className="hidden md:block sticky top-0 z-50 w-full border-b bg-card shadow-sm">
         <div className="container mx-auto flex h-16 items-center gap-4 px-4">
-          <div className="flex items-center gap-2">
-            <DollarSign className="h-6 w-6 text-primary" />
-            <span className="text-lg font-semibold">WSEmpréstimos</span>
+          <div className="flex items-center gap-3">
+            <img src={logo} alt="WS Empréstimos" className="h-10 w-10" />
+            <span className="text-lg font-semibold">WS Empréstimos</span>
           </div>
           <div className="ml-auto flex items-center gap-3">
             <span className="text-sm text-muted-foreground">{user?.email}</span>
@@ -87,8 +88,8 @@ export default function Layout({ children }: LayoutProps) {
       <header className="md:hidden sticky top-0 z-50 w-full border-b bg-card shadow-sm">
         <div className="flex h-14 items-center justify-between px-4">
           <div className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5 text-primary" />
-            <span className="text-base font-semibold">WSEmpréstimos</span>
+            <img src={logo} alt="WS Empréstimos" className="h-8 w-8" />
+            <span className="text-base font-semibold">WS Empréstimos</span>
           </div>
           <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair">
             <LogOut className="h-4 w-4" />
