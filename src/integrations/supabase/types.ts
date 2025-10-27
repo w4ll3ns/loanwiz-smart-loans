@@ -57,6 +57,7 @@ export type Database = {
           percentual: number
           periodicidade: string
           status: string
+          tipo_juros: string
           updated_at: string
           valor_emprestado: number
           valor_total: number
@@ -70,6 +71,7 @@ export type Database = {
           percentual: number
           periodicidade: string
           status?: string
+          tipo_juros?: string
           updated_at?: string
           valor_emprestado: number
           valor_total: number
@@ -83,6 +85,7 @@ export type Database = {
           percentual?: number
           periodicidade?: string
           status?: string
+          tipo_juros?: string
           updated_at?: string
           valor_emprestado?: number
           valor_total?: number

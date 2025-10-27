@@ -62,7 +62,8 @@ export default function Contratos() {
     percentual: "",
     periodicidade: "" as "diario" | "semanal" | "quinzenal" | "mensal" | "",
     numeroParcelas: "",
-    dataEmprestimo: ""
+    dataEmprestimo: "",
+    tipoJuros: "simples" as "simples" | "composto"
   });
 
   useEffect(() => {
@@ -116,7 +117,16 @@ export default function Contratos() {
     
     if (!valor || !percent || !parcelas) return null;
 
-    const valorTotal = valor + (valor * percent / 100);
+    let valorTotal: number;
+    
+    if (formData.tipoJuros === "composto") {
+      // Juros compostos: M = C * (1 + i)^n
+      valorTotal = valor * Math.pow(1 + (percent / 100), parcelas);
+    } else {
+      // Juros simples: M = C + (C * i * n) / 100
+      valorTotal = valor + (valor * percent / 100);
+    }
+    
     const valorParcela = valorTotal / parcelas;
 
     return {
@@ -198,7 +208,8 @@ export default function Contratos() {
           numero_parcelas: parseInt(formData.numeroParcelas),
           data_emprestimo: formData.dataEmprestimo,
           valor_total: calculo.valorTotal,
-          status: "ativo"
+          status: "ativo",
+          tipo_juros: formData.tipoJuros
         }])
         .select()
         .single();
@@ -222,7 +233,8 @@ export default function Contratos() {
         percentual: "",
         periodicidade: "",
         numeroParcelas: "",
-        dataEmprestimo: ""
+        dataEmprestimo: "",
+        tipoJuros: "simples"
       });
       
       setIsDialogOpen(false);
@@ -288,7 +300,7 @@ export default function Contratos() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="valor">Valor Emprestado (R$)</Label>
                   <Input
@@ -312,7 +324,9 @@ export default function Contratos() {
                     required
                   />
                 </div>
-                
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="parcelas">Número de Parcelas</Label>
                   <Input
@@ -322,6 +336,19 @@ export default function Contratos() {
                     onChange={(e) => setFormData({ ...formData, numeroParcelas: e.target.value })}
                     required
                   />
+                </div>
+
+                <div>
+                  <Label htmlFor="tipoJuros">Tipo de Juros</Label>
+                  <Select value={formData.tipoJuros} onValueChange={(value: any) => setFormData({ ...formData, tipoJuros: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="simples">Juros Simples</SelectItem>
+                      <SelectItem value="composto">Juros Compostos</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
