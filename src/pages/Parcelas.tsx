@@ -374,7 +374,7 @@ export default function Parcelas() {
 
   const totalVencido = filteredParcelas
     .filter(p => p.status === "pendente" && calcularDiasAtraso(p.data_vencimento) > 0)
-    .reduce((acc, p) => acc + Number(p.valor), 0);
+    .reduce((acc, p) => acc + (Number(p.valor_original || p.valor) - (Number(p.valor_pago) || 0)), 0);
 
   return (
     <div className="space-y-4 md:space-y-6">
