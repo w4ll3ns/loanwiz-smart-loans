@@ -4,6 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Table,
   TableBody,
@@ -30,6 +33,8 @@ interface Parcela {
     clientes?: {
       nome: string;
     };
+    percentual?: number;
+    tipo_juros?: string;
   };
 }
 
@@ -39,6 +44,10 @@ export default function Parcelas() {
   const [statusFilter, setStatusFilter] = useState<string>("todos");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [parcelaToDelete, setParcelaToDelete] = useState<string | null>(null);
+  const [isPagamentoDialogOpen, setIsPagamentoDialogOpen] = useState(false);
+  const [parcelaToPay, setParcelaToPay] = useState<Parcela | null>(null);
+  const [tipoPagamento, setTipoPagamento] = useState<string>("total");
+  const [valorPagamento, setValorPagamento] = useState<string>("");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -52,7 +61,9 @@ export default function Parcelas() {
         .select(`
           *,
           contratos!inner(
-            clientes!inner(nome)
+            clientes!inner(nome),
+            percentual,
+            tipo_juros
           )
         `)
         .order("data_vencimento", { ascending: true });
@@ -85,27 +96,73 @@ export default function Parcelas() {
     return matchesSearch && matchesStatus;
   });
 
-  const handleMarcarPago = async (parcelaId: string) => {
+  const calcularJuros = (parcela: Parcela) => {
+    const percentual = parcela.contratos?.percentual || 0;
+    return (Number(parcela.valor) * percentual) / 100;
+  };
+
+  const abrirModalPagamento = (parcela: Parcela) => {
+    setParcelaToPay(parcela);
+    setTipoPagamento("total");
+    setValorPagamento(parcela.valor.toString());
+    setIsPagamentoDialogOpen(true);
+  };
+
+  const handleConfirmarPagamento = async () => {
+    if (!parcelaToPay) return;
+
     try {
+      let valorFinal = 0;
+      let novoStatus = "pago";
+
+      if (tipoPagamento === "total") {
+        valorFinal = Number(parcelaToPay.valor);
+      } else if (tipoPagamento === "juros") {
+        valorFinal = calcularJuros(parcelaToPay);
+        novoStatus = "pendente"; // Mantém pendente se pagar só juros
+      } else if (tipoPagamento === "personalizado") {
+        valorFinal = Number(valorPagamento);
+        if (valorFinal < Number(parcelaToPay.valor)) {
+          novoStatus = "pendente"; // Mantém pendente se pagamento parcial
+        }
+      }
+
+      // Se for pagamento parcial (não total), recalcula o valor da parcela
+      const valorRestante = Number(parcelaToPay.valor) - valorFinal;
+
+      const updateData: any = {
+        data_pagamento: new Date().toISOString().split('T')[0],
+        valor_pago: (parcelaToPay.valor_pago || 0) + valorFinal,
+        status: valorRestante <= 0 ? "pago" : "pendente",
+      };
+
+      // Se ainda há valor restante, atualiza o valor da parcela
+      if (valorRestante > 0) {
+        updateData.valor = valorRestante;
+      }
+
       const { error } = await supabase
         .from("parcelas")
-        .update({
-          status: "pago",
-          data_pagamento: new Date().toISOString().split('T')[0],
-        })
-        .eq("id", parcelaId);
+        .update(updateData)
+        .eq("id", parcelaToPay.id);
 
       if (error) throw error;
 
       toast({
-        title: "Parcela marcada como paga",
-        description: "O pagamento foi registrado com sucesso.",
+        title: valorRestante <= 0 ? "Parcela paga com sucesso" : "Pagamento parcial registrado",
+        description: valorRestante > 0 
+          ? `Valor pago: R$ ${valorFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}. Saldo restante: R$ ${valorRestante.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+          : `Valor pago: R$ ${valorFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
       });
 
+      setIsPagamentoDialogOpen(false);
+      setParcelaToPay(null);
+      setTipoPagamento("total");
+      setValorPagamento("");
       loadParcelas();
     } catch (error: any) {
       toast({
-        title: "Erro",
+        title: "Erro ao processar pagamento",
         description: error.message,
         variant: "destructive",
       });
@@ -327,7 +384,7 @@ export default function Parcelas() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleMarcarPago(parcela.id)}
+                              onClick={() => abrirModalPagamento(parcela)}
                               className="text-success hover:bg-success hover:text-success-foreground"
                             >
                               <Check className="h-4 w-4" />
@@ -363,6 +420,81 @@ export default function Parcelas() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Dialog de Confirmação de Pagamento */}
+      <Dialog open={isPagamentoDialogOpen} onOpenChange={setIsPagamentoDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar Pagamento</DialogTitle>
+            <DialogDescription>
+              {parcelaToPay && (
+                <>
+                  Parcela {parcelaToPay.numero_parcela} - {parcelaToPay.contratos?.clientes?.nome}
+                  <br />
+                  Valor da parcela: R$ {Number(parcelaToPay.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <RadioGroup value={tipoPagamento} onValueChange={setTipoPagamento}>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="total" id="total" />
+                <Label htmlFor="total" className="cursor-pointer">
+                  Pagar valor total (R$ {parcelaToPay ? Number(parcelaToPay.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'})
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="juros" id="juros" />
+                <Label htmlFor="juros" className="cursor-pointer">
+                  Pagar somente juros (R$ {parcelaToPay ? calcularJuros(parcelaToPay).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'})
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="personalizado" id="personalizado" />
+                <Label htmlFor="personalizado" className="cursor-pointer">
+                  Valor personalizado
+                </Label>
+              </div>
+            </RadioGroup>
+
+            {tipoPagamento === "personalizado" && (
+              <div className="space-y-2">
+                <Label htmlFor="valorPagamento">Valor do Pagamento</Label>
+                <Input
+                  id="valorPagamento"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max={parcelaToPay?.valor}
+                  value={valorPagamento}
+                  onChange={(e) => setValorPagamento(e.target.value)}
+                  placeholder="0.00"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Valor máximo: R$ {parcelaToPay ? Number(parcelaToPay.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsPagamentoDialogOpen(false);
+                setParcelaToPay(null);
+                setTipoPagamento("total");
+                setValorPagamento("");
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={handleConfirmarPagamento}>
+              Confirmar Pagamento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog de Confirmação de Exclusão */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

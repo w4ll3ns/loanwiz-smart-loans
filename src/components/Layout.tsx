@@ -72,7 +72,7 @@ export default function Layout({ children }: LayoutProps) {
         <div className="container mx-auto flex h-16 items-center gap-4 px-4">
           <div className="flex items-center gap-2">
             <DollarSign className="h-6 w-6 text-primary" />
-            <span className="text-lg font-semibold">SisEmpréstimos</span>
+            <span className="text-lg font-semibold">WSEmpréstimos</span>
           </div>
           <div className="ml-auto flex items-center gap-3">
             <span className="text-sm text-muted-foreground">{user?.email}</span>
@@ -88,7 +88,7 @@ export default function Layout({ children }: LayoutProps) {
         <div className="flex h-14 items-center justify-between px-4">
           <div className="flex items-center gap-2">
             <DollarSign className="h-5 w-5 text-primary" />
-            <span className="text-base font-semibold">SisEmpréstimos</span>
+            <span className="text-base font-semibold">WSEmpréstimos</span>
           </div>
           <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair">
             <LogOut className="h-4 w-4" />
