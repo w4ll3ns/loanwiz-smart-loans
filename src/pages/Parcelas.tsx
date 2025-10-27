@@ -267,6 +267,63 @@ export default function Parcelas() {
     }
   };
 
+  const handleExcluirPagamento = async (pagamentoId: string) => {
+    if (!parcelaHistorico) return;
+
+    try {
+      // Deletar o pagamento específico
+      const { error: deleteError } = await supabase
+        .from("parcelas_pagamentos")
+        .delete()
+        .eq("id", pagamentoId);
+
+      if (deleteError) throw deleteError;
+
+      // Buscar pagamentos restantes
+      const { data: pagamentosRestantes, error: fetchError } = await supabase
+        .from("parcelas_pagamentos")
+        .select("valor_pago")
+        .eq("parcela_id", parcelaHistorico.id);
+
+      if (fetchError) throw fetchError;
+
+      // Calcular novo total pago
+      const novoValorPago = pagamentosRestantes?.reduce(
+        (sum, p) => sum + Number(p.valor_pago), 
+        0
+      ) || 0;
+
+      const valorOriginal = Number(parcelaHistorico.valor_original || parcelaHistorico.valor);
+
+      // Atualizar parcela
+      const { error: updateError } = await supabase
+        .from("parcelas")
+        .update({
+          valor_pago: novoValorPago,
+          status: novoValorPago >= valorOriginal ? "pago" : "pendente",
+          data_pagamento: novoValorPago >= valorOriginal ? new Date().toISOString().split('T')[0] : null,
+        })
+        .eq("id", parcelaHistorico.id);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: "Pagamento excluído",
+        description: "O pagamento foi removido e a parcela foi recalculada.",
+      });
+
+      // Recarregar histórico e parcelas
+      await loadHistorico(parcelaHistorico);
+      loadParcelas();
+    } catch (error: any) {
+      toast({
+        title: "Erro ao excluir pagamento",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleDelete = async () => {
     if (!parcelaToDelete) return;
 
@@ -622,8 +679,8 @@ export default function Parcelas() {
                 {historicoPagamentos.map((pagamento) => (
                   <Card key={pagamento.id}>
                     <CardContent className="pt-4">
-                      <div className="flex justify-between items-start">
-                        <div>
+                      <div className="flex justify-between items-start gap-4">
+                        <div className="flex-1">
                           <p className="font-medium">
                             R$ {Number(pagamento.valor_pago).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </p>
@@ -635,15 +692,26 @@ export default function Parcelas() {
                             <p className="text-sm text-muted-foreground mt-1">{pagamento.observacao}</p>
                           )}
                         </div>
-                        <Badge variant={
-                          pagamento.tipo_pagamento === 'total' ? 'default' :
-                          pagamento.tipo_pagamento === 'juros' ? 'secondary' :
-                          'outline'
-                        }>
-                          {pagamento.tipo_pagamento === 'total' ? 'Pagamento Total' :
-                           pagamento.tipo_pagamento === 'juros' ? 'Somente Juros' :
-                           'Pagamento Parcial'}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={
+                            pagamento.tipo_pagamento === 'total' ? 'default' :
+                            pagamento.tipo_pagamento === 'juros' ? 'secondary' :
+                            'outline'
+                          }>
+                            {pagamento.tipo_pagamento === 'total' ? 'Pagamento Total' :
+                             pagamento.tipo_pagamento === 'juros' ? 'Somente Juros' :
+                             'Pagamento Parcial'}
+                          </Badge>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                            onClick={() => handleExcluirPagamento(pagamento.id)}
+                            title="Excluir este pagamento"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
