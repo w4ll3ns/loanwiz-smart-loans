@@ -90,8 +90,7 @@ export default function Dashboard() {
       hoje.setHours(0, 0, 0, 0);
       
       const vencidas = parcelas?.filter(p => {
-        const vencimento = new Date(p.data_vencimento);
-        vencimento.setHours(0, 0, 0, 0);
+        const vencimento = new Date(p.data_vencimento + 'T00:00:00');
         return p.status === "pendente" && vencimento < hoje;
       }).length || 0;
 
@@ -108,8 +107,7 @@ export default function Dashboard() {
         ?.filter(p => p.status === "pendente")
         .slice(0, 4)
         .map(p => {
-          const vencimento = new Date(p.data_vencimento);
-          vencimento.setHours(0, 0, 0, 0);
+          const vencimento = new Date(p.data_vencimento + 'T00:00:00');
           const diffTime = vencimento.getTime() - hoje.getTime();
           const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
           
@@ -120,7 +118,7 @@ export default function Dashboard() {
           return {
             cliente: p.contratos?.clientes?.nome || "Cliente",
             valor: Number(p.valor),
-            data: new Date(p.data_vencimento).toLocaleDateString("pt-BR"),
+            data: new Date(p.data_vencimento + 'T00:00:00').toLocaleDateString("pt-BR"),
             status,
           };
         }) || [];
