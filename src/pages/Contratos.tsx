@@ -540,9 +540,9 @@ export default function Contratos() {
               Novo Contrato
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full p-4 sm:p-6">
             <DialogHeader>
-              <DialogTitle>Novo Contrato de Empréstimo</DialogTitle>
+              <DialogTitle className="text-lg sm:text-xl">Novo Contrato de Empréstimo</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -688,23 +688,23 @@ export default function Contratos() {
 
       {/* Preview Dialog */}
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>Preview do Contrato</DialogTitle>
+            <DialogTitle className="text-lg sm:text-xl">Preview do Contrato</DialogTitle>
           </DialogHeader>
           {previewData && (
             <div className="space-y-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>Dados do Contrato</CardTitle>
+                  <CardTitle className="text-base sm:text-lg">Dados do Contrato</CardTitle>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm sm:text-base">
+                  <div className="space-y-2">
                     <p><strong>Cliente:</strong> {previewData.cliente}</p>
                     <p><strong>Data:</strong> {format(new Date(previewData.dataEmprestimo + 'T00:00:00'), 'dd/MM/yyyy')}</p>
                     <p><strong>Periodicidade:</strong> {previewData.periodicidade}</p>
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <p><strong>Valor Emprestado:</strong> R$ {parseFloat(previewData.valorEmprestado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                     <p><strong>Percentual:</strong> {previewData.percentual}%</p>
                     <p><strong>Valor Total:</strong> R$ {previewData.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
@@ -714,24 +714,24 @@ export default function Contratos() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Cronograma de Parcelas</CardTitle>
+                  <CardTitle className="text-base sm:text-lg">Cronograma de Parcelas</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto -mx-4 sm:mx-0">
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Parcela</TableHead>
-                          <TableHead>Data de Vencimento</TableHead>
-                          <TableHead>Valor</TableHead>
+                          <TableHead className="min-w-[60px]">Parcela</TableHead>
+                          <TableHead className="min-w-[100px]">Data de Vencimento</TableHead>
+                          <TableHead className="min-w-[80px]">Valor</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {previewData.parcelas.map((parcela: PreviewParcela) => (
                           <TableRow key={parcela.numero}>
-                            <TableCell>{parcela.numero}</TableCell>
-                            <TableCell>{format(new Date(parcela.data + 'T00:00:00'), 'dd/MM/yyyy')}</TableCell>
-                            <TableCell>R$ {parcela.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
+                            <TableCell className="font-medium">{parcela.numero}</TableCell>
+                            <TableCell className="text-xs sm:text-sm">{format(new Date(parcela.data + 'T00:00:00'), 'dd/MM/yyyy')}</TableCell>
+                            <TableCell className="text-xs sm:text-sm">R$ {parcela.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -746,10 +746,10 @@ export default function Contratos() {
 
       {/* Detalhes do Contrato e Parcelas */}
       <Dialog open={isContratoDetailsOpen} onOpenChange={setIsContratoDetailsOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full p-4 sm:p-6">
           <DialogHeader>
-            <div className="flex items-center justify-between">
-              <DialogTitle>Detalhes do Contrato</DialogTitle>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <DialogTitle className="text-lg sm:text-xl">Detalhes do Contrato</DialogTitle>
               <Button
                 variant="destructive"
                 size="sm"
@@ -757,6 +757,7 @@ export default function Contratos() {
                   setContratoToDelete(selectedContrato.id);
                   setIsDeleteDialogOpen(true);
                 }}
+                className="w-full sm:w-auto"
               >
                 <Trash2 className="h-4 w-4 mr-2" />
                 Excluir Contrato
@@ -767,16 +768,16 @@ export default function Contratos() {
             <div className="space-y-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>Informações do Contrato</CardTitle>
+                  <CardTitle className="text-base sm:text-lg">Informações do Contrato</CardTitle>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm sm:text-base">
+                  <div className="space-y-2">
                     <p><strong>Cliente:</strong> {selectedContrato.clientes?.nome}</p>
                     <p><strong>Data:</strong> {format(new Date(selectedContrato.data_emprestimo + 'T00:00:00'), 'dd/MM/yyyy')}</p>
                     <p><strong>Periodicidade:</strong> {selectedContrato.periodicidade}</p>
                     <p><strong>Número de Parcelas:</strong> {selectedContrato.numero_parcelas}</p>
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <p><strong>Valor Emprestado:</strong> R$ {Number(selectedContrato.valor_emprestado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                     <p><strong>Percentual:</strong> {Number(selectedContrato.percentual)}%</p>
                     <p><strong>Valor Total:</strong> R$ {Number(selectedContrato.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
@@ -787,33 +788,33 @@ export default function Contratos() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Parcelas</CardTitle>
+                  <CardTitle className="text-base sm:text-lg">Parcelas</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto -mx-4 sm:mx-0">
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Parcela</TableHead>
-                          <TableHead>Vencimento</TableHead>
-                          <TableHead>Valor</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Pagamento</TableHead>
-                          <TableHead>Ação</TableHead>
+                          <TableHead className="min-w-[60px]">Parcela</TableHead>
+                          <TableHead className="min-w-[90px]">Vencimento</TableHead>
+                          <TableHead className="min-w-[80px]">Valor</TableHead>
+                          <TableHead className="hidden sm:table-cell">Status</TableHead>
+                          <TableHead className="hidden md:table-cell">Pagamento</TableHead>
+                          <TableHead className="min-w-[80px]">Ação</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {parcelas.map((parcela) => (
                           <TableRow key={parcela.id}>
-                            <TableCell>{parcela.numero_parcela}</TableCell>
-                            <TableCell>{format(new Date(parcela.data_vencimento + 'T00:00:00'), 'dd/MM/yyyy')}</TableCell>
-                            <TableCell>R$ {Number(parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
-                            <TableCell>
+                            <TableCell className="font-medium">{parcela.numero_parcela}</TableCell>
+                            <TableCell className="text-xs sm:text-sm">{format(new Date(parcela.data_vencimento + 'T00:00:00'), 'dd/MM/yyyy')}</TableCell>
+                            <TableCell className="text-xs sm:text-sm">R$ {Number(parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
+                            <TableCell className="hidden sm:table-cell">
                               <Badge variant={parcela.status === 'pago' ? 'default' : 'secondary'}>
                                 {parcela.status}
                               </Badge>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="hidden md:table-cell">
                               {parcela.data_pagamento ? (
                                 <div className="text-sm">
                                   <div>{format(new Date(parcela.data_pagamento + 'T00:00:00'), 'dd/MM/yyyy')}</div>
@@ -829,6 +830,7 @@ export default function Contratos() {
                                   size="sm" 
                                   onClick={() => abrirModalPagamento(parcela)}
                                   title="Baixar parcela"
+                                  className="text-xs px-2 sm:px-3"
                                 >
                                   Baixar
                                 </Button>
@@ -837,11 +839,11 @@ export default function Contratos() {
                                   size="sm" 
                                   variant="outline"
                                   onClick={() => handleDesfazerPagamento(parcela.id)}
-                                  className="text-warning hover:bg-warning hover:text-warning-foreground"
+                                  className="text-warning hover:bg-warning hover:text-warning-foreground text-xs px-2 sm:px-3"
                                   title="Desfazer pagamento"
                                 >
-                                  <Undo2 className="h-4 w-4 mr-1" />
-                                  Desfazer
+                                  <Undo2 className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
+                                  <span className="hidden sm:inline">Desfazer</span>
                                 </Button>
                               )}
                             </TableCell>
@@ -855,10 +857,10 @@ export default function Contratos() {
 
       {/* Dialog de Confirmação de Pagamento */}
       <Dialog open={isPagamentoDialogOpen} onOpenChange={setIsPagamentoDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[95vw] sm:max-w-md p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>Confirmar Pagamento</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-lg sm:text-xl">Confirmar Pagamento</DialogTitle>
+            <DialogDescription className="text-sm">
               {parcelaToPay && (
                 <>
                   Parcela {parcelaToPay.numero_parcela} - {selectedContrato?.clientes?.nome}
@@ -909,7 +911,7 @@ export default function Contratos() {
               </div>
             )}
           </div>
-          <DialogFooter className="flex gap-2">
+          <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2">
             <Button
               variant="outline"
               onClick={() => {
@@ -918,10 +920,11 @@ export default function Contratos() {
                 setTipoPagamento("total");
                 setValorPagamento("");
               }}
+              className="w-full sm:w-auto"
             >
               Cancelar
             </Button>
-            <Button onClick={handleConfirmarPagamento}>
+            <Button onClick={handleConfirmarPagamento} className="w-full sm:w-auto">
               Confirmar Pagamento
             </Button>
           </DialogFooter>
