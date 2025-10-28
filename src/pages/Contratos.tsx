@@ -748,7 +748,7 @@ export default function Contratos() {
       <Dialog open={isContratoDetailsOpen} onOpenChange={setIsContratoDetailsOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full p-4 sm:p-6">
           <DialogHeader>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pr-8">
               <DialogTitle className="text-lg sm:text-xl">Detalhes do Contrato</DialogTitle>
               <Button
                 variant="destructive"
