@@ -101,8 +101,7 @@ export default function Parcelas() {
   const calcularDiasAtraso = (dataVencimento: string) => {
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
-    const vencimento = new Date(dataVencimento);
-    vencimento.setHours(0, 0, 0, 0);
+    const vencimento = new Date(dataVencimento + 'T00:00:00');
     const diffTime = hoje.getTime() - vencimento.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays > 0 ? diffDays : 0;
