@@ -798,7 +798,7 @@ export default function Contratos() {
                           <TableHead className="min-w-[60px]">Parcela</TableHead>
                           <TableHead className="min-w-[90px]">Vencimento</TableHead>
                           <TableHead className="min-w-[80px]">Valor</TableHead>
-                          <TableHead className="hidden sm:table-cell">Status</TableHead>
+                          <TableHead className="min-w-[70px]">Status</TableHead>
                           <TableHead className="hidden md:table-cell">Pagamento</TableHead>
                           <TableHead className="min-w-[80px]">Ação</TableHead>
                         </TableRow>
@@ -809,8 +809,8 @@ export default function Contratos() {
                             <TableCell className="font-medium">{parcela.numero_parcela}</TableCell>
                             <TableCell className="text-xs sm:text-sm">{format(new Date(parcela.data_vencimento + 'T00:00:00'), 'dd/MM/yyyy')}</TableCell>
                             <TableCell className="text-xs sm:text-sm">R$ {Number(parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
-                            <TableCell className="hidden sm:table-cell">
-                              <Badge variant={parcela.status === 'pago' ? 'default' : 'secondary'}>
+                            <TableCell>
+                              <Badge variant={parcela.status === 'pago' ? 'default' : 'secondary'} className="text-xs">
                                 {parcela.status}
                               </Badge>
                             </TableCell>
