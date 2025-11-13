@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import {
   Table,
@@ -62,6 +63,7 @@ export default function Parcelas() {
   const [historicoPagamentos, setHistoricoPagamentos] = useState<HistoricoPagamento[]>([]);
   const [tipoPagamento, setTipoPagamento] = useState<string>("total");
   const [valorPagamento, setValorPagamento] = useState<string>("");
+  const [observacaoPagamento, setObservacaoPagamento] = useState<string>("");
   const { toast } = useToast();
 
   // Função para formatar data corretamente (evita problema de timezone)
@@ -127,6 +129,7 @@ export default function Parcelas() {
     // Calcular valor restante (valor original - valor já pago)
     const valorRestante = Number(parcela.valor_original || parcela.valor) - (Number(parcela.valor_pago) || 0);
     setValorPagamento(valorRestante.toString());
+    setObservacaoPagamento("");
     setIsPagamentoDialogOpen(true);
   };
 
@@ -157,6 +160,7 @@ export default function Parcelas() {
           valor_pago: valorPagar,
           tipo_pagamento: tipoPag,
           data_pagamento: new Date().toISOString(),
+          observacao: observacaoPagamento.trim() || null,
         });
 
       if (historicoError) throw historicoError;
@@ -199,6 +203,7 @@ export default function Parcelas() {
       setParcelaToPay(null);
       setTipoPagamento("total");
       setValorPagamento("");
+      setObservacaoPagamento("");
       loadParcelas();
     } catch (error: any) {
       toast({
@@ -631,6 +636,21 @@ export default function Parcelas() {
                 </p>
               </div>
             )}
+
+            <div className="space-y-2">
+              <Label htmlFor="observacaoPagamento">Observação (opcional)</Label>
+              <Textarea
+                id="observacaoPagamento"
+                value={observacaoPagamento}
+                onChange={(e) => setObservacaoPagamento(e.target.value)}
+                placeholder="Motivo do pagamento parcial, renegociação, etc."
+                rows={3}
+                maxLength={500}
+              />
+              <p className="text-xs text-muted-foreground">
+                {observacaoPagamento.length}/500 caracteres
+              </p>
+            </div>
           </div>
           <DialogFooter className="flex gap-2">
             <Button
