@@ -116,7 +116,11 @@ export default function Parcelas() {
 
   const calcularJuros = (parcela: Parcela) => {
     const percentual = parcela.contratos?.percentual || 0;
-    return (Number(parcela.valor) * percentual) / 100;
+    // Calcular juros sobre o valor restante, não sobre o valor original
+    const valorOriginal = Number(parcela.valor_original || parcela.valor);
+    const valorPago = Number(parcela.valor_pago) || 0;
+    const valorRestante = valorOriginal - valorPago;
+    return (valorRestante * percentual) / 100;
   };
 
   const abrirModalPagamento = (parcela: Parcela) => {
