@@ -8,7 +8,8 @@ import {
   Users, 
   FileText, 
   Calendar,
-  AlertTriangle
+  AlertTriangle,
+  CheckCircle2
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 interface DashboardStats {
   totalEmprestado: number;
   totalReceber: number;
+  totalRecebido: number;
   clientesAtivos: number;
   contratosAtivos: number;
   parcelasVencidas: number;
@@ -33,6 +35,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats>({
     totalEmprestado: 0,
     totalReceber: 0,
+    totalRecebido: 0,
     clientesAtivos: 0,
     contratosAtivos: 0,
     parcelasVencidas: 0,
@@ -84,7 +87,7 @@ export default function Dashboard() {
       // Calcular total já recebido somando TODOS os valor_pago (independente do status)
       const totalRecebido = parcelas?.reduce((sum, p) => sum + (Number(p.valor_pago) || 0), 0) || 0;
       
-      const totalReceber = totalPendente + totalRecebido;
+      const totalReceber = totalPendente;
       
       const hoje = new Date();
       hoje.setHours(0, 0, 0, 0);
@@ -97,6 +100,7 @@ export default function Dashboard() {
       setStats({
         totalEmprestado,
         totalReceber,
+        totalRecebido,
         clientesAtivos: clientes?.length || 0,
         contratosAtivos: contratos?.length || 0,
         parcelasVencidas: vencidas,
@@ -148,7 +152,7 @@ export default function Dashboard() {
       </div>
 
       {/* Cards de Resumo */}
-      <div className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs md:text-sm font-medium">Total Emprestado</CardTitle>
@@ -165,14 +169,29 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs md:text-sm font-medium">Total a Receber</CardTitle>
-            <TrendingUp className="h-4 w-4 text-success" />
+            <Calendar className="h-4 w-4 text-warning" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-lg md:text-2xl font-bold text-warning">
+              R$ {stats.totalReceber.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Saldo devedor
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-xs md:text-sm font-medium">Total Recebido</CardTitle>
+            <CheckCircle2 className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
             <div className="text-lg md:text-2xl font-bold text-success">
-              R$ {stats.totalReceber.toLocaleString('pt-BR')}
+              R$ {stats.totalRecebido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-muted-foreground">
-              Lucro: R$ {(stats.totalReceber - stats.totalEmprestado).toLocaleString('pt-BR')}
+              Pagamentos efetuados
             </p>
           </CardContent>
         </Card>
