@@ -515,7 +515,7 @@ export default function Contratos() {
                   <td style="padding: 8px;">${parcela.numero_parcela}</td>
                   <td style="padding: 8px;">${format(new Date(parcela.data_vencimento + 'T00:00:00'), 'dd/MM/yyyy')}</td>
                   <td style="padding: 8px;">R$ ${Number(parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                  <td style="padding: 8px;"><span style="background: ${parcela.status === 'pago' ? '#22c55e' : '#ef4444'}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px;">${parcela.status}</span></td>
+                  <td style="padding: 8px;"><span style="display: inline-block; background: ${parcela.status === 'pago' ? '#22c55e' : '#ef4444'}; color: white; padding: 4px 12px; border-radius: 4px; font-size: 11px; text-align: center; min-width: 70px;">${parcela.status}</span></td>
                   <td style="padding: 8px;">${parcela.data_pagamento ? format(new Date(parcela.data_pagamento + 'T00:00:00'), 'dd/MM/yyyy') : '-'}</td>
                   <td style="padding: 8px;">${parcela.valor_pago ? `R$ ${Number(parcela.valor_pago).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'}</td>
                 </tr>
