@@ -24,7 +24,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Plus, FileText, Eye, Trash2, Undo2 } from "lucide-react";
+import { Plus, FileText, Eye, Trash2, Undo2, Download } from "lucide-react";
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -458,6 +460,173 @@ export default function Contratos() {
     }
   };
 
+  const gerarRelatorioPDF = async () => {
+    if (!selectedContrato) return;
+
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const margin = 15;
+      let yPos = 20;
+
+      // Título
+      pdf.setFontSize(18);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('RELATÓRIO DE CONTRATO', pageWidth / 2, yPos, { align: 'center' });
+      
+      yPos += 15;
+
+      // Informações do Contrato
+      pdf.setFontSize(14);
+      pdf.text('Informações do Contrato', margin, yPos);
+      yPos += 8;
+
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      
+      const clienteNome = selectedContrato.clientes?.nome || 'N/A';
+      const linhas = [
+        `Cliente: ${clienteNome}`,
+        `Data do Empréstimo: ${format(new Date(selectedContrato.data_emprestimo + 'T00:00:00'), 'dd/MM/yyyy')}`,
+        `Valor Emprestado: R$ ${Number(selectedContrato.valor_emprestado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+        `Percentual: ${Number(selectedContrato.percentual)}%`,
+        `Valor Total: R$ ${Number(selectedContrato.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+        `Número de Parcelas: ${selectedContrato.numero_parcelas}`,
+        `Periodicidade: ${selectedContrato.periodicidade}`,
+        `Status: ${selectedContrato.status}`,
+      ];
+
+      linhas.forEach(linha => {
+        pdf.text(linha, margin, yPos);
+        yPos += 6;
+      });
+
+      yPos += 10;
+
+      // Parcelas
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Parcelas', margin, yPos);
+      yPos += 8;
+
+      // Cabeçalho da tabela
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'bold');
+      const colWidths = [20, 35, 35, 35, 35, 30];
+      const headers = ['Nº', 'Vencimento', 'Valor', 'Status', 'Pagamento', 'Valor Pago'];
+      
+      let xPos = margin;
+      headers.forEach((header, i) => {
+        pdf.text(header, xPos, yPos);
+        xPos += colWidths[i];
+      });
+      
+      yPos += 6;
+
+      // Linha separadora
+      pdf.setDrawColor(200, 200, 200);
+      pdf.line(margin, yPos - 2, pageWidth - margin, yPos - 2);
+
+      // Dados das parcelas
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(8);
+
+      const parcelasPagas = parcelas.filter(p => p.status === 'pago');
+      const parcelasPendentes = parcelas.filter(p => p.status !== 'pago');
+
+      // Parcelas Pagas
+      if (parcelasPagas.length > 0) {
+        yPos += 4;
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(9);
+        pdf.text('PAGAS', margin, yPos);
+        yPos += 5;
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(8);
+
+        parcelasPagas.forEach(parcela => {
+          if (yPos > 270) {
+            pdf.addPage();
+            yPos = 20;
+          }
+
+          xPos = margin;
+          const dados = [
+            parcela.numero_parcela.toString(),
+            format(new Date(parcela.data_vencimento + 'T00:00:00'), 'dd/MM/yy'),
+            `R$ ${Number(parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+            parcela.status,
+            parcela.data_pagamento ? format(new Date(parcela.data_pagamento + 'T00:00:00'), 'dd/MM/yy') : '-',
+            parcela.valor_pago ? `R$ ${Number(parcela.valor_pago).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-',
+          ];
+
+          dados.forEach((dado, i) => {
+            pdf.text(dado, xPos, yPos);
+            xPos += colWidths[i];
+          });
+
+          yPos += 5;
+        });
+      }
+
+      // Parcelas Pendentes
+      if (parcelasPendentes.length > 0) {
+        yPos += 4;
+        
+        if (yPos > 270) {
+          pdf.addPage();
+          yPos = 20;
+        }
+
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(9);
+        pdf.text('PENDENTES', margin, yPos);
+        yPos += 5;
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(8);
+
+        parcelasPendentes.forEach(parcela => {
+          if (yPos > 270) {
+            pdf.addPage();
+            yPos = 20;
+          }
+
+          xPos = margin;
+          const dados = [
+            parcela.numero_parcela.toString(),
+            format(new Date(parcela.data_vencimento + 'T00:00:00'), 'dd/MM/yy'),
+            `R$ ${Number(parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+            parcela.status,
+            parcela.data_pagamento ? format(new Date(parcela.data_pagamento + 'T00:00:00'), 'dd/MM/yy') : '-',
+            parcela.valor_pago ? `R$ ${Number(parcela.valor_pago).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-',
+          ];
+
+          dados.forEach((dado, i) => {
+            pdf.text(dado, xPos, yPos);
+            xPos += colWidths[i];
+          });
+
+          yPos += 5;
+        });
+      }
+
+      // Salvar PDF
+      pdf.save(`contrato-${clienteNome.replace(/\s+/g, '-')}-${format(new Date(), 'ddMMyyyy')}.pdf`);
+
+      toast({
+        title: "Sucesso",
+        description: "Relatório PDF gerado com sucesso!",
+      });
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Ocorreu um erro ao gerar o relatório.",
+      });
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -750,18 +919,29 @@ export default function Contratos() {
           <DialogHeader>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pr-8">
               <DialogTitle className="text-lg sm:text-xl">Detalhes do Contrato</DialogTitle>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => {
-                  setContratoToDelete(selectedContrato.id);
-                  setIsDeleteDialogOpen(true);
-                }}
-                className="w-full sm:w-auto"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Excluir Contrato
-              </Button>
+              <div className="flex gap-2 flex-col sm:flex-row">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={gerarRelatorioPDF}
+                  className="w-full sm:w-auto"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Baixar PDF
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    setContratoToDelete(selectedContrato.id);
+                    setIsDeleteDialogOpen(true);
+                  }}
+                  className="w-full sm:w-auto"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Excluir Contrato
+                </Button>
+              </div>
             </div>
           </DialogHeader>
           {selectedContrato && (
