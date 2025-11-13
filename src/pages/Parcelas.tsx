@@ -685,7 +685,15 @@ export default function Parcelas() {
                   <br />
                   Total pago: R$ {Number(parcelaHistorico.valor_pago || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   <br />
-                  Saldo: R$ {(Number(parcelaHistorico.valor_original || parcelaHistorico.valor) - Number(parcelaHistorico.valor_pago || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  Saldo devedor: R$ {Number(parcelaHistorico.valor_original || parcelaHistorico.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  {parcelaHistorico.valor_pago && parcelaHistorico.valor_pago > 0 && parcelaHistorico.status !== 'pago' && (
+                    <>
+                      <br />
+                      <span className="text-xs text-muted-foreground">
+                        (Acordo quebrado - saldo permanece integral)
+                      </span>
+                    </>
+                  )}
                 </>
               )}
             </DialogDescription>
