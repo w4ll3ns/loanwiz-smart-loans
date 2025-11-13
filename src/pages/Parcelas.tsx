@@ -55,6 +55,8 @@ export default function Parcelas() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("pendente");
   const [mostrarTodas, setMostrarTodas] = useState(false);
+  const [dataInicioDashboard, setDataInicioDashboard] = useState<string>("");
+  const [dataFimDashboard, setDataFimDashboard] = useState<string>("");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [parcelaToDelete, setParcelaToDelete] = useState<string | null>(null);
   const [isPagamentoDialogOpen, setIsPagamentoDialogOpen] = useState(false);
@@ -110,6 +112,30 @@ export default function Parcelas() {
     return diffDays > 0 ? diffDays : 0;
   };
 
+  // Filtro para o dashboard (apenas por período de datas)
+  const dashboardParcelas = parcelas.filter(parcela => {
+    if (!dataInicioDashboard && !dataFimDashboard) {
+      return true; // Mostra tudo se não tiver período definido
+    }
+    
+    const dataVencimento = new Date(parcela.data_vencimento + 'T00:00:00');
+    
+    if (dataInicioDashboard && dataFimDashboard) {
+      const dataInicio = new Date(dataInicioDashboard + 'T00:00:00');
+      const dataFim = new Date(dataFimDashboard + 'T23:59:59');
+      return dataVencimento >= dataInicio && dataVencimento <= dataFim;
+    } else if (dataInicioDashboard) {
+      const dataInicio = new Date(dataInicioDashboard + 'T00:00:00');
+      return dataVencimento >= dataInicio;
+    } else if (dataFimDashboard) {
+      const dataFim = new Date(dataFimDashboard + 'T23:59:59');
+      return dataVencimento <= dataFim;
+    }
+    
+    return true;
+  });
+
+  // Filtro para a lista (por busca, status e período de 7 dias)
   const filteredParcelas = parcelas.filter(parcela => {
     const clienteNome = parcela.contratos?.clientes?.nome || "";
     const matchesSearch = clienteNome.toLowerCase().includes(searchTerm.toLowerCase());
@@ -386,14 +412,15 @@ export default function Parcelas() {
     return <Badge variant="secondary">Pendente</Badge>;
   };
 
-  const totalPendente = filteredParcelas
+  // Cálculos do dashboard usam dashboardParcelas (filtrado apenas por período)
+  const totalPendente = dashboardParcelas
     .filter(p => p.status !== "pago")
     .reduce((acc, p) => acc + Number(p.valor_original || p.valor), 0);
 
-  const totalPago = filteredParcelas
+  const totalPago = dashboardParcelas
     .reduce((acc, p) => acc + (Number(p.valor_pago) || 0), 0);
 
-  const totalVencido = filteredParcelas
+  const totalVencido = dashboardParcelas
     .filter(p => (p.status === "pendente" || p.status === "parcialmente_pago") && calcularDiasAtraso(p.data_vencimento) > 0)
     .reduce((acc, p) => acc + Number(p.valor_original || p.valor), 0);
 
@@ -402,6 +429,43 @@ export default function Parcelas() {
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <h1 className="text-2xl md:text-3xl font-bold">Gestão de Parcelas</h1>
       </div>
+
+      {/* Filtro de Período do Dashboard */}
+      <Card>
+        <CardContent className="pt-4 md:pt-6">
+          <div className="flex flex-col md:flex-row gap-4 items-end">
+            <div className="flex-1">
+              <Label htmlFor="data-inicio">Data Inicial</Label>
+              <Input
+                id="data-inicio"
+                type="date"
+                value={dataInicioDashboard}
+                onChange={(e) => setDataInicioDashboard(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <div className="flex-1">
+              <Label htmlFor="data-fim">Data Final</Label>
+              <Input
+                id="data-fim"
+                type="date"
+                value={dataFimDashboard}
+                onChange={(e) => setDataFimDashboard(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDataInicioDashboard("");
+                setDataFimDashboard("");
+              }}
+            >
+              Limpar
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Cards de Resumo */}
       <div className="grid gap-3 md:gap-4 grid-cols-1 md:grid-cols-3">
@@ -415,7 +479,7 @@ export default function Parcelas() {
               R$ {totalPendente.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-muted-foreground">
-              {filteredParcelas.filter(p => p.status !== "pago").length} parcelas
+              {dashboardParcelas.filter(p => p.status !== "pago").length} parcelas
             </p>
           </CardContent>
         </Card>
@@ -430,7 +494,7 @@ export default function Parcelas() {
               R$ {totalPago.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-muted-foreground">
-              {filteredParcelas.filter(p => p.status === "pago").length} parcelas pagas
+              {dashboardParcelas.filter(p => p.status === "pago").length} parcelas pagas
             </p>
           </CardContent>
         </Card>
@@ -445,7 +509,7 @@ export default function Parcelas() {
               R$ {totalVencido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-muted-foreground">
-              {filteredParcelas.filter(p => (p.status === "pendente" || p.status === "parcialmente_pago") && calcularDiasAtraso(p.data_vencimento) > 0).length} parcelas em atraso
+              {dashboardParcelas.filter(p => (p.status === "pendente" || p.status === "parcialmente_pago") && calcularDiasAtraso(p.data_vencimento) > 0).length} parcelas em atraso
             </p>
           </CardContent>
         </Card>
