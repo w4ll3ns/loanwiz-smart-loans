@@ -460,6 +460,108 @@ export default function Contratos() {
     }
   };
 
+  const gerarImagemContrato = async () => {
+    if (!selectedContrato) return;
+
+    try {
+      // Criar um elemento temporário para renderizar o conteúdo
+      const tempDiv = document.createElement('div');
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.left = '-9999px';
+      tempDiv.style.width = '800px';
+      tempDiv.style.padding = '40px';
+      tempDiv.style.backgroundColor = '#ffffff';
+      tempDiv.style.fontFamily = 'Arial, sans-serif';
+      document.body.appendChild(tempDiv);
+
+      const clienteNome = selectedContrato.clientes?.nome || 'N/A';
+      
+      // Criar o HTML do conteúdo
+      tempDiv.innerHTML = `
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="color: #1a1a1a; font-size: 28px; margin-bottom: 10px; font-weight: bold;">RELATÓRIO DE CONTRATO</h1>
+        </div>
+        
+        <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+          <h2 style="color: #333; font-size: 20px; margin-bottom: 15px; font-weight: bold;">Informações do Contrato</h2>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 14px;">
+            <div><strong>Cliente:</strong> ${clienteNome}</div>
+            <div><strong>Data:</strong> ${format(new Date(selectedContrato.data_emprestimo + 'T00:00:00'), 'dd/MM/yyyy')}</div>
+            <div><strong>Valor Emprestado:</strong> R$ ${Number(selectedContrato.valor_emprestado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+            <div><strong>Percentual:</strong> ${Number(selectedContrato.percentual)}%</div>
+            <div><strong>Valor Total:</strong> R$ ${Number(selectedContrato.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+            <div><strong>Parcelas:</strong> ${selectedContrato.numero_parcelas}</div>
+            <div><strong>Periodicidade:</strong> ${selectedContrato.periodicidade}</div>
+            <div><strong>Status:</strong> ${selectedContrato.status}</div>
+          </div>
+        </div>
+        
+        <div>
+          <h2 style="color: #333; font-size: 20px; margin-bottom: 15px; font-weight: bold;">Parcelas</h2>
+          <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+            <thead>
+              <tr style="background: #333; color: white;">
+                <th style="padding: 10px; text-align: left;">Nº</th>
+                <th style="padding: 10px; text-align: left;">Vencimento</th>
+                <th style="padding: 10px; text-align: left;">Valor</th>
+                <th style="padding: 10px; text-align: left;">Status</th>
+                <th style="padding: 10px; text-align: left;">Pagamento</th>
+                <th style="padding: 10px; text-align: left;">Valor Pago</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${parcelas.map((parcela, index) => `
+                <tr style="background: ${index % 2 === 0 ? '#f9f9f9' : '#ffffff'}; border-bottom: 1px solid #ddd;">
+                  <td style="padding: 8px;">${parcela.numero_parcela}</td>
+                  <td style="padding: 8px;">${format(new Date(parcela.data_vencimento + 'T00:00:00'), 'dd/MM/yyyy')}</td>
+                  <td style="padding: 8px;">R$ ${Number(parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                  <td style="padding: 8px;"><span style="background: ${parcela.status === 'pago' ? '#22c55e' : '#ef4444'}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px;">${parcela.status}</span></td>
+                  <td style="padding: 8px;">${parcela.data_pagamento ? format(new Date(parcela.data_pagamento + 'T00:00:00'), 'dd/MM/yyyy') : '-'}</td>
+                  <td style="padding: 8px;">${parcela.valor_pago ? `R$ ${Number(parcela.valor_pago).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      // Gerar a imagem usando html2canvas
+      const canvas = await html2canvas(tempDiv, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
+
+      // Remover o elemento temporário
+      document.body.removeChild(tempDiv);
+
+      // Converter canvas para blob e fazer download
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `contrato-${clienteNome.replace(/\s+/g, '-')}-${format(new Date(), 'dd-MM-yyyy')}.png`;
+          link.click();
+          URL.revokeObjectURL(url);
+          
+          toast({
+            title: "Imagem gerada com sucesso!",
+            description: "O arquivo foi baixado para seu dispositivo.",
+          });
+        }
+      }, 'image/png');
+
+    } catch (error) {
+      console.error('Erro ao gerar imagem:', error);
+      toast({
+        title: "Erro ao gerar imagem",
+        description: "Ocorreu um erro ao gerar a imagem do contrato.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const gerarRelatorioPDF = async () => {
     if (!selectedContrato) return;
 
@@ -597,8 +699,8 @@ export default function Contratos() {
             format(new Date(parcela.data_vencimento + 'T00:00:00'), 'dd/MM/yy'),
             `R$ ${Number(parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
             parcela.status,
-            parcela.data_pagamento ? format(new Date(parcela.data_pagamento + 'T00:00:00'), 'dd/MM/yy') : '-',
-            parcela.valor_pago ? `R$ ${Number(parcela.valor_pago).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-',
+            '-',
+            '-',
           ];
 
           dados.forEach((dado, i) => {
@@ -610,19 +712,19 @@ export default function Contratos() {
         });
       }
 
-      // Salvar PDF
-      pdf.save(`contrato-${clienteNome.replace(/\s+/g, '-')}-${format(new Date(), 'ddMMyyyy')}.pdf`);
-
+      // Salvar o PDF
+      pdf.save(`contrato-${clienteNome.replace(/\s+/g, '-')}-${format(new Date(), 'dd-MM-yyyy')}.pdf`);
+      
       toast({
-        title: "Sucesso",
-        description: "Relatório PDF gerado com sucesso!",
+        title: "PDF gerado com sucesso!",
+        description: "O relatório foi baixado para seu dispositivo.",
       });
     } catch (error) {
       console.error('Erro ao gerar PDF:', error);
       toast({
+        title: "Erro ao gerar relatório",
+        description: "Ocorreu um erro ao gerar o PDF.",
         variant: "destructive",
-        title: "Erro",
-        description: "Ocorreu um erro ao gerar o relatório.",
       });
     }
   };
@@ -920,6 +1022,15 @@ export default function Contratos() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pr-8">
               <DialogTitle className="text-lg sm:text-xl">Detalhes do Contrato</DialogTitle>
               <div className="flex gap-2 flex-col sm:flex-row">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={gerarImagemContrato}
+                  className="w-full sm:w-auto"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Baixar Imagem
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
