@@ -77,9 +77,9 @@ export default function Dashboard() {
       // Calcular estatísticas
       const totalEmprestado = contratos?.reduce((sum, c) => sum + Number(c.valor_emprestado), 0) || 0;
       
-      // Calcular total a receber considerando apenas parcelas pendentes
-      const totalPendente = parcelas?.filter(p => p.status === "pendente")
-        .reduce((sum, p) => sum + (Number(p.valor_original || p.valor) - (Number(p.valor_pago) || 0)), 0) || 0;
+      // Calcular total a receber - parcelas pendentes pelo valor original integral e parcialmente pagas também pelo valor original
+      const totalPendente = parcelas?.filter(p => p.status === "pendente" || p.status === "parcialmente_pago")
+        .reduce((sum, p) => sum + Number(p.valor_original || p.valor), 0) || 0;
       
       // Calcular total já recebido somando TODOS os valor_pago (independente do status)
       const totalRecebido = parcelas?.reduce((sum, p) => sum + (Number(p.valor_pago) || 0), 0) || 0;
@@ -91,7 +91,7 @@ export default function Dashboard() {
       
       const vencidas = parcelas?.filter(p => {
         const vencimento = new Date(p.data_vencimento + 'T00:00:00');
-        return p.status === "pendente" && vencimento < hoje;
+        return (p.status === "pendente" || p.status === "parcialmente_pago") && vencimento < hoje;
       }).length || 0;
 
       setStats({
@@ -104,7 +104,7 @@ export default function Dashboard() {
 
       // Processar próximos vencimentos
       const proximos = parcelas
-        ?.filter(p => p.status === "pendente")
+        ?.filter(p => p.status === "pendente" || p.status === "parcialmente_pago")
         .slice(0, 4)
         .map(p => {
           const vencimento = new Date(p.data_vencimento + 'T00:00:00');
@@ -117,7 +117,7 @@ export default function Dashboard() {
 
           return {
             cliente: p.contratos?.clientes?.nome || "Cliente",
-            valor: Number(p.valor),
+            valor: Number(p.valor_original || p.valor),
             data: new Date(p.data_vencimento + 'T00:00:00').toLocaleDateString("pt-BR"),
             status,
           };
