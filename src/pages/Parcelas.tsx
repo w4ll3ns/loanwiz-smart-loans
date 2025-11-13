@@ -373,14 +373,14 @@ export default function Parcelas() {
 
   const totalPendente = filteredParcelas
     .filter(p => p.status !== "pago")
-    .reduce((acc, p) => acc + (Number(p.valor_original || p.valor) - (Number(p.valor_pago) || 0)), 0);
+    .reduce((acc, p) => acc + Number(p.valor_original || p.valor), 0);
 
   const totalPago = filteredParcelas
     .reduce((acc, p) => acc + (Number(p.valor_pago) || 0), 0);
 
   const totalVencido = filteredParcelas
-    .filter(p => p.status === "pendente" && calcularDiasAtraso(p.data_vencimento) > 0)
-    .reduce((acc, p) => acc + (Number(p.valor_original || p.valor) - (Number(p.valor_pago) || 0)), 0);
+    .filter(p => (p.status === "pendente" || p.status === "parcialmente_pago") && calcularDiasAtraso(p.data_vencimento) > 0)
+    .reduce((acc, p) => acc + Number(p.valor_original || p.valor), 0);
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -430,7 +430,7 @@ export default function Parcelas() {
               R$ {totalVencido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-muted-foreground">
-              {filteredParcelas.filter(p => p.status === "pendente" && calcularDiasAtraso(p.data_vencimento) > 0).length} parcelas em atraso
+              {filteredParcelas.filter(p => (p.status === "pendente" || p.status === "parcialmente_pago") && calcularDiasAtraso(p.data_vencimento) > 0).length} parcelas em atraso
             </p>
           </CardContent>
         </Card>
