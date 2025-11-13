@@ -53,7 +53,8 @@ interface HistoricoPagamento {
 export default function Parcelas() {
   const [parcelas, setParcelas] = useState<Parcela[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("todos");
+  const [statusFilter, setStatusFilter] = useState<string>("pendente");
+  const [mostrarTodas, setMostrarTodas] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [parcelaToDelete, setParcelaToDelete] = useState<string | null>(null);
   const [isPagamentoDialogOpen, setIsPagamentoDialogOpen] = useState(false);
@@ -113,6 +114,20 @@ export default function Parcelas() {
     const clienteNome = parcela.contratos?.clientes?.nome || "";
     const matchesSearch = clienteNome.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "todos" || parcela.status === statusFilter;
+    
+    // Filtrar por data - próximos 7 dias se não estiver mostrando todas
+    if (!mostrarTodas) {
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      const dataLimite = new Date();
+      dataLimite.setDate(hoje.getDate() + 7);
+      dataLimite.setHours(23, 59, 59, 999);
+      const dataVencimento = new Date(parcela.data_vencimento + 'T00:00:00');
+      
+      const dentroDosPróximos7Dias = dataVencimento >= hoje && dataVencimento <= dataLimite;
+      return matchesSearch && matchesStatus && dentroDosPróximos7Dias;
+    }
+    
     return matchesSearch && matchesStatus;
   });
 
@@ -465,8 +480,18 @@ export default function Parcelas() {
 
       {/* Lista de Parcelas */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base md:text-lg">Parcelas ({filteredParcelas.length})</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base md:text-lg">
+            Parcelas ({filteredParcelas.length})
+            {!mostrarTodas && <span className="text-sm font-normal text-muted-foreground ml-2">(Próximos 7 dias)</span>}
+          </CardTitle>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setMostrarTodas(!mostrarTodas)}
+          >
+            {mostrarTodas ? "Mostrar Próximos 7 Dias" : "Ver Mais"}
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto -mx-4 md:mx-0">
