@@ -150,8 +150,11 @@ export default function Parcelas() {
       dataLimite.setHours(23, 59, 59, 999);
       const dataVencimento = new Date(parcela.data_vencimento + 'T00:00:00');
       
+      // Sempre mostrar parcelas vencidas (status pendente e data no passado)
+      const estaVencida = parcela.status === "pendente" && dataVencimento < hoje;
       const dentroDosPróximos7Dias = dataVencimento >= hoje && dataVencimento <= dataLimite;
-      return matchesSearch && matchesStatus && dentroDosPróximos7Dias;
+      
+      return matchesSearch && matchesStatus && (estaVencida || dentroDosPróximos7Dias);
     }
     
     return matchesSearch && matchesStatus;
