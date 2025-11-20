@@ -152,17 +152,17 @@ export default function Dashboard() {
       </div>
 
       {/* Cards de Resumo */}
-      <div className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs md:text-sm font-medium">Total Emprestado</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg md:text-2xl font-bold">
+            <div className="text-xl md:text-2xl font-bold">
               R$ {stats.totalEmprestado.toLocaleString('pt-BR')}
             </div>
-            <p className="text-xs text-muted-foreground">Capital em circulação</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground">Capital em circulação</p>
           </CardContent>
         </Card>
 
@@ -172,10 +172,10 @@ export default function Dashboard() {
             <Calendar className="h-4 w-4 text-warning" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg md:text-2xl font-bold text-warning">
+            <div className="text-xl md:text-2xl font-bold text-warning">
               R$ {stats.totalReceber.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-[10px] sm:text-xs text-muted-foreground">
               Saldo devedor
             </p>
           </CardContent>
@@ -187,10 +187,10 @@ export default function Dashboard() {
             <CheckCircle2 className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg md:text-2xl font-bold text-success">
+            <div className="text-xl md:text-2xl font-bold text-success">
               R$ {stats.totalRecebido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-[10px] sm:text-xs text-muted-foreground">
               Pagamentos efetuados
             </p>
           </CardContent>
@@ -202,8 +202,8 @@ export default function Dashboard() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg md:text-2xl font-bold">{stats.clientesAtivos}</div>
-            <p className="text-xs text-muted-foreground">Cadastros ativos</p>
+            <div className="text-xl md:text-2xl font-bold">{stats.clientesAtivos}</div>
+            <p className="text-[10px] sm:text-xs text-muted-foreground">Cadastros ativos</p>
           </CardContent>
         </Card>
 
@@ -213,8 +213,8 @@ export default function Dashboard() {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg md:text-2xl font-bold">{stats.contratosAtivos}</div>
-            <p className="text-xs text-muted-foreground">Em andamento</p>
+            <div className="text-xl md:text-2xl font-bold">{stats.contratosAtivos}</div>
+            <p className="text-[10px] sm:text-xs text-muted-foreground">Em andamento</p>
           </CardContent>
         </Card>
       </div>
@@ -253,14 +253,14 @@ export default function Dashboard() {
               </p>
             ) : (
               proximosVencimentos.map((parcela, index) => (
-                <div key={index} className="flex items-center justify-between p-3 rounded-lg border">
+                <div key={index} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 gap-2 rounded-lg border">
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm md:text-base truncate">{parcela.cliente}</p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-xs sm:text-sm text-muted-foreground">
                       R$ {parcela.valor.toLocaleString('pt-BR')}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                  <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-between sm:justify-end">
                     <span className="text-xs md:text-sm text-muted-foreground">{parcela.data}</span>
                     <Badge 
                       variant={
