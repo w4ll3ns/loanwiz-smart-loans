@@ -332,6 +332,33 @@ export default function Contratos() {
           title: "Parcela paga com sucesso",
           description: `Valor pago: R$ ${valorFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
         });
+
+        // Verificar se todas as parcelas do contrato estão pagas
+        if (parcelaToPay.contrato_id) {
+          const { data: todasParcelas, error: parcelasError } = await supabase
+            .from("parcelas")
+            .select("status")
+            .eq("contrato_id", parcelaToPay.contrato_id);
+
+          if (!parcelasError && todasParcelas) {
+            const todasPagas = todasParcelas.every(p => p.status === "pago");
+            
+            if (todasPagas) {
+              // Atualizar status do contrato para quitado
+              const { error: contratoError } = await supabase
+                .from("contratos")
+                .update({ status: "quitado" })
+                .eq("id", parcelaToPay.contrato_id);
+
+              if (!contratoError) {
+                toast({
+                  title: "Contrato quitado! 🎉",
+                  description: "Todas as parcelas foram pagas. O contrato foi marcado como quitado.",
+                });
+              }
+            }
+          }
+        }
       } else {
         // Pagamento parcial - marca como pago e transfere saldo para próxima parcela
         const { error: updateError } = await supabase
