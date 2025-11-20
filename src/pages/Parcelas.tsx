@@ -208,14 +208,14 @@ export default function Parcelas() {
       // Registrar pagamento no histórico
       const { error: historicoError } = await supabase
         .from("parcelas_historico")
-        .insert([{
+        .insert({
           parcela_id: parcelaToPay.id,
           valor_pago: valorPagar,
           tipo_pagamento: tipoPag,
           data_pagamento: new Date().toISOString(),
           observacao: observacaoPagamento.trim() || null,
           tipo_evento: "pagamento",
-        }]);
+        } as any);
 
       if (historicoError) throw historicoError;
 
@@ -482,7 +482,7 @@ export default function Parcelas() {
           data_vencimento_nova: novaDataVencimento,
           observacao: justificativaAlteracao.trim(),
           data_pagamento: new Date().toISOString(),
-        });
+        } as any);
 
       if (historicoError) {
         console.error("Erro ao registrar no histórico:", historicoError);

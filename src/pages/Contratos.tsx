@@ -390,11 +390,12 @@ export default function Contratos() {
 
   const handleDesfazerPagamento = async (parcelaId: string) => {
     try {
-      // Deletar histórico de pagamentos
+      // Deletar histórico de pagamentos (manter apenas alterações de data)
       const { error: deleteHistoricoError } = await supabase
-        .from("parcelas_pagamentos")
+        .from("parcelas_historico")
         .delete()
-        .eq("parcela_id", parcelaId);
+        .eq("parcela_id", parcelaId)
+        .eq("tipo_evento", "pagamento");
 
       if (deleteHistoricoError) throw deleteHistoricoError;
 
