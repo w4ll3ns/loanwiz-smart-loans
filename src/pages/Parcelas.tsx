@@ -547,31 +547,128 @@ export default function Parcelas() {
 
       {/* Lista de Parcelas */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
           <CardTitle className="text-base md:text-lg">
             Parcelas ({filteredParcelas.length})
-            {!mostrarTodas && <span className="text-sm font-normal text-muted-foreground ml-2">(Próximos 7 dias)</span>}
+            {!mostrarTodas && <span className="text-sm font-normal text-muted-foreground ml-2 hidden sm:inline">(Próximos 7 dias)</span>}
           </CardTitle>
           <Button
             variant="outline"
             size="sm"
             onClick={() => setMostrarTodas(!mostrarTodas)}
+            className="text-xs sm:text-sm"
           >
-            {mostrarTodas ? "Mostrar Próximos 7 Dias" : "Ver Mais"}
+            {mostrarTodas ? "Próximos 7 Dias" : "Ver Todas"}
           </Button>
         </CardHeader>
         <CardContent className="p-0 md:p-6">
-          <div className="overflow-x-auto">
+          {/* View Mobile - Cards */}
+          <div className="md:hidden space-y-3 p-4">
+            {filteredParcelas.length === 0 ? (
+              <div className="text-center text-muted-foreground py-8">
+                Nenhuma parcela encontrada
+              </div>
+            ) : (
+              filteredParcelas.map((parcela) => (
+                <Card key={parcela.id} className="border-l-4" style={{
+                  borderLeftColor: 
+                    parcela.status === "pago" ? "hsl(var(--success))" : 
+                    calcularDiasAtraso(parcela.data_vencimento) > 0 ? "hsl(var(--destructive))" : 
+                    "hsl(var(--warning))"
+                }}>
+                  <CardContent className="p-4 space-y-3">
+                    {/* Header do Card */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-base truncate">{parcela.contratos?.clientes?.nome}</p>
+                        <p className="text-sm text-muted-foreground">Parcela {parcela.numero_parcela}</p>
+                      </div>
+                      {getStatusBadge(parcela)}
+                    </div>
+
+                    {/* Informações Principais */}
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-muted-foreground text-xs">Valor</p>
+                        <p className="font-semibold">R$ {Number(parcela.valor_original || parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                        {parcela.valor_pago && parcela.valor_pago > 0 && (
+                          <p className="text-xs text-success">
+                            Pago: R$ {Number(parcela.valor_pago).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground text-xs">Vencimento</p>
+                        <p className="font-semibold">{formatDate(parcela.data_vencimento)}</p>
+                        {calcularDiasAtraso(parcela.data_vencimento) > 0 && (
+                          <p className="text-xs text-destructive">
+                            {calcularDiasAtraso(parcela.data_vencimento)} dias atraso
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Ações */}
+                    <div className="flex gap-2 pt-2 border-t">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => loadHistorico(parcela)}
+                        className="flex-1"
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        Histórico
+                      </Button>
+                      {parcela.status !== "pago" ? (
+                        <Button
+                          size="sm"
+                          onClick={() => abrirModalPagamento(parcela)}
+                          className="flex-1 bg-success hover:bg-success/90"
+                        >
+                          <Check className="h-4 w-4 mr-2" />
+                          Baixar
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleMarcarPendente(parcela.id)}
+                          className="flex-1 text-warning hover:bg-warning hover:text-warning-foreground"
+                        >
+                          <Undo2 className="h-4 w-4 mr-2" />
+                          Desfazer
+                        </Button>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setParcelaToDelete(parcela.id);
+                          setIsDeleteDialogOpen(true);
+                        }}
+                        className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+
+          {/* View Desktop - Table */}
+          <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[120px] pl-4 md:pl-3">Cliente</TableHead>
-                  <TableHead className="hidden md:table-cell">Parcela</TableHead>
-                  <TableHead className="min-w-[80px]">Valor</TableHead>
-                  <TableHead className="hidden md:table-cell">Vencimento</TableHead>
+                  <TableHead className="min-w-[150px]">Cliente</TableHead>
+                  <TableHead>Parcela</TableHead>
+                  <TableHead>Valor</TableHead>
+                  <TableHead>Vencimento</TableHead>
                   <TableHead className="hidden lg:table-cell">Pagamento</TableHead>
-                  <TableHead className="min-w-[80px]">Status</TableHead>
-                  <TableHead className="text-right pr-4 md:pr-3 min-w-[120px]">Ações</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -584,13 +681,10 @@ export default function Parcelas() {
                 ) : (
                   filteredParcelas.map((parcela) => (
                     <TableRow key={parcela.id}>
-                      <TableCell className="font-medium pl-4 md:pl-3">
+                      <TableCell className="font-medium">
                         {parcela.contratos?.clientes?.nome}
-                        <div className="md:hidden text-xs text-muted-foreground mt-1">
-                          Parcela {parcela.numero_parcela} • {formatDate(parcela.data_vencimento)}
-                        </div>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell text-sm">{parcela.numero_parcela}</TableCell>
+                      <TableCell className="text-sm">{parcela.numero_parcela}</TableCell>
                       <TableCell className="text-sm">
                         <div className="flex flex-col">
                           <span>R$ {Number(parcela.valor_original || parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
@@ -601,7 +695,7 @@ export default function Parcelas() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell text-sm">{formatDate(parcela.data_vencimento)}</TableCell>
+                      <TableCell className="text-sm">{formatDate(parcela.data_vencimento)}</TableCell>
                       <TableCell className="hidden lg:table-cell text-sm">
                         {parcela.data_pagamento 
                           ? formatDate(parcela.data_pagamento)
@@ -611,7 +705,7 @@ export default function Parcelas() {
                       <TableCell>
                         {getStatusBadge(parcela)}
                       </TableCell>
-                      <TableCell className="text-right pr-4 md:pr-3">
+                      <TableCell className="text-right">
                         <div className="flex gap-1 justify-end">
                           <Button
                             variant="outline"
@@ -619,7 +713,7 @@ export default function Parcelas() {
                             onClick={() => loadHistorico(parcela)}
                             title="Ver histórico de pagamentos"
                           >
-                            <FileText className="h-3 w-3 md:h-4 md:w-4" />
+                            <FileText className="h-4 w-4" />
                           </Button>
                           {parcela.status !== "pago" ? (
                             <Button
@@ -629,7 +723,7 @@ export default function Parcelas() {
                               className="text-success hover:bg-success hover:text-success-foreground"
                               title="Baixar parcela"
                             >
-                              <Check className="h-3 w-3 md:h-4 md:w-4" />
+                              <Check className="h-4 w-4" />
                             </Button>
                           ) : (
                             <Button
@@ -639,7 +733,7 @@ export default function Parcelas() {
                               className="text-warning hover:bg-warning hover:text-warning-foreground"
                               title="Desfazer pagamento"
                             >
-                              <Undo2 className="h-3 w-3 md:h-4 md:w-4" />
+                              <Undo2 className="h-4 w-4" />
                             </Button>
                           )}
                           <Button
@@ -652,7 +746,7 @@ export default function Parcelas() {
                             className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
                             title="Excluir parcela"
                           >
-                            <Trash2 className="h-3 w-3 md:h-4 md:w-4" />
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </TableCell>
