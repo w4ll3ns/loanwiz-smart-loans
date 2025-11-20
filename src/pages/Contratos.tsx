@@ -1152,9 +1152,13 @@ export default function Contratos() {
                             <TableCell className="text-xs sm:text-sm">{format(new Date(parcela.data_vencimento + 'T00:00:00'), 'dd/MM/yyyy')}</TableCell>
                             <TableCell className="text-xs sm:text-sm">R$ {Number(parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
                             <TableCell>
-                              <Badge variant={parcela.status === 'pago' ? 'default' : 'secondary'} className="text-xs">
-                                {parcela.status}
-                              </Badge>
+                              {parcela.status === 'pago' ? (
+                                <Badge variant="default" className="bg-success text-xs">Pago</Badge>
+                              ) : new Date(parcela.data_vencimento + 'T00:00:00') < new Date(new Date().setHours(0, 0, 0, 0)) ? (
+                                <Badge variant="destructive" className="text-xs">Atrasado</Badge>
+                              ) : (
+                                <Badge variant="secondary" className="text-xs">Pendente</Badge>
+                              )}
                             </TableCell>
                             <TableCell className="hidden md:table-cell">
                               {parcela.data_pagamento ? (
