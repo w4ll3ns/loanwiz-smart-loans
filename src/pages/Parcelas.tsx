@@ -616,12 +616,12 @@ export default function Parcelas() {
                     </div>
 
                     {/* Ações */}
-                    <div className="flex gap-2 pt-2 border-t">
+                    <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t w-full">
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => loadHistorico(parcela)}
-                        className="flex-1 text-xs"
+                        className="w-full sm:flex-1 text-xs"
                       >
                         <FileText className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
                         <span className="hidden sm:inline">Histórico</span>
@@ -630,7 +630,7 @@ export default function Parcelas() {
                         <Button
                           size="sm"
                           onClick={() => abrirModalPagamento(parcela)}
-                          className="flex-1 bg-success hover:bg-success/90 text-xs"
+                          className="w-full sm:flex-1 bg-success hover:bg-success/90 text-xs"
                         >
                           <Check className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
                           <span className="hidden sm:inline">Baixar</span>
@@ -640,7 +640,7 @@ export default function Parcelas() {
                           variant="outline"
                           size="sm"
                           onClick={() => handleMarcarPendente(parcela.id)}
-                          className="flex-1 text-warning hover:bg-warning hover:text-warning-foreground text-xs"
+                          className="w-full sm:flex-1 text-warning hover:bg-warning hover:text-warning-foreground text-xs"
                         >
                           <Undo2 className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
                           <span className="hidden sm:inline">Desfazer</span>
@@ -653,7 +653,7 @@ export default function Parcelas() {
                           setParcelaToDelete(parcela.id);
                           setIsDeleteDialogOpen(true);
                         }}
-                        className="text-destructive hover:bg-destructive hover:text-destructive-foreground flex-shrink-0"
+                        className="w-full sm:w-auto text-destructive hover:bg-destructive hover:text-destructive-foreground flex-shrink-0 text-xs"
                       >
                         <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                       </Button>
