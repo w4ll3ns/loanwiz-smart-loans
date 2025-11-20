@@ -31,6 +31,7 @@ interface Parcela {
   valor: number;
   valor_original: number;
   data_vencimento: string;
+  data_vencimento_original?: string;
   data_pagamento?: string;
   valor_pago?: number;
   status: string;
@@ -71,6 +72,7 @@ export default function Parcelas() {
   const [parcelaHistorico, setParcelaHistorico] = useState<Parcela | null>(null);
   const [parcelaToEditData, setParcelaToEditData] = useState<Parcela | null>(null);
   const [historico, setHistorico] = useState<HistoricoParcela[]>([]);
+  const [filtroTipoEvento, setFiltroTipoEvento] = useState<string>("todos");
   const [tipoPagamento, setTipoPagamento] = useState<string>("total");
   const [valorPagamento, setValorPagamento] = useState<string>("");
   const [observacaoPagamento, setObservacaoPagamento] = useState<string>("");
@@ -318,6 +320,7 @@ export default function Parcelas() {
 
       setHistorico(data || []);
       setParcelaHistorico(parcela);
+      setFiltroTipoEvento("todos"); // Reset filter when opening
       setIsHistoricoDialogOpen(true);
     } catch (error: any) {
       toast({
@@ -461,7 +464,7 @@ export default function Parcelas() {
       };
 
       // Se ainda não tem data_vencimento_original, salvar a data atual como original
-      if (!parcelaToEditData.data_vencimento) {
+      if (!parcelaToEditData.data_vencimento_original) {
         updateData.data_vencimento_original = parcelaToEditData.data_vencimento;
       }
 
@@ -494,8 +497,8 @@ export default function Parcelas() {
       if (historicoError) {
         console.error("Erro ao registrar no histórico:", historicoError);
         toast({
-          title: "Aviso",
-          description: "Data alterada, mas não foi possível registrar no histórico: " + historicoError.message,
+          title: "Data alterada com ressalvas",
+          description: `A data de vencimento foi alterada, mas o histórico não pôde ser salvo. Motivo: ${historicoError.message}`,
           variant: "destructive",
         });
       } else {
@@ -1011,9 +1014,25 @@ export default function Parcelas() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            {historico.length === 0 ? (
+            {/* Filtro por tipo de evento */}
+            <div className="flex items-center gap-2">
+              <Label htmlFor="filtro-tipo" className="whitespace-nowrap">Filtrar por:</Label>
+              <Select value={filtroTipoEvento} onValueChange={setFiltroTipoEvento}>
+                <SelectTrigger id="filtro-tipo" className="w-[200px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os Eventos</SelectItem>
+                  <SelectItem value="pagamento">Pagamentos</SelectItem>
+                  <SelectItem value="alteracao_data">Alterações de Data</SelectItem>
+                  <SelectItem value="estorno">Estornos</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {historico.filter(item => filtroTipoEvento === "todos" || item.tipo_evento === filtroTipoEvento).length === 0 ? (
               <p className="text-muted-foreground text-center py-8">
-                Nenhum registro no histórico desta parcela.
+                Nenhum registro {filtroTipoEvento !== "todos" ? `de ${filtroTipoEvento === "pagamento" ? "pagamentos" : filtroTipoEvento === "alteracao_data" ? "alterações de data" : "estornos"}` : ""} no histórico desta parcela.
               </p>
             ) : (
               <Table>
@@ -1027,7 +1046,9 @@ export default function Parcelas() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {historico.map((item) => (
+                  {historico
+                    .filter(item => filtroTipoEvento === "todos" || item.tipo_evento === filtroTipoEvento)
+                    .map((item) => (
                     <TableRow key={item.id}>
                       <TableCell>
                         {format(new Date(item.data_pagamento), "dd/MM/yyyy HH:mm", {
@@ -1035,7 +1056,22 @@ export default function Parcelas() {
                         })}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={item.tipo_evento === "pagamento" ? "default" : "secondary"}>
+                        <Badge 
+                          variant={
+                            item.tipo_evento === "pagamento" 
+                              ? "default" 
+                              : item.tipo_evento === "alteracao_data" 
+                              ? "secondary" 
+                              : "destructive"
+                          }
+                          className={
+                            item.tipo_evento === "pagamento"
+                              ? "bg-success hover:bg-success/80"
+                              : item.tipo_evento === "alteracao_data"
+                              ? "bg-warning hover:bg-warning/80 text-warning-foreground"
+                              : ""
+                          }
+                        >
                           {item.tipo_evento === "pagamento" && "Pagamento"}
                           {item.tipo_evento === "alteracao_data" && "Alteração de Data"}
                           {item.tipo_evento === "estorno" && "Estorno"}
