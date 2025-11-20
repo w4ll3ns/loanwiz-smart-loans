@@ -428,13 +428,13 @@ export default function Parcelas() {
     .reduce((acc, p) => acc + Number(p.valor_original || p.valor), 0);
 
   return (
-    <div className="space-y-4 md:space-y-6">
+    <div className="space-y-4 md:space-y-6 w-full max-w-full overflow-hidden">
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-        <h1 className="text-2xl md:text-3xl font-bold">Gestão de Parcelas</h1>
+        <h1 className="text-xl md:text-3xl font-bold truncate">Gestão de Parcelas</h1>
       </div>
 
       {/* Filtro de Período do Dashboard */}
-      <Card>
+      <Card className="w-full">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium">Filtrar Período</CardTitle>
         </CardHeader>
@@ -476,47 +476,47 @@ export default function Parcelas() {
       </Card>
 
       {/* Cards de Resumo */}
-      <div className="grid gap-3 md:gap-4 grid-cols-1 md:grid-cols-3">
-        <Card>
+      <div className="grid gap-3 md:gap-4 grid-cols-1 md:grid-cols-3 w-full">
+        <Card className="w-full overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs md:text-sm font-medium">Total Pendente</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg md:text-2xl font-bold">
+            <div className="text-lg md:text-2xl font-bold break-words">
               R$ {totalPendente.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground truncate">
               {dashboardParcelas.filter(p => p.status !== "pago").length} parcelas
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="w-full overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs md:text-sm font-medium">Total Recebido</CardTitle>
-            <Check className="h-4 w-4 text-success" />
+            <Check className="h-4 w-4 text-success flex-shrink-0" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg md:text-2xl font-bold text-success">
+            <div className="text-lg md:text-2xl font-bold text-success break-words">
               R$ {totalPago.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground truncate">
               {dashboardParcelas.filter(p => p.status === "pago").length} parcelas pagas
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="w-full overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs md:text-sm font-medium">Total Vencido</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-destructive" />
+            <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg md:text-2xl font-bold text-destructive">
+            <div className="text-lg md:text-2xl font-bold text-destructive break-words">
               R$ {totalVencido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground truncate">
               {dashboardParcelas.filter(p => (p.status === "pendente" || p.status === "parcialmente_pago") && calcularDiasAtraso(p.data_vencimento) > 0).length} parcelas em atraso
             </p>
           </CardContent>
@@ -524,20 +524,20 @@ export default function Parcelas() {
       </div>
 
       {/* Filtros */}
-      <Card>
+      <Card className="w-full">
         <CardContent className="pt-4 md:pt-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
+          <div className="flex flex-col md:flex-row gap-3 w-full">
+            <div className="flex-1 relative w-full">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar por cliente..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
+                className="pl-9 w-full"
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="md:w-48">
+              <SelectTrigger className="w-full md:w-48">
                 <SelectValue placeholder="Filtrar por status" />
               </SelectTrigger>
               <SelectContent>
@@ -551,8 +551,8 @@ export default function Parcelas() {
       </Card>
 
       {/* Lista de Parcelas */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
+      <Card className="w-full overflow-hidden">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3">
           <CardTitle className="text-base md:text-lg">
             Parcelas ({filteredParcelas.length})
             {!mostrarTodas && <span className="text-sm font-normal text-muted-foreground ml-2 hidden sm:inline">(Próximos 7 dias)</span>}
@@ -561,53 +561,55 @@ export default function Parcelas() {
             variant="outline"
             size="sm"
             onClick={() => setMostrarTodas(!mostrarTodas)}
-            className="text-xs sm:text-sm"
+            className="text-xs sm:text-sm w-full sm:w-auto"
           >
             {mostrarTodas ? "Próximos 7 Dias" : "Ver Todas"}
           </Button>
         </CardHeader>
         <CardContent className="p-0 md:p-6">
           {/* View Mobile - Cards */}
-          <div className="md:hidden space-y-3 p-4">
+          <div className="md:hidden space-y-3 p-3 w-full max-w-full">
             {filteredParcelas.length === 0 ? (
               <div className="text-center text-muted-foreground py-8">
                 Nenhuma parcela encontrada
               </div>
             ) : (
               filteredParcelas.map((parcela) => (
-                <Card key={parcela.id} className="border-l-4" style={{
+                <Card key={parcela.id} className="border-l-4 w-full overflow-hidden" style={{
                   borderLeftColor: 
                     parcela.status === "pago" ? "hsl(var(--success))" : 
                     calcularDiasAtraso(parcela.data_vencimento) > 0 ? "hsl(var(--destructive))" : 
                     "hsl(var(--warning))"
                 }}>
-                  <CardContent className="p-4 space-y-3">
+                  <CardContent className="p-3 space-y-3">
                     {/* Header do Card */}
                     <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-base truncate">{parcela.contratos?.clientes?.nome}</p>
-                        <p className="text-sm text-muted-foreground">Parcela {parcela.numero_parcela}</p>
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <p className="font-semibold text-sm truncate">{parcela.contratos?.clientes?.nome}</p>
+                        <p className="text-xs text-muted-foreground">Parcela {parcela.numero_parcela}</p>
                       </div>
-                      {getStatusBadge(parcela)}
+                      <div className="flex-shrink-0">
+                        {getStatusBadge(parcela)}
+                      </div>
                     </div>
 
                     {/* Informações Principais */}
-                    <div className="grid grid-cols-2 gap-3 text-sm">
-                      <div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div className="overflow-hidden">
                         <p className="text-muted-foreground text-xs">Valor</p>
-                        <p className="font-semibold">R$ {Number(parcela.valor_original || parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                        <p className="font-semibold text-xs sm:text-sm break-words">R$ {Number(parcela.valor_original || parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                         {parcela.valor_pago && parcela.valor_pago > 0 && (
-                          <p className="text-xs text-success">
+                          <p className="text-xs text-success break-words">
                             Pago: R$ {Number(parcela.valor_pago).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </p>
                         )}
                       </div>
-                      <div>
+                      <div className="overflow-hidden">
                         <p className="text-muted-foreground text-xs">Vencimento</p>
-                        <p className="font-semibold">{formatDate(parcela.data_vencimento)}</p>
+                        <p className="font-semibold text-xs sm:text-sm">{formatDate(parcela.data_vencimento)}</p>
                         {calcularDiasAtraso(parcela.data_vencimento) > 0 && (
                           <p className="text-xs text-destructive">
-                            {calcularDiasAtraso(parcela.data_vencimento)} dias atraso
+                            {calcularDiasAtraso(parcela.data_vencimento)}d atraso
                           </p>
                         )}
                       </div>
@@ -619,29 +621,29 @@ export default function Parcelas() {
                         variant="outline"
                         size="sm"
                         onClick={() => loadHistorico(parcela)}
-                        className="flex-1"
+                        className="flex-1 text-xs"
                       >
-                        <FileText className="h-4 w-4 mr-2" />
-                        Histórico
+                        <FileText className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Histórico</span>
                       </Button>
                       {parcela.status !== "pago" ? (
                         <Button
                           size="sm"
                           onClick={() => abrirModalPagamento(parcela)}
-                          className="flex-1 bg-success hover:bg-success/90"
+                          className="flex-1 bg-success hover:bg-success/90 text-xs"
                         >
-                          <Check className="h-4 w-4 mr-2" />
-                          Baixar
+                          <Check className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
+                          <span className="hidden sm:inline">Baixar</span>
                         </Button>
                       ) : (
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => handleMarcarPendente(parcela.id)}
-                          className="flex-1 text-warning hover:bg-warning hover:text-warning-foreground"
+                          className="flex-1 text-warning hover:bg-warning hover:text-warning-foreground text-xs"
                         >
-                          <Undo2 className="h-4 w-4 mr-2" />
-                          Desfazer
+                          <Undo2 className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
+                          <span className="hidden sm:inline">Desfazer</span>
                         </Button>
                       )}
                       <Button
@@ -651,9 +653,9 @@ export default function Parcelas() {
                           setParcelaToDelete(parcela.id);
                           setIsDeleteDialogOpen(true);
                         }}
-                        className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                        className="text-destructive hover:bg-destructive hover:text-destructive-foreground flex-shrink-0"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                       </Button>
                     </div>
                   </CardContent>
