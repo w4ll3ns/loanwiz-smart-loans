@@ -185,7 +185,7 @@ export default function Clientes() {
               Novo Cliente
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingCliente ? "Editar Cliente" : "Novo Cliente"}</DialogTitle>
             </DialogHeader>
@@ -261,14 +261,14 @@ export default function Clientes() {
         <CardHeader>
           <CardTitle className="text-base md:text-lg">Clientes Cadastrados ({filteredClientes.length})</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto -mx-4 md:mx-0">
+        <CardContent className="p-0 md:p-6">
+          <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[150px]">Nome</TableHead>
+                  <TableHead className="min-w-[150px] pl-4 md:pl-3">Nome</TableHead>
                   <TableHead className="hidden md:table-cell">Telefone</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
+                  <TableHead className="text-right pr-4 md:pr-3">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -281,21 +281,21 @@ export default function Clientes() {
                 ) : (
                   filteredClientes.map((cliente) => (
                     <TableRow key={cliente.id}>
-                      <TableCell className="font-medium">
+                      <TableCell className="font-medium pl-4 md:pl-3">
                         {cliente.nome}
                         <div className="md:hidden text-xs text-muted-foreground mt-1">
                           {cliente.telefone || "Sem telefone"}
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">{cliente.telefone || "-"}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex gap-2 justify-end">
+                      <TableCell className="text-right pr-4 md:pr-3">
+                        <div className="flex gap-1 md:gap-2 justify-end">
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handleEdit(cliente)}
                           >
-                            <Pencil className="h-4 w-4" />
+                            <Pencil className="h-3 w-3 md:h-4 md:w-4" />
                           </Button>
                           <Button
                             variant="outline"
@@ -306,7 +306,7 @@ export default function Clientes() {
                             }}
                             className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3 w-3 md:h-4 md:w-4" />
                           </Button>
                         </div>
                       </TableCell>

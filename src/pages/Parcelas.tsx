@@ -560,18 +560,18 @@ export default function Parcelas() {
             {mostrarTodas ? "Mostrar Próximos 7 Dias" : "Ver Mais"}
           </Button>
         </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto -mx-4 md:mx-0">
+        <CardContent className="p-0 md:p-6">
+          <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[120px]">Cliente</TableHead>
+                  <TableHead className="min-w-[120px] pl-4 md:pl-3">Cliente</TableHead>
                   <TableHead className="hidden md:table-cell">Parcela</TableHead>
-                  <TableHead>Valor</TableHead>
+                  <TableHead className="min-w-[80px]">Valor</TableHead>
                   <TableHead className="hidden md:table-cell">Vencimento</TableHead>
                   <TableHead className="hidden lg:table-cell">Pagamento</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
+                  <TableHead className="min-w-[80px]">Status</TableHead>
+                  <TableHead className="text-right pr-4 md:pr-3 min-w-[120px]">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -584,14 +584,14 @@ export default function Parcelas() {
                 ) : (
                   filteredParcelas.map((parcela) => (
                     <TableRow key={parcela.id}>
-                      <TableCell className="font-medium">
+                      <TableCell className="font-medium pl-4 md:pl-3">
                         {parcela.contratos?.clientes?.nome}
                         <div className="md:hidden text-xs text-muted-foreground mt-1">
                           Parcela {parcela.numero_parcela} • {formatDate(parcela.data_vencimento)}
                         </div>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">{parcela.numero_parcela}</TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell text-sm">{parcela.numero_parcela}</TableCell>
+                      <TableCell className="text-sm">
                         <div className="flex flex-col">
                           <span>R$ {Number(parcela.valor_original || parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                           {parcela.valor_pago && parcela.valor_pago > 0 && (
@@ -601,8 +601,8 @@ export default function Parcelas() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">{formatDate(parcela.data_vencimento)}</TableCell>
-                      <TableCell className="hidden lg:table-cell">
+                      <TableCell className="hidden md:table-cell text-sm">{formatDate(parcela.data_vencimento)}</TableCell>
+                      <TableCell className="hidden lg:table-cell text-sm">
                         {parcela.data_pagamento 
                           ? formatDate(parcela.data_pagamento)
                           : "-"
@@ -611,15 +611,15 @@ export default function Parcelas() {
                       <TableCell>
                         {getStatusBadge(parcela)}
                       </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex gap-2 justify-end">
+                      <TableCell className="text-right pr-4 md:pr-3">
+                        <div className="flex gap-1 justify-end">
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => loadHistorico(parcela)}
                             title="Ver histórico de pagamentos"
                           >
-                            <FileText className="h-4 w-4" />
+                            <FileText className="h-3 w-3 md:h-4 md:w-4" />
                           </Button>
                           {parcela.status !== "pago" ? (
                             <Button
@@ -629,7 +629,7 @@ export default function Parcelas() {
                               className="text-success hover:bg-success hover:text-success-foreground"
                               title="Baixar parcela"
                             >
-                              <Check className="h-4 w-4" />
+                              <Check className="h-3 w-3 md:h-4 md:w-4" />
                             </Button>
                           ) : (
                             <Button
@@ -639,7 +639,7 @@ export default function Parcelas() {
                               className="text-warning hover:bg-warning hover:text-warning-foreground"
                               title="Desfazer pagamento"
                             >
-                              <Undo2 className="h-4 w-4" />
+                              <Undo2 className="h-3 w-3 md:h-4 md:w-4" />
                             </Button>
                           )}
                           <Button
@@ -652,7 +652,7 @@ export default function Parcelas() {
                             className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
                             title="Excluir parcela"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3 w-3 md:h-4 md:w-4" />
                           </Button>
                         </div>
                       </TableCell>
@@ -667,7 +667,7 @@ export default function Parcelas() {
 
       {/* Dialog de Confirmação de Pagamento */}
       <Dialog open={isPagamentoDialogOpen} onOpenChange={setIsPagamentoDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>Confirmar Pagamento</DialogTitle>
             <DialogDescription>
