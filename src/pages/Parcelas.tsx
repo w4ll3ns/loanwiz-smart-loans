@@ -1006,6 +1006,9 @@ export default function Parcelas() {
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Histórico da Parcela</DialogTitle>
+            <DialogDescription>
+              Visualize todos os eventos relacionados a esta parcela, incluindo pagamentos e alterações de data.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             {historico.length === 0 ? (
