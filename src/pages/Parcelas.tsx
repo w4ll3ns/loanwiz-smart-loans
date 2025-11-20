@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -42,12 +43,16 @@ interface Parcela {
   };
 }
 
-interface HistoricoPagamento {
+interface HistoricoParcela {
   id: string;
-  valor_pago: number;
-  tipo_pagamento: string;
   data_pagamento: string;
-  observacao?: string;
+  valor_pago: number | null;
+  tipo_pagamento: string | null;
+  observacao: string | null;
+  created_at: string;
+  tipo_evento: string;
+  data_vencimento_anterior: string | null;
+  data_vencimento_nova: string | null;
 }
 
 export default function Parcelas() {
@@ -65,7 +70,7 @@ export default function Parcelas() {
   const [parcelaToPay, setParcelaToPay] = useState<Parcela | null>(null);
   const [parcelaHistorico, setParcelaHistorico] = useState<Parcela | null>(null);
   const [parcelaToEditData, setParcelaToEditData] = useState<Parcela | null>(null);
-  const [historicoPagamentos, setHistoricoPagamentos] = useState<HistoricoPagamento[]>([]);
+  const [historico, setHistorico] = useState<HistoricoParcela[]>([]);
   const [tipoPagamento, setTipoPagamento] = useState<string>("total");
   const [valorPagamento, setValorPagamento] = useState<string>("");
   const [observacaoPagamento, setObservacaoPagamento] = useState<string>("");
@@ -202,14 +207,15 @@ export default function Parcelas() {
 
       // Registrar pagamento no histórico
       const { error: historicoError } = await supabase
-        .from("parcelas_pagamentos")
-        .insert({
+        .from("parcelas_historico")
+        .insert([{
           parcela_id: parcelaToPay.id,
           valor_pago: valorPagar,
           tipo_pagamento: tipoPag,
           data_pagamento: new Date().toISOString(),
           observacao: observacaoPagamento.trim() || null,
-        });
+          tipo_evento: "pagamento",
+        }]);
 
       if (historicoError) throw historicoError;
 
@@ -264,11 +270,12 @@ export default function Parcelas() {
 
   const handleMarcarPendente = async (parcelaId: string) => {
     try {
-      // Deletar histórico de pagamentos
+      // Deletar histórico de pagamentos (manter apenas alterações de data)
       const { error: deleteHistoricoError } = await supabase
-        .from("parcelas_pagamentos")
+        .from("parcelas_historico")
         .delete()
-        .eq("parcela_id", parcelaId);
+        .eq("parcela_id", parcelaId)
+        .eq("tipo_evento", "pagamento");
 
       if (deleteHistoricoError) throw deleteHistoricoError;
 
@@ -286,7 +293,7 @@ export default function Parcelas() {
 
       toast({
         title: "Pagamentos desfeitos",
-        description: "A parcela foi resetada e o histórico foi limpo.",
+        description: "A parcela foi resetada e o histórico de pagamentos foi limpo.",
       });
 
       loadParcelas();
@@ -302,14 +309,14 @@ export default function Parcelas() {
   const loadHistorico = async (parcela: Parcela) => {
     try {
       const { data, error } = await supabase
-        .from("parcelas_pagamentos")
+        .from("parcelas_historico")
         .select("*")
         .eq("parcela_id", parcela.id)
         .order("data_pagamento", { ascending: false });
 
       if (error) throw error;
 
-      setHistoricoPagamentos(data || []);
+      setHistorico(data || []);
       setParcelaHistorico(parcela);
       setIsHistoricoDialogOpen(true);
     } catch (error: any) {
@@ -321,49 +328,62 @@ export default function Parcelas() {
     }
   };
 
-  const handleExcluirPagamento = async (pagamentoId: string) => {
+  const handleExcluirPagamento = async (registroId: string) => {
     if (!parcelaHistorico) return;
 
     try {
-      // Deletar o pagamento específico
-      const { error: deleteError } = await supabase
-        .from("parcelas_pagamentos")
-        .delete()
-        .eq("id", pagamentoId);
-
-      if (deleteError) throw deleteError;
-
-      // Buscar pagamentos restantes
-      const { data: pagamentosRestantes, error: fetchError } = await supabase
-        .from("parcelas_pagamentos")
-        .select("valor_pago")
-        .eq("parcela_id", parcelaHistorico.id);
+      // Buscar o registro para saber o tipo
+      const { data: registroData, error: fetchError } = await supabase
+        .from("parcelas_historico")
+        .select("tipo_evento")
+        .eq("id", registroId)
+        .single();
 
       if (fetchError) throw fetchError;
 
-      // Calcular novo total pago
-      const novoValorPago = pagamentosRestantes?.reduce(
-        (sum, p) => sum + Number(p.valor_pago), 
-        0
-      ) || 0;
+      // Deletar o registro específico
+      const { error: deleteError } = await supabase
+        .from("parcelas_historico")
+        .delete()
+        .eq("id", registroId);
 
-      const valorOriginal = Number(parcelaHistorico.valor_original || parcelaHistorico.valor);
+      if (deleteError) throw deleteError;
 
-      // Atualizar parcela
-      const { error: updateError } = await supabase
-        .from("parcelas")
-        .update({
-          valor_pago: novoValorPago,
-          status: novoValorPago >= valorOriginal ? "pago" : "pendente",
-          data_pagamento: novoValorPago >= valorOriginal ? new Date().toISOString().split('T')[0] : null,
-        })
-        .eq("id", parcelaHistorico.id);
+      // Se for um pagamento, recalcular valores
+      if (registroData.tipo_evento === "pagamento") {
+        // Buscar pagamentos restantes
+        const { data: pagamentosRestantes, error: fetchPagamentosError } = await supabase
+          .from("parcelas_historico")
+          .select("valor_pago")
+          .eq("parcela_id", parcelaHistorico.id)
+          .eq("tipo_evento", "pagamento");
 
-      if (updateError) throw updateError;
+        if (fetchPagamentosError) throw fetchPagamentosError;
+
+        // Calcular novo total pago
+        const novoValorPago = pagamentosRestantes?.reduce(
+          (sum, p) => sum + Number(p.valor_pago || 0), 
+          0
+        ) || 0;
+
+        const valorOriginal = Number(parcelaHistorico.valor_original || parcelaHistorico.valor);
+
+        // Atualizar parcela
+        const { error: updateError } = await supabase
+          .from("parcelas")
+          .update({
+            valor_pago: novoValorPago,
+            status: novoValorPago >= valorOriginal ? "pago" : "pendente",
+            data_pagamento: novoValorPago >= valorOriginal ? new Date().toISOString().split('T')[0] : null,
+          })
+          .eq("id", parcelaHistorico.id);
+
+        if (updateError) throw updateError;
+      }
 
       toast({
-        title: "Pagamento excluído",
-        description: "O pagamento foi removido e a parcela foi recalculada.",
+        title: "Registro excluído",
+        description: "O registro foi removido do histórico.",
       });
 
       // Recarregar histórico e parcelas
@@ -371,7 +391,7 @@ export default function Parcelas() {
       loadParcelas();
     } catch (error: any) {
       toast({
-        title: "Erro ao excluir pagamento",
+        title: "Erro ao excluir registro",
         description: error.message,
         variant: "destructive",
       });
@@ -452,6 +472,22 @@ export default function Parcelas() {
 
       if (error) throw error;
 
+      // Registrar alteração no histórico
+      const { error: historicoError } = await supabase
+        .from("parcelas_historico")
+        .insert({
+          parcela_id: parcelaToEditData.id,
+          tipo_evento: "alteracao_data",
+          data_vencimento_anterior: parcelaToEditData.data_vencimento,
+          data_vencimento_nova: novaDataVencimento,
+          observacao: justificativaAlteracao.trim(),
+          data_pagamento: new Date().toISOString(),
+        });
+
+      if (historicoError) {
+        console.error("Erro ao registrar no histórico:", historicoError);
+      }
+
       toast({
         title: "Data de vencimento alterada",
         description: `Nova data: ${format(new Date(novaDataVencimento + 'T00:00:00'), 'dd/MM/yyyy')}`,
@@ -498,6 +534,7 @@ export default function Parcelas() {
 
   return (
     <div className="space-y-4 md:space-y-6 w-full max-w-full overflow-hidden">
+      {/* Header */}
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <h1 className="text-xl md:text-3xl font-bold truncate">Gestão de Parcelas</h1>
       </div>
@@ -809,7 +846,7 @@ export default function Parcelas() {
                             variant="outline"
                             size="sm"
                             onClick={() => loadHistorico(parcela)}
-                            title="Ver histórico de pagamentos"
+                            title="Ver histórico"
                           >
                             <FileText className="h-4 w-4" />
                           </Button>
@@ -867,11 +904,11 @@ export default function Parcelas() {
                 <>
                   Parcela {parcelaToPay.numero_parcela} - {parcelaToPay.contratos?.clientes?.nome}
                   <br />
-                  Valor original: R$ {Number(parcelaToPay.valor_original || parcelaToPay.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  Valor Original: R$ {Number(parcelaToPay.valor_original || parcelaToPay.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  <br />
                   {parcelaToPay.valor_pago && parcelaToPay.valor_pago > 0 && (
                     <>
-                      <br />
-                      Já pago: R$ {Number(parcelaToPay.valor_pago).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      Já Pago: R$ {Number(parcelaToPay.valor_pago).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       <br />
                       Restante: R$ {(Number(parcelaToPay.valor_original || parcelaToPay.valor) - Number(parcelaToPay.valor_pago)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </>
@@ -880,72 +917,67 @@ export default function Parcelas() {
               )}
             </DialogDescription>
           </DialogHeader>
+
           <div className="space-y-4">
             <RadioGroup value={tipoPagamento} onValueChange={setTipoPagamento}>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="total" id="total" />
-                <Label htmlFor="total" className="cursor-pointer">
-                  Pagar valor restante (R$ {parcelaToPay ? ((Number(parcelaToPay.valor_original || parcelaToPay.valor) - (Number(parcelaToPay.valor_pago) || 0))).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'})
+                <Label htmlFor="total" className="cursor-pointer flex-1">
+                  Pagar Valor Restante
+                  {parcelaToPay && (
+                    <span className="block text-sm text-muted-foreground">
+                      R$ {(Number(parcelaToPay.valor_original || parcelaToPay.valor) - (Number(parcelaToPay.valor_pago) || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </span>
+                  )}
                 </Label>
               </div>
+
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="juros" id="juros" />
-                <Label htmlFor="juros" className="cursor-pointer">
-                  Pagar somente juros (R$ {parcelaToPay ? calcularJuros(parcelaToPay).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'})
+                <Label htmlFor="juros" className="cursor-pointer flex-1">
+                  Pagar Apenas Juros
+                  {parcelaToPay && (
+                    <span className="block text-sm text-muted-foreground">
+                      R$ {calcularJuros(parcelaToPay).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} ({parcelaToPay.contratos?.percentual}%)
+                    </span>
+                  )}
                 </Label>
               </div>
+
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="personalizado" id="personalizado" />
-                <Label htmlFor="personalizado" className="cursor-pointer">
-                  Valor personalizado
-                </Label>
+                <Label htmlFor="personalizado" className="cursor-pointer">Valor Personalizado</Label>
               </div>
             </RadioGroup>
 
             {tipoPagamento === "personalizado" && (
               <div className="space-y-2">
-                <Label htmlFor="valorPagamento">Valor do Pagamento</Label>
+                <Label htmlFor="valor-personalizado">Valor</Label>
                 <Input
-                  id="valorPagamento"
+                  id="valor-personalizado"
                   type="number"
                   step="0.01"
-                  min="0"
-                  max={parcelaToPay ? (Number(parcelaToPay.valor_original || parcelaToPay.valor) - (Number(parcelaToPay.valor_pago) || 0)) : 0}
                   value={valorPagamento}
                   onChange={(e) => setValorPagamento(e.target.value)}
-                  placeholder="0.00"
+                  placeholder="Digite o valor"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Valor máximo: R$ {parcelaToPay ? ((Number(parcelaToPay.valor_original || parcelaToPay.valor) - (Number(parcelaToPay.valor_pago) || 0))).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}
-                </p>
               </div>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="observacaoPagamento">Observação (opcional)</Label>
+              <Label htmlFor="observacao">Observação (opcional)</Label>
               <Textarea
-                id="observacaoPagamento"
+                id="observacao"
                 value={observacaoPagamento}
                 onChange={(e) => setObservacaoPagamento(e.target.value)}
-                placeholder="Motivo do pagamento parcial, renegociação, etc."
+                placeholder="Digite uma observação sobre este pagamento..."
                 rows={3}
-                maxLength={500}
               />
-              <p className="text-xs text-muted-foreground">
-                {observacaoPagamento.length}/500 caracteres
-              </p>
             </div>
           </div>
-          <DialogFooter className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsPagamentoDialogOpen(false);
-                setParcelaToPay(null);
-                setTipoPagamento("total");
-                setValorPagamento("");
-              }}
-            >
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setIsPagamentoDialogOpen(false)}>
               Cancelar
             </Button>
             <Button onClick={handleConfirmarPagamento}>
@@ -955,94 +987,77 @@ export default function Parcelas() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog de Histórico de Pagamentos */}
+      {/* Dialog de Histórico */}
       <Dialog open={isHistoricoDialogOpen} onOpenChange={setIsHistoricoDialogOpen}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Histórico de Pagamentos</DialogTitle>
-            <DialogDescription>
-              {parcelaHistorico && (
-                <>
-                  Parcela {parcelaHistorico.numero_parcela} - {parcelaHistorico.contratos?.clientes?.nome}
-                  <br />
-                  Valor original: R$ {Number(parcelaHistorico.valor_original || parcelaHistorico.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  <br />
-                  Total pago: R$ {Number(parcelaHistorico.valor_pago || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  <br />
-                  Saldo devedor: R$ {Number(parcelaHistorico.valor_original || parcelaHistorico.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  {parcelaHistorico.valor_pago && parcelaHistorico.valor_pago > 0 && parcelaHistorico.status !== 'pago' && (
-                    <>
-                      <br />
-                      <span className="text-xs text-muted-foreground">
-                        (Acordo quebrado - saldo permanece integral)
-                      </span>
-                    </>
-                  )}
-                </>
-              )}
-            </DialogDescription>
+            <DialogTitle>Histórico da Parcela</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            {historicoPagamentos.length === 0 ? (
-              <p className="text-center text-muted-foreground py-4">
-                Nenhum pagamento registrado ainda
+            {historico.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">
+                Nenhum registro no histórico desta parcela.
               </p>
             ) : (
-              <div className="space-y-2">
-                {historicoPagamentos.map((pagamento) => (
-                  <Card key={pagamento.id}>
-                    <CardContent className="pt-4">
-                      <div className="flex justify-between items-start gap-4">
-                        <div className="flex-1">
-                          <p className="font-medium">
-                            R$ {Number(pagamento.valor_pago).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {format(new Date(pagamento.data_pagamento), 'dd/MM/yyyy')} às{' '}
-                            {format(new Date(pagamento.data_pagamento), 'HH:mm')}
-                          </p>
-                          {pagamento.observacao && (
-                            <p className="text-sm text-muted-foreground mt-1">{pagamento.observacao}</p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant={
-                            pagamento.tipo_pagamento === 'total' ? 'default' :
-                            pagamento.tipo_pagamento === 'juros' ? 'secondary' :
-                            'outline'
-                          }>
-                            {pagamento.tipo_pagamento === 'total' ? 'Pagamento Total' :
-                             pagamento.tipo_pagamento === 'juros' ? 'Somente Juros' :
-                             'Pagamento Parcial'}
-                          </Badge>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                            onClick={() => handleExcluirPagamento(pagamento.id)}
-                            title="Excluir este pagamento"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Detalhes</TableHead>
+                    <TableHead>Observação</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {historico.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell>
+                        {format(new Date(item.data_pagamento), "dd/MM/yyyy HH:mm", {
+                          locale: ptBR,
+                        })}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={item.tipo_evento === "pagamento" ? "default" : "secondary"}>
+                          {item.tipo_evento === "pagamento" && "Pagamento"}
+                          {item.tipo_evento === "alteracao_data" && "Alteração de Data"}
+                          {item.tipo_evento === "estorno" && "Estorno"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {item.tipo_evento === "pagamento" && item.valor_pago && (
+                          <span>
+                            R$ {item.valor_pago.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} - {item.tipo_pagamento}
+                          </span>
+                        )}
+                        {item.tipo_evento === "alteracao_data" && item.data_vencimento_anterior && item.data_vencimento_nova && (
+                          <span>
+                            {format(new Date(item.data_vencimento_anterior + 'T00:00:00'), "dd/MM/yyyy")} → {format(new Date(item.data_vencimento_nova + 'T00:00:00'), "dd/MM/yyyy")}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="max-w-xs truncate">{item.observacao || "-"}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleExcluirPagamento(item.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsHistoricoDialogOpen(false)}>
-              Fechar
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Dialog de Editar Data de Vencimento */}
+      {/* Dialog de Edição de Data */}
       <Dialog open={isEditarDataDialogOpen} onOpenChange={setIsEditarDataDialogOpen}>
-        <DialogContent className="w-[95vw] sm:max-w-md p-4 sm:p-6">
+        <DialogContent className="w-[95vw] sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Editar Data de Vencimento</DialogTitle>
             <DialogDescription>
@@ -1050,73 +1065,58 @@ export default function Parcelas() {
                 <>
                   Parcela {parcelaToEditData.numero_parcela} - {parcelaToEditData.contratos?.clientes?.nome}
                   <br />
-                  Data atual: {formatDate(parcelaToEditData.data_vencimento)}
+                  Data Atual: {formatDate(parcelaToEditData.data_vencimento)}
                 </>
               )}
             </DialogDescription>
           </DialogHeader>
+
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="novaData">Nova Data de Vencimento</Label>
+              <Label htmlFor="nova-data">Nova Data de Vencimento</Label>
               <Input
-                id="novaData"
+                id="nova-data"
                 type="date"
                 value={novaDataVencimento}
                 onChange={(e) => setNovaDataVencimento(e.target.value)}
-                required
               />
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="justificativa">Justificativa da Alteração *</Label>
+              <Label htmlFor="justificativa">Justificativa *</Label>
               <Textarea
                 id="justificativa"
-                placeholder="Informe o motivo da alteração da data de vencimento..."
                 value={justificativaAlteracao}
                 onChange={(e) => setJustificativaAlteracao(e.target.value)}
-                rows={4}
-                required
+                placeholder="Informe o motivo da alteração da data de vencimento..."
+                rows={3}
               />
-              <p className="text-xs text-muted-foreground">
-                A justificativa é obrigatória para registrar o histórico da alteração.
-              </p>
             </div>
           </div>
-          <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsEditarDataDialogOpen(false);
-                setParcelaToEditData(null);
-                setNovaDataVencimento("");
-                setJustificativaAlteracao("");
-              }}
-              className="w-full sm:w-auto"
-            >
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setIsEditarDataDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button 
-              onClick={handleEditarDataVencimento}
-              className="w-full sm:w-auto"
-              disabled={!novaDataVencimento || !justificativaAlteracao.trim()}
-            >
+            <Button onClick={handleEditarDataVencimento}>
               Confirmar Alteração
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-
+      {/* Dialog de Confirmação de Exclusão */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
             <AlertDialogDescription>
               Tem certeza que deseja excluir esta parcela? Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
               Excluir
             </AlertDialogAction>
           </AlertDialogFooter>
