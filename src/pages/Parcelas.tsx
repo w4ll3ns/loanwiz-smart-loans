@@ -439,39 +439,39 @@ export default function Parcelas() {
           <CardTitle className="text-sm font-medium">Filtrar Período</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 pb-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <div className="w-full">
-              <Label htmlFor="data-inicio" className="text-xs mb-1">Data Inicial</Label>
+          <div className="flex flex-wrap gap-2 items-end">
+            <div className="flex-shrink-0">
+              <Label htmlFor="data-inicio" className="text-xs mb-1 block">Data Inicial</Label>
               <Input
                 id="data-inicio"
                 type="date"
                 value={dataInicioDashboard}
                 onChange={(e) => setDataInicioDashboard(e.target.value)}
-                className="w-full h-8 text-xs"
+                className="w-[140px] h-8 text-xs"
               />
             </div>
-            <div className="w-full">
-              <Label htmlFor="data-fim" className="text-xs mb-1">Data Final</Label>
+            <div className="flex-shrink-0">
+              <Label htmlFor="data-fim" className="text-xs mb-1 block">Data Final</Label>
               <Input
                 id="data-fim"
                 type="date"
                 value={dataFimDashboard}
                 onChange={(e) => setDataFimDashboard(e.target.value)}
-                className="w-full h-8 text-xs"
+                className="w-[140px] h-8 text-xs"
               />
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setDataInicioDashboard("");
+                setDataFimDashboard("");
+              }}
+              className="h-8 text-xs px-3"
+            >
+              Limpar
+            </Button>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setDataInicioDashboard("");
-              setDataFimDashboard("");
-            }}
-            className="w-full sm:w-auto h-8 text-xs"
-          >
-            Limpar Filtros
-          </Button>
         </CardContent>
       </Card>
 
