@@ -56,6 +56,8 @@ export type Database = {
           numero_parcelas: number
           percentual: number
           periodicidade: string
+          permite_cobranca_domingo: boolean | null
+          permite_cobranca_sabado: boolean | null
           status: string
           tipo_juros: string
           updated_at: string
@@ -70,6 +72,8 @@ export type Database = {
           numero_parcelas: number
           percentual: number
           periodicidade: string
+          permite_cobranca_domingo?: boolean | null
+          permite_cobranca_sabado?: boolean | null
           status?: string
           tipo_juros?: string
           updated_at?: string
@@ -84,6 +88,8 @@ export type Database = {
           numero_parcelas?: number
           percentual?: number
           periodicidade?: string
+          permite_cobranca_domingo?: boolean | null
+          permite_cobranca_sabado?: boolean | null
           status?: string
           tipo_juros?: string
           updated_at?: string
@@ -193,13 +199,43 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      gerar_parcelas: {
+      ajustar_data_parcela: {
+        Args: {
+          p_data: string
+          p_permite_domingo: boolean
+          p_permite_sabado: boolean
+        }
+        Returns: string
+      }
+      gerar_parcelas:
+        | {
+            Args: {
+              p_contrato_id: string
+              p_data_inicio: string
+              p_numero_parcelas: number
+              p_periodicidade: string
+              p_permite_domingo?: boolean
+              p_permite_sabado?: boolean
+              p_valor_parcela: number
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_contrato_id: string
+              p_data_inicio: string
+              p_numero_parcelas: number
+              p_periodicidade: string
+              p_valor_parcela: number
+            }
+            Returns: undefined
+          }
+      recalcular_parcelas_futuras: {
         Args: {
           p_contrato_id: string
-          p_data_inicio: string
-          p_numero_parcelas: number
-          p_periodicidade: string
-          p_valor_parcela: number
+          p_intervalo: unknown
+          p_permite_domingo: boolean
+          p_permite_sabado: boolean
         }
         Returns: undefined
       }
