@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -42,6 +43,8 @@ interface Contrato {
   data_emprestimo: string;
   valor_total: number;
   status: string;
+  permite_cobranca_sabado?: boolean;
+  permite_cobranca_domingo?: boolean;
 }
 
 interface Cliente {
@@ -90,7 +93,9 @@ export default function Contratos() {
     periodicidade: "" as "diario" | "semanal" | "quinzenal" | "mensal" | "",
     numeroParcelas: "",
     dataEmprestimo: "",
-    tipoJuros: "simples" as "simples" | "parcela" | "composto"
+    tipoJuros: "simples" as "simples" | "parcela" | "composto",
+    permiteCobrancaSabado: true,
+    permiteCobrancaDomingo: false
   });
 
   useEffect(() => {
@@ -754,7 +759,9 @@ export default function Contratos() {
           data_emprestimo: formData.dataEmprestimo,
           valor_total: calculo.valorTotal,
           status: "ativo",
-          tipo_juros: formData.tipoJuros
+          tipo_juros: formData.tipoJuros,
+          permite_cobranca_sabado: formData.permiteCobrancaSabado,
+          permite_cobranca_domingo: formData.permiteCobrancaDomingo
         }])
         .select()
         .single();
@@ -767,7 +774,9 @@ export default function Contratos() {
         p_numero_parcelas: parseInt(formData.numeroParcelas),
         p_valor_parcela: calculo.valorParcela,
         p_data_inicio: formData.dataEmprestimo,
-        p_periodicidade: formData.periodicidade
+        p_periodicidade: formData.periodicidade,
+        p_permite_sabado: formData.permiteCobrancaSabado,
+        p_permite_domingo: formData.permiteCobrancaDomingo
       });
 
       if (parcelasError) throw parcelasError;
@@ -779,7 +788,9 @@ export default function Contratos() {
         periodicidade: "",
         numeroParcelas: "",
         dataEmprestimo: "",
-        tipoJuros: "simples"
+        tipoJuros: "simples",
+        permiteCobrancaSabado: true,
+        permiteCobrancaDomingo: false
       });
       
       setIsDialogOpen(false);
@@ -916,6 +927,46 @@ export default function Contratos() {
                     <SelectItem value="mensal">Mensal</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="col-span-1 md:col-span-2 space-y-3">
+                <Label className="text-sm font-medium">Dias permitidos para cobrança</Label>
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="sabado"
+                      checked={formData.permiteCobrancaSabado}
+                      onCheckedChange={(checked) => 
+                        setFormData({ ...formData, permiteCobrancaSabado: checked as boolean })
+                      }
+                    />
+                    <label 
+                      htmlFor="sabado" 
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      Permitir cobrança aos sábados
+                    </label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="domingo"
+                      checked={formData.permiteCobrancaDomingo}
+                      onCheckedChange={(checked) => 
+                        setFormData({ ...formData, permiteCobrancaDomingo: checked as boolean })
+                      }
+                    />
+                    <label 
+                      htmlFor="domingo" 
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      Permitir cobrança aos domingos
+                    </label>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Se um dia não for permitido, a parcela será automaticamente movida para o próximo dia útil permitido.
+                </p>
               </div>
 
               {calcularContrato() && (
