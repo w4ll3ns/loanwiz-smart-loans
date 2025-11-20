@@ -112,7 +112,9 @@ export type Database = {
           created_at: string
           data_pagamento: string | null
           data_vencimento: string
+          data_vencimento_original: string | null
           id: string
+          justificativa_alteracao_data: string | null
           numero_parcela: number
           status: string
           updated_at: string
@@ -125,7 +127,9 @@ export type Database = {
           created_at?: string
           data_pagamento?: string | null
           data_vencimento: string
+          data_vencimento_original?: string | null
           id?: string
+          justificativa_alteracao_data?: string | null
           numero_parcela: number
           status?: string
           updated_at?: string
@@ -138,7 +142,9 @@ export type Database = {
           created_at?: string
           data_pagamento?: string | null
           data_vencimento?: string
+          data_vencimento_original?: string | null
           id?: string
+          justificativa_alteracao_data?: string | null
           numero_parcela?: number
           status?: string
           updated_at?: string

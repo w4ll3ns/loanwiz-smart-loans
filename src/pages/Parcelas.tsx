@@ -61,12 +61,16 @@ export default function Parcelas() {
   const [parcelaToDelete, setParcelaToDelete] = useState<string | null>(null);
   const [isPagamentoDialogOpen, setIsPagamentoDialogOpen] = useState(false);
   const [isHistoricoDialogOpen, setIsHistoricoDialogOpen] = useState(false);
+  const [isEditarDataDialogOpen, setIsEditarDataDialogOpen] = useState(false);
   const [parcelaToPay, setParcelaToPay] = useState<Parcela | null>(null);
   const [parcelaHistorico, setParcelaHistorico] = useState<Parcela | null>(null);
+  const [parcelaToEditData, setParcelaToEditData] = useState<Parcela | null>(null);
   const [historicoPagamentos, setHistoricoPagamentos] = useState<HistoricoPagamento[]>([]);
   const [tipoPagamento, setTipoPagamento] = useState<string>("total");
   const [valorPagamento, setValorPagamento] = useState<string>("");
   const [observacaoPagamento, setObservacaoPagamento] = useState<string>("");
+  const [novaDataVencimento, setNovaDataVencimento] = useState<string>("");
+  const [justificativaAlteracao, setJustificativaAlteracao] = useState<string>("");
   const { toast } = useToast();
 
   // Função para formatar data corretamente (evita problema de timezone)
@@ -402,6 +406,71 @@ export default function Parcelas() {
     }
   };
 
+  const abrirModalEditarData = (parcela: Parcela) => {
+    setParcelaToEditData(parcela);
+    setNovaDataVencimento(parcela.data_vencimento);
+    setJustificativaAlteracao("");
+    setIsEditarDataDialogOpen(true);
+  };
+
+  const handleEditarDataVencimento = async () => {
+    if (!parcelaToEditData) return;
+
+    if (!justificativaAlteracao.trim()) {
+      toast({
+        title: "Justificativa obrigatória",
+        description: "Você deve informar o motivo da alteração da data de vencimento.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (novaDataVencimento === parcelaToEditData.data_vencimento) {
+      toast({
+        title: "Data não alterada",
+        description: "A nova data deve ser diferente da data atual.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const updateData: any = {
+        data_vencimento: novaDataVencimento,
+        justificativa_alteracao_data: justificativaAlteracao.trim(),
+      };
+
+      // Se ainda não tem data_vencimento_original, salvar a data atual como original
+      if (!parcelaToEditData.data_vencimento) {
+        updateData.data_vencimento_original = parcelaToEditData.data_vencimento;
+      }
+
+      const { error } = await supabase
+        .from("parcelas")
+        .update(updateData)
+        .eq("id", parcelaToEditData.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Data de vencimento alterada",
+        description: `Nova data: ${format(new Date(novaDataVencimento + 'T00:00:00'), 'dd/MM/yyyy')}`,
+      });
+
+      setIsEditarDataDialogOpen(false);
+      setParcelaToEditData(null);
+      setNovaDataVencimento("");
+      setJustificativaAlteracao("");
+      loadParcelas();
+    } catch (error: any) {
+      toast({
+        title: "Erro ao alterar data",
+        description: "Não foi possível alterar a data de vencimento.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getStatusBadge = (parcela: Parcela) => {
     if (parcela.status === "pago") {
       return <Badge variant="default" className="bg-success">Pago</Badge>;
@@ -621,12 +690,23 @@ export default function Parcelas() {
                         <Button
                           variant="outline"
                           size="sm"
+                          onClick={() => abrirModalEditarData(parcela)}
+                          className="flex-1 h-7 text-[10px] px-2"
+                        >
+                          <Calendar className="h-3 w-3 mr-1" />
+                          Editar Data
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => loadHistorico(parcela)}
                           className="flex-1 h-7 text-[10px] px-2"
                         >
                           <FileText className="h-3 w-3 mr-1" />
                           Histórico
                         </Button>
+                      </div>
+                      <div className="flex gap-1.5">
                         {parcela.status !== "pago" ? (
                           <Button
                             size="sm"
@@ -647,19 +727,19 @@ export default function Parcelas() {
                             Desfazer
                           </Button>
                         )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setParcelaToDelete(parcela.id);
+                            setIsDeleteDialogOpen(true);
+                          }}
+                          className="flex-1 text-destructive hover:bg-destructive hover:text-destructive-foreground h-7 text-[10px] px-2"
+                        >
+                          <Trash2 className="h-3 w-3 mr-1" />
+                          Excluir
+                        </Button>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setParcelaToDelete(parcela.id);
-                          setIsDeleteDialogOpen(true);
-                        }}
-                        className="w-full text-destructive hover:bg-destructive hover:text-destructive-foreground h-7 text-[10px] px-2"
-                      >
-                        <Trash2 className="h-3 w-3 mr-1" />
-                        Excluir Parcela
-                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -717,6 +797,14 @@ export default function Parcelas() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex gap-1 justify-end">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => abrirModalEditarData(parcela)}
+                            title="Editar data de vencimento"
+                          >
+                            <Calendar className="h-4 w-4" />
+                          </Button>
                           <Button
                             variant="outline"
                             size="sm"
@@ -952,7 +1040,72 @@ export default function Parcelas() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog de Confirmação de Exclusão */}
+      {/* Dialog de Editar Data de Vencimento */}
+      <Dialog open={isEditarDataDialogOpen} onOpenChange={setIsEditarDataDialogOpen}>
+        <DialogContent className="w-[95vw] sm:max-w-md p-4 sm:p-6">
+          <DialogHeader>
+            <DialogTitle>Editar Data de Vencimento</DialogTitle>
+            <DialogDescription>
+              {parcelaToEditData && (
+                <>
+                  Parcela {parcelaToEditData.numero_parcela} - {parcelaToEditData.contratos?.clientes?.nome}
+                  <br />
+                  Data atual: {formatDate(parcelaToEditData.data_vencimento)}
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="novaData">Nova Data de Vencimento</Label>
+              <Input
+                id="novaData"
+                type="date"
+                value={novaDataVencimento}
+                onChange={(e) => setNovaDataVencimento(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="justificativa">Justificativa da Alteração *</Label>
+              <Textarea
+                id="justificativa"
+                placeholder="Informe o motivo da alteração da data de vencimento..."
+                value={justificativaAlteracao}
+                onChange={(e) => setJustificativaAlteracao(e.target.value)}
+                rows={4}
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                A justificativa é obrigatória para registrar o histórico da alteração.
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsEditarDataDialogOpen(false);
+                setParcelaToEditData(null);
+                setNovaDataVencimento("");
+                setJustificativaAlteracao("");
+              }}
+              className="w-full sm:w-auto"
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleEditarDataVencimento}
+              className="w-full sm:w-auto"
+              disabled={!novaDataVencimento || !justificativaAlteracao.trim()}
+            >
+              Confirmar Alteração
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
