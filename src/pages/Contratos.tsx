@@ -515,16 +515,24 @@ export default function Contratos() {
               </tr>
             </thead>
             <tbody>
-              ${parcelas.map((parcela, index) => `
+              ${parcelas.map((parcela, index) => {
+                const hoje = new Date();
+                hoje.setHours(0, 0, 0, 0);
+                const vencimento = new Date(parcela.data_vencimento + 'T00:00:00');
+                const estaAtrasada = parcela.status !== 'pago' && vencimento < hoje;
+                const statusTexto = parcela.status === 'pago' ? 'Pago' : (estaAtrasada ? 'Atrasado' : 'Pendente');
+                const corStatus = parcela.status === 'pago' ? '#22c55e' : (estaAtrasada ? '#ef4444' : '#94a3b8');
+                
+                return `
                 <tr style="background: ${index % 2 === 0 ? '#f9f9f9' : '#ffffff'}; border-bottom: 1px solid #ddd;">
                   <td style="padding: 8px;">${parcela.numero_parcela}</td>
                   <td style="padding: 8px;">${format(new Date(parcela.data_vencimento + 'T00:00:00'), 'dd/MM/yyyy')}</td>
                   <td style="padding: 8px;">R$ ${Number(parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                  <td style="padding: 8px;"><span style="display: inline-block; background: ${parcela.status === 'pago' ? '#22c55e' : '#ef4444'}; color: white; padding: 4px 12px; border-radius: 4px; font-size: 11px; text-align: center; min-width: 70px;">${parcela.status}</span></td>
+                  <td style="padding: 8px;"><span style="display: inline-block; background: ${corStatus}; color: white; padding: 4px 12px; border-radius: 4px; font-size: 11px; text-align: center; min-width: 70px;">${statusTexto}</span></td>
                   <td style="padding: 8px;">${parcela.data_pagamento ? format(new Date(parcela.data_pagamento + 'T00:00:00'), 'dd/MM/yyyy') : '-'}</td>
                   <td style="padding: 8px;">${parcela.valor_pago ? `R$ ${Number(parcela.valor_pago).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'}</td>
                 </tr>
-              `).join('')}
+              `}).join('')}
             </tbody>
           </table>
         </div>
@@ -698,12 +706,18 @@ export default function Contratos() {
             yPos = 20;
           }
 
+          const hoje = new Date();
+          hoje.setHours(0, 0, 0, 0);
+          const vencimento = new Date(parcela.data_vencimento + 'T00:00:00');
+          const estaAtrasada = vencimento < hoje;
+          const statusTexto = estaAtrasada ? 'Atrasado' : 'Pendente';
+
           xPos = margin;
           const dados = [
             parcela.numero_parcela.toString(),
             format(new Date(parcela.data_vencimento + 'T00:00:00'), 'dd/MM/yy'),
             `R$ ${Number(parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-            parcela.status,
+            statusTexto,
             '-',
             '-',
           ];
