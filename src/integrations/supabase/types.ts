@@ -172,7 +172,7 @@ export type Database = {
           observacao: string | null
           parcela_id: string
           tipo_evento: string
-          tipo_pagamento: string
+          tipo_pagamento: string | null
           valor_pago: number | null
         }
         Insert: {
@@ -184,7 +184,7 @@ export type Database = {
           observacao?: string | null
           parcela_id: string
           tipo_evento?: string
-          tipo_pagamento: string
+          tipo_pagamento?: string | null
           valor_pago?: number | null
         }
         Update: {
@@ -196,7 +196,7 @@ export type Database = {
           observacao?: string | null
           parcela_id?: string
           tipo_evento?: string
-          tipo_pagamento?: string
+          tipo_pagamento?: string | null
           valor_pago?: number | null
         }
         Relationships: [
