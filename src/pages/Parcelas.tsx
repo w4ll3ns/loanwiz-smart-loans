@@ -255,6 +255,33 @@ export default function Parcelas() {
           : `Valor pago: R$ ${valorPagar.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}. Restante: R$ ${valorRestante.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
       });
 
+      // Se a parcela foi marcada como paga, verificar se todas as parcelas do contrato estão pagas
+      if (novoStatus === "pago" && parcelaToPay.contrato_id) {
+        const { data: todasParcelas, error: parcelasError } = await supabase
+          .from("parcelas")
+          .select("status")
+          .eq("contrato_id", parcelaToPay.contrato_id);
+
+        if (!parcelasError && todasParcelas) {
+          const todasPagas = todasParcelas.every(p => p.status === "pago");
+          
+          if (todasPagas) {
+            // Atualizar status do contrato para quitado
+            const { error: contratoError } = await supabase
+              .from("contratos")
+              .update({ status: "quitado" })
+              .eq("id", parcelaToPay.contrato_id);
+
+            if (!contratoError) {
+              toast({
+                title: "Contrato quitado! 🎉",
+                description: "Todas as parcelas foram pagas. O contrato foi marcado como quitado.",
+              });
+            }
+          }
+        }
+      }
+
       setIsPagamentoDialogOpen(false);
       setParcelaToPay(null);
       setTipoPagamento("total");
