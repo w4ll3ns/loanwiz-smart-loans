@@ -270,6 +270,19 @@ export default function Contratos() {
   const handleContratoClick = async (contrato: Contrato) => {
     setSelectedContrato(contrato);
     await loadParcelas(contrato.id);
+    // Recarregar o contrato específico para pegar status atualizado
+    const { data: contratoAtualizado } = await supabase
+      .from("contratos")
+      .select(`
+        *,
+        clientes(nome)
+      `)
+      .eq("id", contrato.id)
+      .single();
+    
+    if (contratoAtualizado) {
+      setSelectedContrato(contratoAtualizado as Contrato);
+    }
     setIsContratoDetailsOpen(true);
   };
 
@@ -378,7 +391,23 @@ export default function Contratos() {
       
       if (selectedContrato) {
         await loadParcelas(selectedContrato.id);
+        // Recarregar contrato para pegar status atualizado
+        const { data: contratoAtualizado } = await supabase
+          .from("contratos")
+          .select(`
+            *,
+            clientes(nome)
+          `)
+          .eq("id", selectedContrato.id)
+          .single();
+        
+        if (contratoAtualizado) {
+          setSelectedContrato(contratoAtualizado as Contrato);
+        }
       }
+      
+      // Recarregar lista de contratos na página principal
+      await loadContratos();
     } catch (error: any) {
       toast({
         title: "Não foi possível processar o pagamento",
@@ -1138,7 +1167,7 @@ export default function Contratos() {
                     <p><strong>Valor Emprestado:</strong> R$ {Number(selectedContrato.valor_emprestado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                     <p><strong>Percentual:</strong> {Number(selectedContrato.percentual)}%</p>
                     <p><strong>Valor Total:</strong> R$ {Number(selectedContrato.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                    <p><strong>Status:</strong> <Badge variant={selectedContrato.status === 'ativo' ? 'default' : 'secondary'}>{selectedContrato.status}</Badge></p>
+                    <p><strong>Status:</strong> <Badge variant={selectedContrato.status === 'ativo' ? 'default' : selectedContrato.status === 'quitado' ? 'outline' : 'secondary'}>{selectedContrato.status === 'ativo' ? 'Ativo' : selectedContrato.status === 'quitado' ? 'Quitado' : selectedContrato.status}</Badge></p>
                   </div>
                 </CardContent>
               </Card>
@@ -1358,8 +1387,8 @@ export default function Contratos() {
                       <TableCell className="hidden md:table-cell text-sm capitalize">{contrato.periodicidade}</TableCell>
                       <TableCell className="pr-4 md:pr-3 text-sm">R$ {Number(contrato.valor_total).toLocaleString('pt-BR')}</TableCell>
                       <TableCell className="hidden md:table-cell">
-                        <Badge variant={contrato.status === "ativo" ? "default" : "secondary"} className="text-xs">
-                          {contrato.status === "ativo" ? "Ativo" : contrato.status}
+                        <Badge variant={contrato.status === "ativo" ? "default" : contrato.status === "quitado" ? "outline" : "secondary"} className="text-xs">
+                          {contrato.status === "ativo" ? "Ativo" : contrato.status === "quitado" ? "Quitado" : contrato.status}
                         </Badge>
                       </TableCell>
                     </TableRow>
