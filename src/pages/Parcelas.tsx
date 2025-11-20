@@ -473,6 +473,13 @@ export default function Parcelas() {
       if (error) throw error;
 
       // Registrar alteração no histórico
+      console.log("Registrando alteração de data no histórico...", {
+        parcela_id: parcelaToEditData.id,
+        tipo_evento: "alteracao_data",
+        data_vencimento_anterior: parcelaToEditData.data_vencimento,
+        data_vencimento_nova: novaDataVencimento,
+      });
+
       const { error: historicoError } = await supabase
         .from("parcelas_historico")
         .insert({
@@ -486,6 +493,13 @@ export default function Parcelas() {
 
       if (historicoError) {
         console.error("Erro ao registrar no histórico:", historicoError);
+        toast({
+          title: "Aviso",
+          description: "Data alterada, mas não foi possível registrar no histórico: " + historicoError.message,
+          variant: "destructive",
+        });
+      } else {
+        console.log("Alteração registrada no histórico com sucesso!");
       }
 
       toast({
