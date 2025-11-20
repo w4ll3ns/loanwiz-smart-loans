@@ -409,7 +409,7 @@ export default function Parcelas() {
     
     const diasAtraso = calcularDiasAtraso(parcela.data_vencimento);
     if (diasAtraso > 0) {
-      return <Badge variant="destructive">Vencido ({diasAtraso}d)</Badge>;
+      return <Badge variant="destructive">Atrasado ({diasAtraso}d)</Badge>;
     }
     
     return <Badge variant="secondary">Pendente</Badge>;
