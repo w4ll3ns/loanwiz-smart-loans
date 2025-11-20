@@ -435,29 +435,29 @@ export default function Parcelas() {
 
       {/* Filtro de Período do Dashboard */}
       <Card className="w-full">
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-2 pt-4">
           <CardTitle className="text-sm font-medium">Filtrar Período</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <CardContent className="space-y-2 pb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div className="w-full">
-              <Label htmlFor="data-inicio" className="text-xs">Data Inicial</Label>
+              <Label htmlFor="data-inicio" className="text-xs mb-1">Data Inicial</Label>
               <Input
                 id="data-inicio"
                 type="date"
                 value={dataInicioDashboard}
                 onChange={(e) => setDataInicioDashboard(e.target.value)}
-                className="mt-1 w-full"
+                className="w-full h-8 text-xs"
               />
             </div>
             <div className="w-full">
-              <Label htmlFor="data-fim" className="text-xs">Data Final</Label>
+              <Label htmlFor="data-fim" className="text-xs mb-1">Data Final</Label>
               <Input
                 id="data-fim"
                 type="date"
                 value={dataFimDashboard}
                 onChange={(e) => setDataFimDashboard(e.target.value)}
-                className="mt-1 w-full"
+                className="w-full h-8 text-xs"
               />
             </div>
           </div>
@@ -468,7 +468,7 @@ export default function Parcelas() {
               setDataInicioDashboard("");
               setDataFimDashboard("");
             }}
-            className="w-full sm:w-auto"
+            className="w-full sm:w-auto h-8 text-xs"
           >
             Limpar Filtros
           </Button>
