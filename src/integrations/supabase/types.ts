@@ -162,33 +162,42 @@ export type Database = {
           },
         ]
       }
-      parcelas_pagamentos: {
+      parcelas_historico: {
         Row: {
           created_at: string
           data_pagamento: string
+          data_vencimento_anterior: string | null
+          data_vencimento_nova: string | null
           id: string
           observacao: string | null
           parcela_id: string
+          tipo_evento: string
           tipo_pagamento: string
-          valor_pago: number
+          valor_pago: number | null
         }
         Insert: {
           created_at?: string
           data_pagamento?: string
+          data_vencimento_anterior?: string | null
+          data_vencimento_nova?: string | null
           id?: string
           observacao?: string | null
           parcela_id: string
+          tipo_evento?: string
           tipo_pagamento: string
-          valor_pago: number
+          valor_pago?: number | null
         }
         Update: {
           created_at?: string
           data_pagamento?: string
+          data_vencimento_anterior?: string | null
+          data_vencimento_nova?: string | null
           id?: string
           observacao?: string | null
           parcela_id?: string
+          tipo_evento?: string
           tipo_pagamento?: string
-          valor_pago?: number
+          valor_pago?: number | null
         }
         Relationships: [
           {
