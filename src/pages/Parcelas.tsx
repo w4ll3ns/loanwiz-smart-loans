@@ -435,38 +435,43 @@ export default function Parcelas() {
 
       {/* Filtro de Período do Dashboard */}
       <Card>
-        <CardContent className="pt-4 md:pt-6">
-          <div className="flex flex-col md:flex-row gap-4 items-end">
-            <div className="flex-1">
-              <Label htmlFor="data-inicio">Data Inicial</Label>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium">Filtrar Período</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="w-full">
+              <Label htmlFor="data-inicio" className="text-xs">Data Inicial</Label>
               <Input
                 id="data-inicio"
                 type="date"
                 value={dataInicioDashboard}
                 onChange={(e) => setDataInicioDashboard(e.target.value)}
-                className="mt-1"
+                className="mt-1 w-full"
               />
             </div>
-            <div className="flex-1">
-              <Label htmlFor="data-fim">Data Final</Label>
+            <div className="w-full">
+              <Label htmlFor="data-fim" className="text-xs">Data Final</Label>
               <Input
                 id="data-fim"
                 type="date"
                 value={dataFimDashboard}
                 onChange={(e) => setDataFimDashboard(e.target.value)}
-                className="mt-1"
+                className="mt-1 w-full"
               />
             </div>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setDataInicioDashboard("");
-                setDataFimDashboard("");
-              }}
-            >
-              Limpar
-            </Button>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setDataInicioDashboard("");
+              setDataFimDashboard("");
+            }}
+            className="w-full sm:w-auto"
+          >
+            Limpar Filtros
+          </Button>
         </CardContent>
       </Card>
 
