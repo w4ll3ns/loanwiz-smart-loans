@@ -1046,7 +1046,7 @@ export default function Parcelas() {
 
       {/* Dialog de Histórico */}
       <Dialog open={isHistoricoDialogOpen} onOpenChange={setIsHistoricoDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] sm:max-w-3xl max-h-[80vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>Histórico da Parcela</DialogTitle>
             <DialogDescription>
@@ -1055,10 +1055,10 @@ export default function Parcelas() {
           </DialogHeader>
           <div className="space-y-4">
             {/* Filtro por tipo de evento */}
-            <div className="flex items-center gap-2">
-              <Label htmlFor="filtro-tipo" className="whitespace-nowrap">Filtrar por:</Label>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <Label htmlFor="filtro-tipo" className="text-sm">Filtrar por:</Label>
               <Select value={filtroTipoEvento} onValueChange={setFiltroTipoEvento}>
-                <SelectTrigger id="filtro-tipo" className="w-[200px]">
+                <SelectTrigger id="filtro-tipo" className="w-full sm:w-[200px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1075,74 +1075,146 @@ export default function Parcelas() {
                 Nenhum registro {filtroTipoEvento !== "todos" ? `de ${filtroTipoEvento === "pagamento" ? "pagamentos" : filtroTipoEvento === "alteracao_data" ? "alterações de data" : "estornos"}` : ""} no histórico desta parcela.
               </p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Detalhes</TableHead>
-                    <TableHead>Observação</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              <>
+                {/* View Desktop - Tabela */}
+                <div className="hidden md:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Detalhes</TableHead>
+                        <TableHead>Observação</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {historico
+                        .filter(item => filtroTipoEvento === "todos" || item.tipo_evento === filtroTipoEvento)
+                        .map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell>
+                            {format(new Date(item.data_pagamento), "dd/MM/yyyy HH:mm", {
+                              locale: ptBR,
+                            })}
+                          </TableCell>
+                          <TableCell>
+                            <Badge 
+                              variant={
+                                item.tipo_evento === "pagamento" 
+                                  ? "default" 
+                                  : item.tipo_evento === "alteracao_data" 
+                                  ? "secondary" 
+                                  : "destructive"
+                              }
+                              className={
+                                item.tipo_evento === "pagamento"
+                                  ? "bg-success hover:bg-success/80"
+                                  : item.tipo_evento === "alteracao_data"
+                                  ? "bg-warning hover:bg-warning/80 text-warning-foreground"
+                                  : ""
+                              }
+                            >
+                              {item.tipo_evento === "pagamento" && "Pagamento"}
+                              {item.tipo_evento === "alteracao_data" && "Alteração de Data"}
+                              {item.tipo_evento === "estorno" && "Estorno"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {item.tipo_evento === "pagamento" && item.valor_pago && (
+                              <span>
+                                R$ {item.valor_pago.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} - {item.tipo_pagamento}
+                              </span>
+                            )}
+                            {item.tipo_evento === "alteracao_data" && item.data_vencimento_anterior && item.data_vencimento_nova && (
+                              <span>
+                                {format(new Date(item.data_vencimento_anterior + 'T00:00:00'), "dd/MM/yyyy")} → {format(new Date(item.data_vencimento_nova + 'T00:00:00'), "dd/MM/yyyy")}
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="max-w-xs truncate">{item.observacao || "-"}</TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleExcluirPagamento(item.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* View Mobile - Cards */}
+                <div className="md:hidden space-y-3">
                   {historico
                     .filter(item => filtroTipoEvento === "todos" || item.tipo_evento === filtroTipoEvento)
                     .map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell>
-                        {format(new Date(item.data_pagamento), "dd/MM/yyyy HH:mm", {
-                          locale: ptBR,
-                        })}
-                      </TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={
-                            item.tipo_evento === "pagamento" 
-                              ? "default" 
-                              : item.tipo_evento === "alteracao_data" 
-                              ? "secondary" 
-                              : "destructive"
-                          }
-                          className={
-                            item.tipo_evento === "pagamento"
-                              ? "bg-success hover:bg-success/80"
-                              : item.tipo_evento === "alteracao_data"
-                              ? "bg-warning hover:bg-warning/80 text-warning-foreground"
-                              : ""
-                          }
-                        >
-                          {item.tipo_evento === "pagamento" && "Pagamento"}
-                          {item.tipo_evento === "alteracao_data" && "Alteração de Data"}
-                          {item.tipo_evento === "estorno" && "Estorno"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {item.tipo_evento === "pagamento" && item.valor_pago && (
-                          <span>
-                            R$ {item.valor_pago.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} - {item.tipo_pagamento}
-                          </span>
-                        )}
-                        {item.tipo_evento === "alteracao_data" && item.data_vencimento_anterior && item.data_vencimento_nova && (
-                          <span>
-                            {format(new Date(item.data_vencimento_anterior + 'T00:00:00'), "dd/MM/yyyy")} → {format(new Date(item.data_vencimento_nova + 'T00:00:00'), "dd/MM/yyyy")}
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="max-w-xs truncate">{item.observacao || "-"}</TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleExcluirPagamento(item.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                      <Card key={item.id} className="p-3">
+                        <div className="space-y-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="space-y-1 flex-1">
+                              <div className="text-xs text-muted-foreground">
+                                {format(new Date(item.data_pagamento), "dd/MM/yyyy HH:mm", {
+                                  locale: ptBR,
+                                })}
+                              </div>
+                              <Badge 
+                                variant={
+                                  item.tipo_evento === "pagamento" 
+                                    ? "default" 
+                                    : item.tipo_evento === "alteracao_data" 
+                                    ? "secondary" 
+                                    : "destructive"
+                                }
+                                className={
+                                  item.tipo_evento === "pagamento"
+                                    ? "bg-success hover:bg-success/80"
+                                    : item.tipo_evento === "alteracao_data"
+                                    ? "bg-warning hover:bg-warning/80 text-warning-foreground"
+                                    : ""
+                                }
+                              >
+                                {item.tipo_evento === "pagamento" && "Pagamento"}
+                                {item.tipo_evento === "alteracao_data" && "Alteração de Data"}
+                                {item.tipo_evento === "estorno" && "Estorno"}
+                              </Badge>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleExcluirPagamento(item.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          
+                          <div className="text-sm">
+                            {item.tipo_evento === "pagamento" && item.valor_pago && (
+                              <div className="font-medium">
+                                R$ {item.valor_pago.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} - {item.tipo_pagamento}
+                              </div>
+                            )}
+                            {item.tipo_evento === "alteracao_data" && item.data_vencimento_anterior && item.data_vencimento_nova && (
+                              <div className="font-medium">
+                                {format(new Date(item.data_vencimento_anterior + 'T00:00:00'), "dd/MM/yyyy")} → {format(new Date(item.data_vencimento_nova + 'T00:00:00'), "dd/MM/yyyy")}
+                              </div>
+                            )}
+                          </div>
+                          
+                          {item.observacao && (
+                            <div className="text-xs text-muted-foreground">
+                              <span className="font-medium">Obs:</span> {item.observacao}
+                            </div>
+                          )}
+                        </div>
+                      </Card>
+                    ))}
+                </div>
+              </>
             )}
           </div>
         </DialogContent>
@@ -1200,16 +1272,16 @@ export default function Parcelas() {
 
       {/* Dialog de Confirmação de Exclusão */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="w-[95vw] sm:max-w-lg">
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
             <AlertDialogDescription>
               Tem certeza que deseja excluir esta parcela? Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
+          <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
+            <AlertDialogCancel className="w-full sm:w-auto">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="w-full sm:w-auto bg-destructive hover:bg-destructive/90">
               Excluir
             </AlertDialogAction>
           </AlertDialogFooter>
