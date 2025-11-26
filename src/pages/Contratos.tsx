@@ -1206,34 +1206,35 @@ export default function Contratos() {
                   <CardTitle className="text-base sm:text-lg">Parcelas</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="overflow-x-auto -mx-4 sm:mx-0">
+                  {/* View Desktop - Tabela */}
+                  <div className="hidden md:block overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="min-w-[60px]">Parcela</TableHead>
-                          <TableHead className="min-w-[90px]">Vencimento</TableHead>
-                          <TableHead className="min-w-[80px]">Valor</TableHead>
-                          <TableHead className="min-w-[70px]">Status</TableHead>
-                          <TableHead className="hidden md:table-cell">Pagamento</TableHead>
-                          <TableHead className="min-w-[80px]">Ação</TableHead>
+                          <TableHead>Parcela</TableHead>
+                          <TableHead>Vencimento</TableHead>
+                          <TableHead>Valor</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Pagamento</TableHead>
+                          <TableHead>Ação</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {parcelas.map((parcela) => (
                           <TableRow key={parcela.id}>
                             <TableCell className="font-medium">{parcela.numero_parcela}</TableCell>
-                            <TableCell className="text-xs sm:text-sm">{format(new Date(parcela.data_vencimento + 'T00:00:00'), 'dd/MM/yyyy')}</TableCell>
-                            <TableCell className="text-xs sm:text-sm">R$ {Number(parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
+                            <TableCell>{format(new Date(parcela.data_vencimento + 'T00:00:00'), 'dd/MM/yyyy')}</TableCell>
+                            <TableCell>R$ {Number(parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
                             <TableCell>
                               {parcela.status === 'pago' ? (
-                                <Badge variant="default" className="bg-success text-xs">Pago</Badge>
+                                <Badge variant="default" className="bg-success">Pago</Badge>
                               ) : new Date(parcela.data_vencimento + 'T00:00:00') < new Date(new Date().setHours(0, 0, 0, 0)) ? (
-                                <Badge variant="destructive" className="text-xs">Atrasado</Badge>
+                                <Badge variant="destructive">Atrasado</Badge>
                               ) : (
-                                <Badge variant="secondary" className="text-xs">Pendente</Badge>
+                                <Badge variant="secondary">Pendente</Badge>
                               )}
                             </TableCell>
-                            <TableCell className="hidden md:table-cell">
+                            <TableCell>
                               {parcela.data_pagamento ? (
                                 <div className="text-sm">
                                   <div>{format(new Date(parcela.data_pagamento + 'T00:00:00'), 'dd/MM/yyyy')}</div>
@@ -1249,7 +1250,6 @@ export default function Contratos() {
                                   size="sm" 
                                   onClick={() => abrirModalPagamento(parcela)}
                                   title="Baixar parcela"
-                                  className="text-xs px-2 sm:px-3"
                                 >
                                   Baixar
                                 </Button>
@@ -1258,11 +1258,11 @@ export default function Contratos() {
                                   size="sm" 
                                   variant="outline"
                                   onClick={() => handleDesfazerPagamento(parcela.id)}
-                                  className="text-warning hover:bg-warning hover:text-warning-foreground text-xs px-2 sm:px-3"
+                                  className="text-warning hover:bg-warning hover:text-warning-foreground"
                                   title="Desfazer pagamento"
                                 >
-                                  <Undo2 className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
-                                  <span className="hidden sm:inline">Desfazer</span>
+                                  <Undo2 className="h-4 w-4 mr-1" />
+                                  Desfazer
                                 </Button>
                               )}
                             </TableCell>
@@ -1270,6 +1270,80 @@ export default function Contratos() {
                         ))}
                       </TableBody>
                     </Table>
+                  </div>
+
+                  {/* View Mobile - Cards */}
+                  <div className="md:hidden space-y-3">
+                    {parcelas.map((parcela) => (
+                      <Card key={parcela.id} className="p-3">
+                        {/* Cabeçalho: Número da Parcela e Status */}
+                        <div className="flex justify-between items-center mb-3">
+                          <span className="font-bold text-base">Parcela {parcela.numero_parcela}</span>
+                          {parcela.status === 'pago' ? (
+                            <Badge variant="default" className="bg-success">Pago</Badge>
+                          ) : new Date(parcela.data_vencimento + 'T00:00:00') < new Date(new Date().setHours(0, 0, 0, 0)) ? (
+                            <Badge variant="destructive">Atrasado</Badge>
+                          ) : (
+                            <Badge variant="secondary">Pendente</Badge>
+                          )}
+                        </div>
+                        
+                        {/* Informações */}
+                        <div className="space-y-1.5 text-sm text-muted-foreground mb-3">
+                          <div className="flex justify-between">
+                            <span>Vencimento:</span>
+                            <span className="font-medium text-foreground">
+                              {format(new Date(parcela.data_vencimento + 'T00:00:00'), 'dd/MM/yyyy')}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Valor:</span>
+                            <span className="font-medium text-foreground">
+                              R$ {Number(parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                          {parcela.data_pagamento && (
+                            <>
+                              <div className="flex justify-between">
+                                <span>Pago em:</span>
+                                <span className="font-medium text-foreground">
+                                  {format(new Date(parcela.data_pagamento + 'T00:00:00'), 'dd/MM/yyyy')}
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Valor pago:</span>
+                                <span className="font-medium text-foreground">
+                                  R$ {Number(parcela.valor_pago).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                </span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                        
+                        {/* Botão de Ação */}
+                        {parcela.status !== 'pago' ? (
+                          <Button 
+                            size="sm" 
+                            onClick={() => abrirModalPagamento(parcela)}
+                            className="w-full"
+                            title="Baixar parcela"
+                          >
+                            Baixar Parcela
+                          </Button>
+                        ) : (
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleDesfazerPagamento(parcela.id)}
+                            className="w-full text-warning hover:bg-warning hover:text-warning-foreground"
+                            title="Desfazer pagamento"
+                          >
+                            <Undo2 className="h-4 w-4 mr-2" />
+                            Desfazer Pagamento
+                          </Button>
+                        )}
+                      </Card>
+                    ))}
                   </div>
                 </CardContent>
       </Card>
