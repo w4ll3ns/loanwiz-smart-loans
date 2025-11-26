@@ -84,6 +84,7 @@ export default function Contratos() {
   const [parcelaToPay, setParcelaToPay] = useState<Parcela | null>(null);
   const [tipoPagamento, setTipoPagamento] = useState<string>("total");
   const [valorPagamento, setValorPagamento] = useState<string>("");
+  const [dataPagamento, setDataPagamento] = useState<string>("");
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -296,6 +297,7 @@ export default function Contratos() {
     setParcelaToPay(parcela);
     setTipoPagamento("total");
     setValorPagamento(parcela.valor.toString());
+    setDataPagamento(new Date().toISOString().split('T')[0]);
     setIsPagamentoDialogOpen(true);
   };
 
@@ -320,7 +322,7 @@ export default function Contratos() {
         const { error } = await supabase
           .from("parcelas")
           .update({
-            data_pagamento: new Date().toISOString().split('T')[0],
+            data_pagamento: dataPagamento,
             valor_pago: Number(parcelaToPay.valor),
             status: "pago",
           })
@@ -364,7 +366,7 @@ export default function Contratos() {
         const { error: updateError } = await supabase
           .from("parcelas")
           .update({
-            data_pagamento: new Date().toISOString().split('T')[0],
+            data_pagamento: dataPagamento,
             valor_pago: valorFinal,
             status: "pago",
           })
@@ -1327,6 +1329,17 @@ export default function Contratos() {
                 </p>
               </div>
             )}
+
+            <div className="space-y-2">
+              <Label htmlFor="data-pagamento">Data do Pagamento</Label>
+              <Input
+                id="data-pagamento"
+                type="date"
+                value={dataPagamento}
+                onChange={(e) => setDataPagamento(e.target.value)}
+                max={new Date().toISOString().split('T')[0]}
+              />
+            </div>
           </div>
           <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2">
             <Button
