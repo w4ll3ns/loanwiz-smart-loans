@@ -78,6 +78,7 @@ export default function Parcelas() {
   const [observacaoPagamento, setObservacaoPagamento] = useState<string>("");
   const [novaDataVencimento, setNovaDataVencimento] = useState<string>("");
   const [justificativaAlteracao, setJustificativaAlteracao] = useState<string>("");
+  const [dataPagamento, setDataPagamento] = useState<string>("");
   const { toast } = useToast();
 
   // Função para formatar data corretamente (evita problema de timezone)
@@ -185,6 +186,7 @@ export default function Parcelas() {
     const valorRestante = Number(parcela.valor_original || parcela.valor) - (Number(parcela.valor_pago) || 0);
     setValorPagamento(valorRestante.toString());
     setObservacaoPagamento("");
+    setDataPagamento(new Date().toISOString().split('T')[0]);
     setIsPagamentoDialogOpen(true);
   };
 
@@ -214,7 +216,7 @@ export default function Parcelas() {
           parcela_id: parcelaToPay.id,
           valor_pago: valorPagar,
           tipo_pagamento: tipoPag,
-          data_pagamento: new Date().toISOString(),
+          data_pagamento: new Date(dataPagamento).toISOString(),
           observacao: observacaoPagamento.trim() || null,
           tipo_evento: "pagamento",
         } as any);
@@ -233,7 +235,7 @@ export default function Parcelas() {
       const updateData: any = {
         valor_pago: novoValorPago,
         status: novoStatus,
-        data_pagamento: new Date().toISOString().split('T')[0],
+        data_pagamento: dataPagamento,
       };
 
       // Se não tiver valor_original ainda, definir
@@ -1007,6 +1009,17 @@ export default function Parcelas() {
                 />
               </div>
             )}
+
+            <div className="space-y-2">
+              <Label htmlFor="data-pagamento">Data do Pagamento</Label>
+              <Input
+                id="data-pagamento"
+                type="date"
+                value={dataPagamento}
+                onChange={(e) => setDataPagamento(e.target.value)}
+                max={new Date().toISOString().split('T')[0]}
+              />
+            </div>
 
             <div className="space-y-2">
               <Label htmlFor="observacao">Observação (opcional)</Label>
