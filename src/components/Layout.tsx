@@ -55,6 +55,21 @@ export default function Layout({ children }: LayoutProps) {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  // Update ultimo_acesso on mount
+  useEffect(() => {
+    const updateUltimoAcesso = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase
+          .from('profiles')
+          .update({ ultimo_acesso: new Date().toISOString() })
+          .eq('id', user.id);
+      }
+    };
+
+    updateUltimoAcesso();
+  }, []);
+
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {

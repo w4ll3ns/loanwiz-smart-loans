@@ -31,6 +31,8 @@ import html2canvas from 'html2canvas';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useUserRole } from "@/hooks/useUserRole";
+import { AccessRestrictedModal } from "@/components/AccessRestrictedModal";
 
 interface Contrato {
   id: string;
@@ -76,6 +78,7 @@ export default function Contratos() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isContratoDetailsOpen, setIsContratoDetailsOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isAccessModalOpen, setIsAccessModalOpen] = useState(false);
   const [contratoToDelete, setContratoToDelete] = useState<string | null>(null);
   const [selectedContrato, setSelectedContrato] = useState<Contrato | null>(null);
   const [parcelas, setParcelas] = useState<Parcela[]>([]);
@@ -86,6 +89,7 @@ export default function Contratos() {
   const [valorPagamento, setValorPagamento] = useState<string>("");
   const [dataPagamento, setDataPagamento] = useState<string>("");
   const { toast } = useToast();
+  const { canCreate, userEmail } = useUserRole();
 
   const [formData, setFormData] = useState({
     clienteId: "",
@@ -920,7 +924,12 @@ export default function Contratos() {
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" className="w-full md:w-auto">
+            <Button size="sm" className="w-full md:w-auto" onClick={(e) => {
+              if (!canCreate) {
+                e.preventDefault();
+                setIsAccessModalOpen(true);
+              }
+            }}>
               <Plus className="h-4 w-4 mr-2" />
               Novo Contrato
             </Button>
@@ -1543,6 +1552,13 @@ export default function Contratos() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Modal de Acesso Restrito */}
+      <AccessRestrictedModal
+        open={isAccessModalOpen}
+        onOpenChange={setIsAccessModalOpen}
+        userEmail={userEmail}
+      />
     </div>
   );
 }
