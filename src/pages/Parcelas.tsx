@@ -81,6 +81,11 @@ export default function Parcelas() {
   const [dataPagamento, setDataPagamento] = useState<string>("");
   const { toast } = useToast();
 
+  // Função para remover acentos (busca normalizada)
+  const removerAcentos = (texto: string): string => {
+    return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  };
+
   // Função para formatar data corretamente (evita problema de timezone)
   const formatDate = (dateString: string) => {
     return format(new Date(dateString + 'T00:00:00'), 'dd/MM/yyyy');
@@ -150,7 +155,7 @@ export default function Parcelas() {
   // Filtro para a lista (por busca, status e período de 7 dias)
   const filteredParcelas = parcelas.filter(parcela => {
     const clienteNome = parcela.contratos?.clientes?.nome || "";
-    const matchesSearch = clienteNome.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = removerAcentos(clienteNome.toLowerCase()).includes(removerAcentos(searchTerm.toLowerCase()));
     const matchesStatus = statusFilter === "todos" || parcela.status === statusFilter;
     
     // Filtrar por data - próximos 7 dias se não estiver mostrando todas
@@ -599,7 +604,7 @@ export default function Parcelas() {
                 type="date"
                 value={dataInicioDashboard}
                 onChange={(e) => setDataInicioDashboard(e.target.value)}
-                className="w-[140px] h-8 text-xs"
+                className="w-[140px] h-8 text-base md:text-xs"
               />
             </div>
             <div className="flex-shrink-0">
@@ -609,7 +614,7 @@ export default function Parcelas() {
                 type="date"
                 value={dataFimDashboard}
                 onChange={(e) => setDataFimDashboard(e.target.value)}
-                className="w-[140px] h-8 text-xs"
+                className="w-[140px] h-8 text-base md:text-xs"
               />
             </div>
             <Button
@@ -685,7 +690,7 @@ export default function Parcelas() {
                 placeholder="Buscar cliente..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-7 w-full h-8 text-xs"
+                className="pl-7 w-full h-8 text-base md:text-xs"
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
