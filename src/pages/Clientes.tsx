@@ -48,6 +48,11 @@ export default function Clientes() {
     observacoes: ""
   });
 
+  // Função para remover acentos (busca normalizada)
+  const removerAcentos = (texto: string): string => {
+    return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  };
+
   useEffect(() => {
     loadClientes();
   }, []);
@@ -70,10 +75,12 @@ export default function Clientes() {
     }
   };
 
-  const filteredClientes = clientes.filter(cliente =>
-    cliente.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    cliente.telefone?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredClientes = clientes.filter(cliente => {
+    const searchNormalized = removerAcentos(searchTerm.toLowerCase());
+    const nomeNormalized = removerAcentos(cliente.nome.toLowerCase());
+    const telefoneNormalized = removerAcentos((cliente.telefone || '').toLowerCase());
+    return nomeNormalized.includes(searchNormalized) || telefoneNormalized.includes(searchNormalized);
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -250,7 +257,7 @@ export default function Clientes() {
               placeholder="Buscar por nome ou telefone..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
+              className="pl-9 text-base md:text-sm"
             />
           </div>
         </CardContent>
