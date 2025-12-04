@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,16 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { AccessRestrictedModal } from "@/components/AccessRestrictedModal";
+
+// Input validation schema
+const clienteSchema = z.object({
+  nome: z.string().trim().min(1, 'Nome é obrigatório').max(100, 'Nome deve ter no máximo 100 caracteres'),
+  telefone: z.string().max(20, 'Telefone deve ter no máximo 20 caracteres').optional().or(z.literal('')),
+  endereco: z.string().max(200, 'Endereço deve ter no máximo 200 caracteres').optional().or(z.literal('')),
+  observacoes: z.string().max(500, 'Observações devem ter no máximo 500 caracteres').optional().or(z.literal(''))
+});
+
+type ValidatedCliente = z.infer<typeof clienteSchema>;
 
 interface Cliente {
   id: string;
@@ -89,6 +100,20 @@ export default function Clientes() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validate input
+    const validationResult = clienteSchema.safeParse(formData);
+    if (!validationResult.success) {
+      const firstError = validationResult.error.errors[0];
+      toast({
+        title: "Dados inválidos",
+        description: firstError.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const validatedData = validationResult.data;
+    
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
@@ -104,7 +129,12 @@ export default function Clientes() {
       if (editingCliente) {
         const { error } = await supabase
           .from("clientes")
-          .update(formData)
+          .update({
+            nome: validatedData.nome,
+            telefone: validatedData.telefone || null,
+            endereco: validatedData.endereco || null,
+            observacoes: validatedData.observacoes || null
+          })
           .eq("id", editingCliente.id);
 
         if (error) throw error;
@@ -116,7 +146,13 @@ export default function Clientes() {
       } else {
         const { error } = await supabase
           .from("clientes")
-          .insert([{ ...formData, user_id: user.id }]);
+          .insert([{ 
+            nome: validatedData.nome, 
+            telefone: validatedData.telefone || null,
+            endereco: validatedData.endereco || null,
+            observacoes: validatedData.observacoes || null,
+            user_id: user.id 
+          }]);
 
         if (error) throw error;
 

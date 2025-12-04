@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -33,6 +34,33 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { AccessRestrictedModal } from "@/components/AccessRestrictedModal";
+
+// Input validation schema for contract form
+const contratoSchema = z.object({
+  clienteId: z.string().uuid('Selecione um cliente válido'),
+  valorEmprestado: z.string().refine(val => {
+    const num = parseFloat(val);
+    return !isNaN(num) && num > 0 && num <= 100000000;
+  }, 'Valor emprestado deve ser positivo e menor que 100 milhões'),
+  percentual: z.string().refine(val => {
+    const num = parseFloat(val);
+    return !isNaN(num) && num > 0 && num <= 1000;
+  }, 'Percentual deve ser entre 0.01% e 1000%'),
+  periodicidade: z.enum(['diario', 'semanal', 'quinzenal', 'mensal'], {
+    errorMap: () => ({ message: 'Selecione uma periodicidade válida' })
+  }),
+  numeroParcelas: z.string().refine(val => {
+    const num = parseInt(val);
+    return !isNaN(num) && num >= 1 && num <= 365;
+  }, 'Número de parcelas deve ser entre 1 e 365'),
+  dataEmprestimo: z.string().refine(val => {
+    const date = new Date(val);
+    return !isNaN(date.getTime());
+  }, 'Data do empréstimo é obrigatória'),
+  tipoJuros: z.enum(['simples', 'parcela', 'composto']),
+  permiteCobrancaSabado: z.boolean(),
+  permiteCobrancaDomingo: z.boolean()
+});
 
 interface Contrato {
   id: string;
@@ -844,11 +872,25 @@ export default function Contratos() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validate input
+    const validationResult = contratoSchema.safeParse(formData);
+    if (!validationResult.success) {
+      const firstError = validationResult.error.errors[0];
+      toast({
+        title: "Dados inválidos",
+        description: firstError.message,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const validatedData = validationResult.data;
+    
     const calculo = calcularContrato();
     if (!calculo) {
       toast({
-        title: "Dados incompletos",
-        description: "Preencha todos os campos obrigatórios: cliente, valor, percentual, periodicidade, número de parcelas e data.",
+        title: "Erro de cálculo",
+        description: "Não foi possível calcular os valores do contrato.",
         variant: "destructive"
       });
       return;
@@ -858,17 +900,17 @@ export default function Contratos() {
       const { data: contrato, error: contratoError } = await supabase
         .from("contratos")
         .insert([{
-          cliente_id: formData.clienteId,
-          valor_emprestado: parseFloat(formData.valorEmprestado),
-          percentual: parseFloat(formData.percentual),
-          periodicidade: formData.periodicidade,
-          numero_parcelas: parseInt(formData.numeroParcelas),
-          data_emprestimo: formData.dataEmprestimo,
+          cliente_id: validatedData.clienteId,
+          valor_emprestado: parseFloat(validatedData.valorEmprestado),
+          percentual: parseFloat(validatedData.percentual),
+          periodicidade: validatedData.periodicidade,
+          numero_parcelas: parseInt(validatedData.numeroParcelas),
+          data_emprestimo: validatedData.dataEmprestimo,
           valor_total: calculo.valorTotal,
           status: "ativo",
-          tipo_juros: formData.tipoJuros,
-          permite_cobranca_sabado: formData.permiteCobrancaSabado,
-          permite_cobranca_domingo: formData.permiteCobrancaDomingo
+          tipo_juros: validatedData.tipoJuros,
+          permite_cobranca_sabado: validatedData.permiteCobrancaSabado,
+          permite_cobranca_domingo: validatedData.permiteCobrancaDomingo
         }])
         .select()
         .single();
@@ -878,12 +920,12 @@ export default function Contratos() {
       // Gerar parcelas usando a função do banco de dados
       const { error: parcelasError } = await supabase.rpc("gerar_parcelas", {
         p_contrato_id: contrato.id,
-        p_numero_parcelas: parseInt(formData.numeroParcelas),
+        p_numero_parcelas: parseInt(validatedData.numeroParcelas),
         p_valor_parcela: calculo.valorParcela,
-        p_data_inicio: formData.dataEmprestimo,
-        p_periodicidade: formData.periodicidade,
-        p_permite_sabado: formData.permiteCobrancaSabado,
-        p_permite_domingo: formData.permiteCobrancaDomingo
+        p_data_inicio: validatedData.dataEmprestimo,
+        p_periodicidade: validatedData.periodicidade,
+        p_permite_sabado: validatedData.permiteCobrancaSabado,
+        p_permite_domingo: validatedData.permiteCobrancaDomingo
       });
 
       if (parcelasError) throw parcelasError;
