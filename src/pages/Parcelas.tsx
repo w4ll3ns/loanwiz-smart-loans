@@ -634,7 +634,7 @@ export default function Parcelas() {
       <div className="grid gap-2 md:gap-4 grid-cols-1 md:grid-cols-3 w-full">
         <Card className="w-full overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 pt-3">
-            <CardTitle className="text-xs md:text-sm font-medium truncate">Total Pendente</CardTitle>
+            <CardTitle className="text-xs md:text-sm font-medium truncate">A Receber (Pendente)</CardTitle>
             <Calendar className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground flex-shrink-0 ml-1" />
           </CardHeader>
           <CardContent className="px-3 pb-3">
@@ -642,7 +642,7 @@ export default function Parcelas() {
               R$ {totalPendente.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
             <p className="text-[10px] md:text-xs text-muted-foreground truncate">
-              {dashboardParcelas.filter(p => p.status !== "pago").length} parcelas
+              {dashboardParcelas.filter(p => p.status !== "pago").length} parcelas a quitar
             </p>
           </CardContent>
         </Card>
@@ -657,7 +657,7 @@ export default function Parcelas() {
               R$ {totalPago.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
             <p className="text-[10px] md:text-xs text-muted-foreground truncate">
-              {dashboardParcelas.filter(p => p.status === "pago").length} parcelas pagas
+              Inclui parciais e quitações
             </p>
           </CardContent>
         </Card>
