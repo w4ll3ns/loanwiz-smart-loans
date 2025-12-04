@@ -23,6 +23,8 @@ import { Search, Check, X, Calendar, AlertTriangle, Trash2, Undo2, FileText } fr
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useUserRole } from "@/hooks/useUserRole";
+import { AccessRestrictedModal } from "@/components/AccessRestrictedModal";
 
 interface Parcela {
   id: string;
@@ -70,6 +72,7 @@ export default function Parcelas() {
   const [isPagamentoDialogOpen, setIsPagamentoDialogOpen] = useState(false);
   const [isHistoricoDialogOpen, setIsHistoricoDialogOpen] = useState(false);
   const [isEditarDataDialogOpen, setIsEditarDataDialogOpen] = useState(false);
+  const [isAccessModalOpen, setIsAccessModalOpen] = useState(false);
   const [parcelaToPay, setParcelaToPay] = useState<Parcela | null>(null);
   const [parcelaHistorico, setParcelaHistorico] = useState<Parcela | null>(null);
   const [parcelaToEditData, setParcelaToEditData] = useState<Parcela | null>(null);
@@ -82,6 +85,7 @@ export default function Parcelas() {
   const [justificativaAlteracao, setJustificativaAlteracao] = useState<string>("");
   const [dataPagamento, setDataPagamento] = useState<string>("");
   const { toast } = useToast();
+  const { canCreate, userEmail } = useUserRole();
 
   // Função para remover acentos (busca normalizada)
   const removerAcentos = (texto: string): string => {
@@ -1297,6 +1301,13 @@ export default function Parcelas() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Modal de Acesso Restrito */}
+      <AccessRestrictedModal
+        open={isAccessModalOpen}
+        onOpenChange={setIsAccessModalOpen}
+        userEmail={userEmail}
+      />
     </div>
   );
 }

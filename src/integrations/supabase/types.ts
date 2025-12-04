@@ -213,29 +213,68 @@ export type Database = {
         Row: {
           ativo: boolean
           created_at: string
+          data_expiracao_teste: string | null
           email: string | null
           id: string
           nome: string | null
+          observacoes_admin: string | null
+          status_plano: string | null
           telefone: string | null
+          ultimo_acesso: string | null
           updated_at: string
         }
         Insert: {
           ativo?: boolean
           created_at?: string
+          data_expiracao_teste?: string | null
           email?: string | null
           id: string
           nome?: string | null
+          observacoes_admin?: string | null
+          status_plano?: string | null
           telefone?: string | null
+          ultimo_acesso?: string | null
           updated_at?: string
         }
         Update: {
           ativo?: boolean
           created_at?: string
+          data_expiracao_teste?: string | null
           email?: string | null
           id?: string
           nome?: string | null
+          observacoes_admin?: string | null
+          status_plano?: string | null
           telefone?: string | null
+          ultimo_acesso?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      system_settings: {
+        Row: {
+          chave: string
+          created_at: string
+          descricao: string | null
+          id: string
+          updated_at: string
+          valor: string | null
+        }
+        Insert: {
+          chave: string
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          updated_at?: string
+          valor?: string | null
+        }
+        Update: {
+          chave?: string
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          updated_at?: string
+          valor?: string | null
         }
         Relationships: []
       }

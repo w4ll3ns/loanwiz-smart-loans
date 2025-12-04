@@ -23,6 +23,8 @@ import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useUserRole } from "@/hooks/useUserRole";
+import { AccessRestrictedModal } from "@/components/AccessRestrictedModal";
 
 interface Cliente {
   id: string;
@@ -37,9 +39,11 @@ export default function Clientes() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isAccessModalOpen, setIsAccessModalOpen] = useState(false);
   const [clienteToDelete, setClienteToDelete] = useState<string | null>(null);
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
   const { toast } = useToast();
+  const { canCreate, userEmail } = useUserRole();
 
   const [formData, setFormData] = useState({
     nome: "",
@@ -187,7 +191,12 @@ export default function Clientes() {
           }
         }}>
           <DialogTrigger asChild>
-            <Button size="sm" className="w-full md:w-auto">
+            <Button size="sm" className="w-full md:w-auto" onClick={(e) => {
+              if (!canCreate && !editingCliente) {
+                e.preventDefault();
+                setIsAccessModalOpen(true);
+              }
+            }}>
               <Plus className="h-4 w-4 mr-2" />
               Novo Cliente
             </Button>
@@ -343,6 +352,13 @@ export default function Clientes() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Modal de Acesso Restrito */}
+      <AccessRestrictedModal
+        open={isAccessModalOpen}
+        onOpenChange={setIsAccessModalOpen}
+        userEmail={userEmail}
+      />
     </div>
   );
 }

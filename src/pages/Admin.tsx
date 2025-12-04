@@ -7,9 +7,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
-import { Users, FileText, DollarSign, UserCheck } from 'lucide-react';
-import { format } from 'date-fns';
+import { Users, FileText, DollarSign, UserCheck, Settings, Search, MoreVertical, Key, Trash2, MessageSquare, CreditCard, Phone, Pencil } from 'lucide-react';
+import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface Profile {
@@ -19,6 +27,10 @@ interface Profile {
   telefone: string | null;
   ativo: boolean;
   created_at: string;
+  ultimo_acesso: string | null;
+  status_plano: string | null;
+  data_expiracao_teste: string | null;
+  observacoes_admin: string | null;
 }
 
 interface Stats {
@@ -28,6 +40,8 @@ interface Stats {
   totalContratos: number;
   valorTotalEmprestado: number;
 }
+
+type StatusPlano = 'teste' | 'ativo' | 'expirado' | 'cancelado';
 
 export default function Admin() {
   const navigate = useNavigate();
@@ -42,6 +56,19 @@ export default function Admin() {
     valorTotalEmprestado: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('todos');
+  const [planoFilter, setPlanoFilter] = useState<string>('todos');
+  
+  // Modals
+  const [whatsappNumber, setWhatsappNumber] = useState('');
+  const [isWhatsappModalOpen, setIsWhatsappModalOpen] = useState(false);
+  const [isObservacoesModalOpen, setIsObservacoesModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isPlanoModalOpen, setIsPlanoModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
+  const [observacoesText, setObservacoesText] = useState('');
+  const [selectedPlano, setSelectedPlano] = useState<StatusPlano>('teste');
 
   useEffect(() => {
     if (!roleLoading && !isAdmin) {
@@ -57,12 +84,24 @@ export default function Admin() {
   useEffect(() => {
     if (isAdmin) {
       loadData();
+      loadWhatsappConfig();
     }
   }, [isAdmin]);
 
+  const loadWhatsappConfig = async () => {
+    const { data } = await supabase
+      .from('system_settings')
+      .select('valor')
+      .eq('chave', 'whatsapp_contato')
+      .maybeSingle();
+    
+    if (data?.valor) {
+      setWhatsappNumber(data.valor);
+    }
+  };
+
   const loadData = async () => {
     try {
-      // Carregar perfis
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
@@ -71,7 +110,6 @@ export default function Admin() {
       if (profilesError) throw profilesError;
       setProfiles(profilesData || []);
 
-      // Carregar estatísticas
       const { data: clientesData } = await supabase
         .from('clientes')
         .select('id', { count: 'exact' });
@@ -102,6 +140,35 @@ export default function Admin() {
     }
   };
 
+  const handleSaveWhatsapp = async () => {
+    try {
+      const { data: existing } = await supabase
+        .from('system_settings')
+        .select('id')
+        .eq('chave', 'whatsapp_contato')
+        .maybeSingle();
+
+      if (existing) {
+        const { error } = await supabase
+          .from('system_settings')
+          .update({ valor: whatsappNumber })
+          .eq('chave', 'whatsapp_contato');
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('system_settings')
+          .insert({ chave: 'whatsapp_contato', valor: whatsappNumber, descricao: 'Número do WhatsApp para contato de ativação' });
+        if (error) throw error;
+      }
+
+      toast({ title: 'WhatsApp atualizado', description: 'O número de contato foi salvo com sucesso.' });
+      setIsWhatsappModalOpen(false);
+    } catch (error) {
+      console.error('Erro ao salvar WhatsApp:', error);
+      toast({ title: 'Erro ao salvar', description: 'Não foi possível salvar o número.', variant: 'destructive' });
+    }
+  };
+
   const toggleUserStatus = async (userId: string, currentStatus: boolean) => {
     try {
       const { error } = await supabase
@@ -129,6 +196,182 @@ export default function Admin() {
     }
   };
 
+  const handleResetPassword = async (email: string | null) => {
+    if (!email) {
+      toast({ title: 'Erro', description: 'Usuário sem email cadastrado.', variant: 'destructive' });
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth`,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Email enviado',
+        description: `Email de redefinição de senha enviado para ${email}.`,
+      });
+    } catch (error: any) {
+      console.error('Erro ao redefinir senha:', error);
+      toast({
+        title: 'Erro ao enviar email',
+        description: error.message || 'Não foi possível enviar o email de redefinição.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!selectedUser) return;
+
+    try {
+      // Delete related data first (clientes cascade to contratos and parcelas)
+      const { error: clientesError } = await supabase
+        .from('clientes')
+        .delete()
+        .eq('user_id', selectedUser.id);
+
+      if (clientesError) throw clientesError;
+
+      // Delete user_roles
+      const { error: rolesError } = await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', selectedUser.id);
+
+      if (rolesError) throw rolesError;
+
+      // Delete profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', selectedUser.id);
+
+      if (profileError) throw profileError;
+
+      toast({
+        title: 'Usuário excluído',
+        description: 'O usuário e todos os seus dados foram removidos.',
+      });
+
+      setIsDeleteModalOpen(false);
+      setSelectedUser(null);
+      loadData();
+    } catch (error: any) {
+      console.error('Erro ao excluir usuário:', error);
+      toast({
+        title: 'Erro ao excluir',
+        description: error.message || 'Não foi possível excluir o usuário.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleSaveObservacoes = async () => {
+    if (!selectedUser) return;
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ observacoes_admin: observacoesText || null })
+        .eq('id', selectedUser.id);
+
+      if (error) throw error;
+
+      setProfiles(prev =>
+        prev.map(p => p.id === selectedUser.id ? { ...p, observacoes_admin: observacoesText || null } : p)
+      );
+
+      toast({ title: 'Observações salvas', description: 'As observações foram atualizadas.' });
+      setIsObservacoesModalOpen(false);
+      setSelectedUser(null);
+    } catch (error) {
+      console.error('Erro ao salvar observações:', error);
+      toast({ title: 'Erro ao salvar', description: 'Não foi possível salvar as observações.', variant: 'destructive' });
+    }
+  };
+
+  const handleSavePlano = async () => {
+    if (!selectedUser) return;
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ status_plano: selectedPlano })
+        .eq('id', selectedUser.id);
+
+      if (error) throw error;
+
+      setProfiles(prev =>
+        prev.map(p => p.id === selectedUser.id ? { ...p, status_plano: selectedPlano } : p)
+      );
+
+      toast({ title: 'Plano atualizado', description: 'O status do plano foi alterado.' });
+      setIsPlanoModalOpen(false);
+      setSelectedUser(null);
+    } catch (error) {
+      console.error('Erro ao alterar plano:', error);
+      toast({ title: 'Erro ao salvar', description: 'Não foi possível alterar o plano.', variant: 'destructive' });
+    }
+  };
+
+  const getStatusPlanoBadge = (profile: Profile) => {
+    let status = profile.status_plano || 'teste';
+    
+    // Check if trial expired
+    if (status === 'teste' && profile.data_expiracao_teste) {
+      const expDate = new Date(profile.data_expiracao_teste);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (expDate < today) {
+        status = 'expirado';
+      }
+    }
+
+    switch (status) {
+      case 'ativo':
+        return <Badge className="bg-green-500/10 text-green-600 border-green-500/20">Ativo</Badge>;
+      case 'teste':
+        return <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20">Teste</Badge>;
+      case 'expirado':
+        return <Badge className="bg-red-500/10 text-red-600 border-red-500/20">Expirado</Badge>;
+      case 'cancelado':
+        return <Badge variant="secondary">Cancelado</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  const formatUltimoAcesso = (date: string | null) => {
+    if (!date) return 'Nunca';
+    return formatDistanceToNow(new Date(date), { addSuffix: true, locale: ptBR });
+  };
+
+  const filteredProfiles = profiles.filter(profile => {
+    const matchesSearch = 
+      (profile.nome?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (profile.email?.toLowerCase() || '').includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'todos' || 
+      (statusFilter === 'ativos' && profile.ativo) ||
+      (statusFilter === 'inativos' && !profile.ativo);
+    
+    let currentPlano = profile.status_plano || 'teste';
+    if (currentPlano === 'teste' && profile.data_expiracao_teste) {
+      const expDate = new Date(profile.data_expiracao_teste);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (expDate < today) {
+        currentPlano = 'expirado';
+      }
+    }
+    const matchesPlano = planoFilter === 'todos' || currentPlano === planoFilter;
+
+    return matchesSearch && matchesStatus && matchesPlano;
+  });
+
   if (roleLoading || loading) {
     return (
       <Layout>
@@ -145,112 +388,344 @@ export default function Admin() {
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="space-y-4 md:space-y-6">
+        {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Painel de Administração</h1>
-          <p className="text-muted-foreground">Gerencie usuários e visualize estatísticas globais</p>
+          <h1 className="text-xl md:text-2xl font-bold text-foreground">Painel de Administração</h1>
+          <p className="text-sm text-muted-foreground">Gerencie usuários e visualize estatísticas globais</p>
         </div>
 
+        {/* Configurações do Sistema */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Settings className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-base">Configurações do Sistema</CardTitle>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span className="text-sm text-muted-foreground">WhatsApp para Contato:</span>
+                <span className="text-sm font-medium truncate">
+                  {whatsappNumber || 'Não configurado'}
+                </span>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => setIsWhatsappModalOpen(true)}>
+                <Pencil className="h-3 w-3 mr-1" />
+                Editar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Cards de Estatísticas */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Usuários</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 md:px-6">
+              <CardTitle className="text-xs md:text-sm font-medium">Total Usuários</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground hidden sm:block" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalUsuarios}</div>
-              <p className="text-xs text-muted-foreground">
-                {stats.usuariosAtivos} ativos
-              </p>
+            <CardContent className="px-3 md:px-6">
+              <div className="text-xl md:text-2xl font-bold">{stats.totalUsuarios}</div>
+              <p className="text-xs text-muted-foreground">{stats.usuariosAtivos} ativos</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Clientes</CardTitle>
-              <UserCheck className="h-4 w-4 text-muted-foreground" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 md:px-6">
+              <CardTitle className="text-xs md:text-sm font-medium">Total Clientes</CardTitle>
+              <UserCheck className="h-4 w-4 text-muted-foreground hidden sm:block" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalClientes}</div>
+            <CardContent className="px-3 md:px-6">
+              <div className="text-xl md:text-2xl font-bold">{stats.totalClientes}</div>
               <p className="text-xs text-muted-foreground">em todos os usuários</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Contratos</CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 md:px-6">
+              <CardTitle className="text-xs md:text-sm font-medium">Total Contratos</CardTitle>
+              <FileText className="h-4 w-4 text-muted-foreground hidden sm:block" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalContratos}</div>
+            <CardContent className="px-3 md:px-6">
+              <div className="text-xl md:text-2xl font-bold">{stats.totalContratos}</div>
               <p className="text-xs text-muted-foreground">em todos os usuários</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Valor Emprestado</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 md:px-6">
+              <CardTitle className="text-xs md:text-sm font-medium">Valor Emprestado</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground hidden sm:block" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.valorTotalEmprestado)}
+            <CardContent className="px-3 md:px-6">
+              <div className="text-xl md:text-2xl font-bold">
+                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact' }).format(stats.valorTotalEmprestado)}
               </div>
               <p className="text-xs text-muted-foreground">total no sistema</p>
             </CardContent>
           </Card>
         </div>
 
+        {/* Filtros */}
+        <Card>
+          <CardContent className="pt-4">
+            <div className="flex flex-col gap-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nome ou email..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full sm:w-[150px]">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    <SelectItem value="ativos">Ativos</SelectItem>
+                    <SelectItem value="inativos">Inativos</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={planoFilter} onValueChange={setPlanoFilter}>
+                  <SelectTrigger className="w-full sm:w-[150px]">
+                    <SelectValue placeholder="Plano" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    <SelectItem value="teste">Teste</SelectItem>
+                    <SelectItem value="ativo">Ativo</SelectItem>
+                    <SelectItem value="expirado">Expirado</SelectItem>
+                    <SelectItem value="cancelado">Cancelado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Tabela de Usuários */}
         <Card>
-          <CardHeader>
-            <CardTitle>Usuários Cadastrados</CardTitle>
-            <CardDescription>
-              Lista de todos os usuários do sistema
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base md:text-lg">Usuários Cadastrados ({filteredProfiles.length})</CardTitle>
+            <CardDescription className="text-xs md:text-sm">
+              Gerencie os usuários do sistema
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Telefone</TableHead>
-                  <TableHead>Cadastro</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Ativo</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {profiles.map((profile) => (
-                  <TableRow key={profile.id}>
-                    <TableCell className="font-medium">
-                      {profile.nome || 'Sem nome'}
-                    </TableCell>
-                    <TableCell>{profile.email || '-'}</TableCell>
-                    <TableCell>{profile.telefone || '-'}</TableCell>
-                    <TableCell>
-                      {format(new Date(profile.created_at), 'dd/MM/yyyy', { locale: ptBR })}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={profile.ativo ? 'default' : 'secondary'}>
-                        {profile.ativo ? 'Ativo' : 'Inativo'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Switch
-                        checked={profile.ativo}
-                        onCheckedChange={() => toggleUserStatus(profile.id, profile.ativo)}
-                      />
-                    </TableCell>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="min-w-[120px] pl-4">Nome</TableHead>
+                    <TableHead className="hidden md:table-cell">Email</TableHead>
+                    <TableHead className="hidden lg:table-cell">Plano</TableHead>
+                    <TableHead className="hidden xl:table-cell">Último Acesso</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right pr-4">Ações</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredProfiles.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                        Nenhum usuário encontrado
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredProfiles.map((profile) => (
+                      <TableRow key={profile.id}>
+                        <TableCell className="pl-4">
+                          <div>
+                            <p className="font-medium text-sm">{profile.nome || 'Sem nome'}</p>
+                            <p className="text-xs text-muted-foreground md:hidden">{profile.email || '-'}</p>
+                            <div className="flex items-center gap-1 mt-1 lg:hidden">
+                              {getStatusPlanoBadge(profile)}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell text-sm">{profile.email || '-'}</TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          {getStatusPlanoBadge(profile)}
+                        </TableCell>
+                        <TableCell className="hidden xl:table-cell text-sm text-muted-foreground">
+                          {formatUltimoAcesso(profile.ultimo_acesso)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={profile.ativo}
+                              onCheckedChange={() => toggleUserStatus(profile.id, profile.ativo)}
+                            />
+                            <span className="text-xs hidden sm:inline">
+                              {profile.ativo ? 'Ativo' : 'Inativo'}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right pr-4">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem onClick={() => handleResetPassword(profile.email)}>
+                                <Key className="mr-2 h-4 w-4" />
+                                Redefinir Senha
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => {
+                                setSelectedUser(profile);
+                                setObservacoesText(profile.observacoes_admin || '');
+                                setIsObservacoesModalOpen(true);
+                              }}>
+                                <MessageSquare className="mr-2 h-4 w-4" />
+                                Observações
+                                {profile.observacoes_admin && <span className="ml-auto text-xs">●</span>}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => {
+                                setSelectedUser(profile);
+                                setSelectedPlano((profile.status_plano as StatusPlano) || 'teste');
+                                setIsPlanoModalOpen(true);
+                              }}>
+                                <CreditCard className="mr-2 h-4 w-4" />
+                                Alterar Plano
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => {
+                                  setSelectedUser(profile);
+                                  setIsDeleteModalOpen(true);
+                                }}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Excluir Usuário
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal WhatsApp */}
+      <Dialog open={isWhatsappModalOpen} onOpenChange={setIsWhatsappModalOpen}>
+        <DialogContent className="w-[95vw] sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Configurar WhatsApp de Contato</DialogTitle>
+            <DialogDescription>
+              Este número será usado para que novos usuários entrem em contato para ativar o acesso.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="whatsapp">Número do WhatsApp</Label>
+              <Input
+                id="whatsapp"
+                placeholder="Ex: 5585999999999"
+                value={whatsappNumber}
+                onChange={(e) => setWhatsappNumber(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Digite o número completo com código do país (ex: 55 para Brasil)
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setIsWhatsappModalOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSaveWhatsapp}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Observações */}
+      <Dialog open={isObservacoesModalOpen} onOpenChange={setIsObservacoesModalOpen}>
+        <DialogContent className="w-[95vw] sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Observações do Usuário</DialogTitle>
+            <DialogDescription>
+              {selectedUser?.nome || selectedUser?.email}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Textarea
+              placeholder="Notas internas sobre o usuário..."
+              value={observacoesText}
+              onChange={(e) => setObservacoesText(e.target.value)}
+              rows={4}
+            />
+          </div>
+          <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setIsObservacoesModalOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSaveObservacoes}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Alterar Plano */}
+      <Dialog open={isPlanoModalOpen} onOpenChange={setIsPlanoModalOpen}>
+        <DialogContent className="w-[95vw] sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Alterar Plano</DialogTitle>
+            <DialogDescription>
+              {selectedUser?.nome || selectedUser?.email}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Status do Plano</Label>
+              <Select value={selectedPlano} onValueChange={(v) => setSelectedPlano(v as StatusPlano)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="teste">Teste</SelectItem>
+                  <SelectItem value="ativo">Ativo</SelectItem>
+                  <SelectItem value="expirado">Expirado</SelectItem>
+                  <SelectItem value="cancelado">Cancelado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setIsPlanoModalOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSavePlano}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Confirmar Exclusão */}
+      <AlertDialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+        <AlertDialogContent className="w-[95vw] sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir usuário?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. Todos os dados do usuário serão removidos, incluindo clientes, contratos e parcelas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteUser} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 }
