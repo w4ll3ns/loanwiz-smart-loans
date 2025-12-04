@@ -608,12 +608,42 @@ export default function Contratos() {
       document.body.removeChild(tempDiv);
 
       // Converter canvas para blob e fazer download
-      canvas.toBlob((blob) => {
+      const fileName = `contrato-${clienteNome.replace(/\s+/g, '-')}-${format(new Date(), 'dd-MM-yyyy')}.png`;
+      
+      // Detectar iOS
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+      canvas.toBlob(async (blob) => {
         if (blob) {
+          // Para iOS - usar Web Share API para salvar na galeria
+          if (isIOS && navigator.share && navigator.canShare) {
+            const file = new File([blob], fileName, { type: 'image/png' });
+            
+            if (navigator.canShare({ files: [file] })) {
+              try {
+                await navigator.share({
+                  files: [file],
+                  title: 'Relatório de Contrato',
+                });
+                toast({
+                  title: "Imagem pronta!",
+                  description: "Escolha 'Salvar Imagem' para adicionar à galeria.",
+                });
+                return;
+              } catch (err: any) {
+                // Se o usuário cancelou, não mostrar erro
+                if (err.name === 'AbortError') return;
+                console.log('Share falhou, tentando método alternativo');
+              }
+            }
+          }
+          
+          // Método tradicional para desktop/Android
           const url = URL.createObjectURL(blob);
           const link = document.createElement('a');
           link.href = url;
-          link.download = `contrato-${clienteNome.replace(/\s+/g, '-')}-${format(new Date(), 'dd-MM-yyyy')}.png`;
+          link.download = fileName;
           link.click();
           URL.revokeObjectURL(url);
           
