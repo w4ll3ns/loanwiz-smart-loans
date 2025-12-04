@@ -168,7 +168,7 @@ export default function Dashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs md:text-sm font-medium">Total a Receber</CardTitle>
+            <CardTitle className="text-xs md:text-sm font-medium">A Receber (Pendente)</CardTitle>
             <Calendar className="h-4 w-4 text-warning" />
           </CardHeader>
           <CardContent>
@@ -176,7 +176,7 @@ export default function Dashboard() {
               R$ {stats.totalReceber.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
             <p className="text-[10px] sm:text-xs text-muted-foreground">
-              Saldo devedor
+              Valor a quitar
             </p>
           </CardContent>
         </Card>
@@ -191,7 +191,7 @@ export default function Dashboard() {
               R$ {stats.totalRecebido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
             <p className="text-[10px] sm:text-xs text-muted-foreground">
-              Pagamentos efetuados
+              Inclui parciais e quitações
             </p>
           </CardContent>
         </Card>
