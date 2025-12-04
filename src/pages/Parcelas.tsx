@@ -187,9 +187,9 @@ export default function Parcelas() {
   const abrirModalPagamento = (parcela: Parcela) => {
     setParcelaToPay(parcela);
     setTipoPagamento("total");
-    // Calcular valor restante (valor original - valor já pago)
-    const valorRestante = Number(parcela.valor_original || parcela.valor) - (Number(parcela.valor_pago) || 0);
-    setValorPagamento(valorRestante.toString());
+    // Para quitação, usar o valor original completo
+    const valorOriginal = Number(parcela.valor_original || parcela.valor);
+    setValorPagamento(valorOriginal.toString());
     setObservacaoPagamento("");
     setDataPagamento(new Date().toISOString().split('T')[0]);
     setIsPagamentoDialogOpen(true);
@@ -201,11 +201,11 @@ export default function Parcelas() {
     try {
       let valorPagar = 0;
       let tipoPag = tipoPagamento;
+      const valorOriginal = Number(parcelaToPay.valor_original || parcelaToPay.valor);
 
       if (tipoPagamento === "total") {
-        // Paga o valor restante
-        const valorRestante = Number(parcelaToPay.valor_original || parcelaToPay.valor) - (Number(parcelaToPay.valor_pago) || 0);
-        valorPagar = valorRestante;
+        // Quitar a parcela - paga o valor original completo
+        valorPagar = valorOriginal;
       } else if (tipoPagamento === "juros") {
         valorPagar = calcularJuros(parcelaToPay);
         tipoPag = "juros";
@@ -228,13 +228,11 @@ export default function Parcelas() {
 
       if (historicoError) throw historicoError;
 
-      // Atualizar valor pago total
+      // Atualizar valor pago total (para registro/histórico)
       const novoValorPago = (Number(parcelaToPay.valor_pago) || 0) + valorPagar;
-      const valorOriginal = Number(parcelaToPay.valor_original || parcelaToPay.valor);
-      const valorRestante = valorOriginal - novoValorPago;
       
-      // Determinar status
-      const novoStatus = valorRestante <= 0.01 ? "pago" : "pendente"; // 0.01 para evitar problemas de arredondamento
+      // Determinar status - só marca como "pago" quando for quitação (pagamento total)
+      const novoStatus = tipoPagamento === "total" ? "pago" : "pendente";
 
       // Atualizar parcela
       const updateData: any = {
@@ -256,10 +254,10 @@ export default function Parcelas() {
       if (updateError) throw updateError;
 
       toast({
-        title: novoStatus === "pago" ? "Parcela paga completamente!" : "Pagamento parcial registrado",
+        title: novoStatus === "pago" ? "Parcela quitada!" : "Pagamento parcial registrado",
         description: novoStatus === "pago"
-          ? `Valor total pago: R$ ${novoValorPago.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-          : `Valor pago: R$ ${valorPagar.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}. Restante: R$ ${valorRestante.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+          ? `Parcela quitada com R$ ${valorPagar.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+          : `Valor pago: R$ ${valorPagar.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}. Ainda deve: R$ ${valorOriginal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
       });
 
       // Se a parcela foi marcada como paga, verificar se todas as parcelas do contrato estão pagas
@@ -959,9 +957,9 @@ export default function Parcelas() {
                   <br />
                   {parcelaToPay.valor_pago && parcelaToPay.valor_pago > 0 && (
                     <>
-                      Já Pago: R$ {Number(parcelaToPay.valor_pago).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      Já Pago (parcial): R$ {Number(parcelaToPay.valor_pago).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       <br />
-                      Restante: R$ {(Number(parcelaToPay.valor_original || parcelaToPay.valor) - Number(parcelaToPay.valor_pago)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      Restante a Quitar: R$ {Number(parcelaToPay.valor_original || parcelaToPay.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </>
                   )}
                 </>
@@ -974,10 +972,10 @@ export default function Parcelas() {
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="total" id="total" />
                 <Label htmlFor="total" className="cursor-pointer flex-1">
-                  Pagar Valor Restante
+                  Quitar Parcela (Valor Original)
                   {parcelaToPay && (
                     <span className="block text-sm text-muted-foreground">
-                      R$ {(Number(parcelaToPay.valor_original || parcelaToPay.valor) - (Number(parcelaToPay.valor_pago) || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      R$ {Number(parcelaToPay.valor_original || parcelaToPay.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </span>
                   )}
                 </Label>
