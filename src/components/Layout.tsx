@@ -1,10 +1,11 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Calculator, Users, FileText, DollarSign, LogOut } from "lucide-react";
+import { Calculator, Users, FileText, DollarSign, LogOut, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { useUserRole } from "@/hooks/useUserRole";
 import type { User } from "@supabase/supabase-js";
 import logo from "@/assets/logo.png";
 
@@ -12,11 +13,15 @@ interface LayoutProps {
   children: ReactNode;
 }
 
-const navigation = [
+const baseNavigation = [
   { name: "Dashboard", href: "/", icon: DollarSign },
   { name: "Clientes", href: "/clientes", icon: Users },
   { name: "Contratos", href: "/contratos", icon: FileText },
   { name: "Parcelas", href: "/parcelas", icon: Calculator },
+];
+
+const adminNavigation = [
+  { name: "Administração", href: "/admin", icon: Shield },
 ];
 
 export default function Layout({ children }: LayoutProps) {
@@ -24,6 +29,11 @@ export default function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
+  const { isAdmin } = useUserRole();
+
+  const navigation = isAdmin 
+    ? [...baseNavigation, ...adminNavigation]
+    : baseNavigation;
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -76,6 +86,11 @@ export default function Layout({ children }: LayoutProps) {
             <span className="text-lg font-semibold">WS Empréstimos</span>
           </div>
           <div className="ml-auto flex items-center gap-3">
+            {isAdmin && (
+              <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">
+                Admin
+              </span>
+            )}
             <span className="text-sm text-muted-foreground">{user?.email}</span>
             <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair">
               <LogOut className="h-5 w-5" />
@@ -90,6 +105,11 @@ export default function Layout({ children }: LayoutProps) {
           <div className="flex items-center gap-2">
             <img src={logo} alt="WS Empréstimos" className="h-8 w-8" />
             <span className="text-base font-semibold">WS Empréstimos</span>
+            {isAdmin && (
+              <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
+                Admin
+              </span>
+            )}
           </div>
           <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair">
             <LogOut className="h-4 w-4" />
