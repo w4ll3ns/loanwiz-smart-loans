@@ -41,6 +41,8 @@ interface Parcela {
     };
     percentual?: number;
     tipo_juros?: string;
+    valor_emprestado?: number;
+    numero_parcelas?: number;
   };
 }
 
@@ -104,7 +106,9 @@ export default function Parcelas() {
           contratos!inner(
             clientes!inner(nome),
             percentual,
-            tipo_juros
+            tipo_juros,
+            valor_emprestado,
+            numero_parcelas
           )
         `)
         .order("data_vencimento", { ascending: true });
@@ -179,9 +183,12 @@ export default function Parcelas() {
 
   const calcularJuros = (parcela: Parcela) => {
     const percentual = parcela.contratos?.percentual || 0;
-    // Juros sempre calculados sobre o valor ORIGINAL, mesmo com pagamentos parciais
-    const valorOriginal = Number(parcela.valor_original || parcela.valor);
-    return (valorOriginal * percentual) / 100;
+    const numeroParcelas = parcela.contratos?.numero_parcelas || 1;
+    const valorEmprestado = Number(parcela.contratos?.valor_emprestado || 0);
+    
+    // Juros calculados sobre o valor emprestado proporcional à parcela
+    const valorPrincipalParcela = valorEmprestado / numeroParcelas;
+    return (valorPrincipalParcela * percentual) / 100;
   };
 
   const abrirModalPagamento = (parcela: Parcela) => {
