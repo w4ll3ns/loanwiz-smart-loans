@@ -670,7 +670,16 @@ export default function Contratos() {
       tempDiv.style.fontFamily = 'Arial, sans-serif';
       document.body.appendChild(tempDiv);
 
-      const clienteNome = selectedContrato.clientes?.nome || 'N/A';
+      // Função para sanitizar HTML e prevenir XSS
+      const escapeHtml = (text: string): string => {
+        return text
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      };
+
+      const clienteNome = escapeHtml(selectedContrato.clientes?.nome || 'N/A');
       
       // Criar o HTML do conteúdo
       tempDiv.innerHTML = `
