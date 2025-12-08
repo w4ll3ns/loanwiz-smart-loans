@@ -1709,7 +1709,7 @@ export default function Contratos() {
 
       {/* Modal de Edição de Contrato */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-lg w-[95vw] sm:w-full p-4 sm:p-6">
+        <DialogContent className="max-w-lg w-[95vw] sm:w-full p-4 sm:p-6 max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="text-lg sm:text-xl">Editar Tipo de Juros</DialogTitle>
             <DialogDescription>
@@ -1718,7 +1718,7 @@ export default function Contratos() {
           </DialogHeader>
           
           {selectedContrato && (
-            <div className="space-y-4">
+            <div className="flex-1 overflow-y-auto space-y-4 pr-1">
               {/* Info do contrato */}
               <Card className="bg-muted/50">
                 <CardContent className="pt-4 text-sm space-y-1">
@@ -1803,7 +1803,7 @@ export default function Contratos() {
             </div>
           )}
 
-          <DialogFooter className="flex-col sm:flex-row gap-2">
+          <DialogFooter className="flex-col sm:flex-row gap-2 mt-4">
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="w-full sm:w-auto">
               Cancelar
             </Button>
