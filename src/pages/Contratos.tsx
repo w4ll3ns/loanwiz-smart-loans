@@ -26,7 +26,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Plus, FileText, Eye, Trash2, Undo2, Download } from "lucide-react";
+import { Plus, FileText, Eye, Trash2, Undo2, Download, Pencil } from "lucide-react";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -73,6 +73,7 @@ interface Contrato {
   data_emprestimo: string;
   valor_total: number;
   status: string;
+  tipo_juros?: "simples" | "parcela" | "composto";
   permite_cobranca_sabado?: boolean;
   permite_cobranca_domingo?: boolean;
 }
@@ -116,6 +117,12 @@ export default function Contratos() {
   const [tipoPagamento, setTipoPagamento] = useState<string>("total");
   const [valorPagamento, setValorPagamento] = useState<string>("");
   const [dataPagamento, setDataPagamento] = useState<string>("");
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    tipoJuros: "simples" as "simples" | "parcela" | "composto",
+    percentual: ""
+  });
+  const [isEditLoading, setIsEditLoading] = useState(false);
   const { toast } = useToast();
   const { canCreate, userEmail } = useUserRole();
 
@@ -515,6 +522,99 @@ export default function Contratos() {
         description: "Verifique sua conexão com a internet e tente novamente.",
         variant: "destructive",
       });
+    }
+  };
+
+  // Funções para edição de contrato
+  const calcularPreviewEdicao = () => {
+    if (!selectedContrato) return null;
+    
+    const valor = Number(selectedContrato.valor_emprestado);
+    const percent = editFormData.percentual ? parseFloat(editFormData.percentual) : Number(selectedContrato.percentual);
+    const numParcelas = selectedContrato.numero_parcelas;
+    
+    if (!valor || !percent || !numParcelas) return null;
+
+    let valorTotalNovo: number;
+    
+    if (editFormData.tipoJuros === "parcela") {
+      valorTotalNovo = valor + (valor * (percent / 100) * numParcelas);
+    } else if (editFormData.tipoJuros === "composto") {
+      valorTotalNovo = valor * Math.pow(1 + (percent / 100), numParcelas);
+    } else {
+      valorTotalNovo = valor + (valor * percent / 100);
+    }
+
+    // Calcular parcelas pendentes e valor já pago
+    const parcelasPagas = parcelas.filter(p => p.status === 'pago');
+    const parcelasPendentes = parcelas.filter(p => p.status === 'pendente');
+    const valorJaPago = parcelasPagas.reduce((acc, p) => acc + Number(p.valor_pago || 0), 0);
+    const valorRestante = valorTotalNovo - valorJaPago;
+    const valorNovaParcela = parcelasPendentes.length > 0 ? valorRestante / parcelasPendentes.length : 0;
+
+    return {
+      valorTotalAnterior: Number(selectedContrato.valor_total),
+      valorTotalNovo,
+      valorJaPago,
+      valorRestante,
+      valorNovaParcela,
+      parcelasPagas: parcelasPagas.length,
+      parcelasPendentes: parcelasPendentes.length
+    };
+  };
+
+  const abrirModalEdicao = () => {
+    if (!selectedContrato) return;
+    setEditFormData({
+      tipoJuros: (selectedContrato.tipo_juros || 'simples') as "simples" | "parcela" | "composto",
+      percentual: String(selectedContrato.percentual)
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleEditContrato = async () => {
+    if (!selectedContrato) return;
+    
+    setIsEditLoading(true);
+    try {
+      const { error } = await supabase.rpc('recalcular_contrato_parcelas', {
+        p_contrato_id: selectedContrato.id,
+        p_tipo_juros: editFormData.tipoJuros,
+        p_percentual: editFormData.percentual ? parseFloat(editFormData.percentual) : null
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Contrato atualizado",
+        description: "O tipo de juros foi alterado e as parcelas foram recalculadas.",
+      });
+
+      setIsEditDialogOpen(false);
+      
+      // Recarregar dados
+      await loadContratos();
+      await loadParcelas(selectedContrato.id);
+      
+      // Recarregar contrato para pegar dados atualizados
+      const { data: contratoAtualizado } = await supabase
+        .from("contratos")
+        .select(`*, clientes(nome)`)
+        .eq("id", selectedContrato.id)
+        .single();
+      
+      if (contratoAtualizado) {
+        setSelectedContrato(contratoAtualizado as Contrato);
+      }
+    } catch (error: any) {
+      console.error('Erro ao editar contrato:', error);
+      toast({
+        title: "Erro ao editar contrato",
+        description: error.message || "Verifique os dados e tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsEditLoading(false);
     }
   };
 
@@ -1245,6 +1345,17 @@ export default function Contratos() {
                   <Download className="h-4 w-4 mr-2" />
                   Baixar PDF
                 </Button>
+                {selectedContrato?.status !== 'quitado' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={abrirModalEdicao}
+                    className="w-full sm:w-auto"
+                  >
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Editar Juros
+                  </Button>
+                )}
                 <Button
                   variant="destructive"
                   size="sm"
@@ -1272,6 +1383,7 @@ export default function Contratos() {
                     <p><strong>Data:</strong> {format(new Date(selectedContrato.data_emprestimo + 'T00:00:00'), 'dd/MM/yyyy')}</p>
                     <p><strong>Periodicidade:</strong> {selectedContrato.periodicidade}</p>
                     <p><strong>Número de Parcelas:</strong> {selectedContrato.numero_parcelas}</p>
+                    <p><strong>Tipo de Juros:</strong> {selectedContrato.tipo_juros === 'parcela' ? 'Por Parcela' : selectedContrato.tipo_juros === 'composto' ? 'Composto' : 'Fixo'}</p>
                   </div>
                   <div className="space-y-2">
                     <p><strong>Valor Emprestado:</strong> R$ {Number(selectedContrato.valor_emprestado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
@@ -1594,6 +1706,113 @@ export default function Contratos() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Modal de Edição de Contrato */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-lg w-[95vw] sm:w-full p-4 sm:p-6">
+          <DialogHeader>
+            <DialogTitle className="text-lg sm:text-xl">Editar Tipo de Juros</DialogTitle>
+            <DialogDescription>
+              Altere o tipo de juros e o percentual. As parcelas pendentes serão recalculadas automaticamente.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedContrato && (
+            <div className="space-y-4">
+              {/* Info do contrato */}
+              <Card className="bg-muted/50">
+                <CardContent className="pt-4 text-sm space-y-1">
+                  <p><strong>Cliente:</strong> {selectedContrato.clientes?.nome}</p>
+                  <p><strong>Valor Emprestado:</strong> R$ {Number(selectedContrato.valor_emprestado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                  <p><strong>Parcelas:</strong> {selectedContrato.numero_parcelas} ({parcelas.filter(p => p.status === 'pago').length} pagas, {parcelas.filter(p => p.status === 'pendente').length} pendentes)</p>
+                </CardContent>
+              </Card>
+
+              {/* Aviso se houver parcelas pagas */}
+              {parcelas.filter(p => p.status === 'pago').length > 0 && (
+                <div className="bg-warning/10 border border-warning/30 rounded-md p-3 text-sm">
+                  <p className="font-medium text-warning">⚠️ Atenção</p>
+                  <p className="text-muted-foreground mt-1">
+                    {parcelas.filter(p => p.status === 'pago').length} parcela(s) já foi(ram) paga(s). 
+                    O novo cálculo será aplicado apenas às {parcelas.filter(p => p.status === 'pendente').length} parcela(s) pendente(s).
+                  </p>
+                </div>
+              )}
+
+              {/* Formulário */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Tipo de Juros Atual</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedContrato.tipo_juros === 'parcela' ? 'Juros por Parcela' : selectedContrato.tipo_juros === 'composto' ? 'Juros Composto' : 'Juros Fixo'}
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Novo Tipo de Juros</Label>
+                  <Select value={editFormData.tipoJuros} onValueChange={(value: any) => setEditFormData({ ...editFormData, tipoJuros: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="simples">Juros Fixo</SelectItem>
+                      <SelectItem value="parcela">Juros por Parcela</SelectItem>
+                      <SelectItem value="composto">Juros Composto</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="editPercentual">Percentual (%)</Label>
+                  <Input
+                    id="editPercentual"
+                    type="number"
+                    step="0.1"
+                    value={editFormData.percentual}
+                    onChange={(e) => setEditFormData({ ...editFormData, percentual: e.target.value })}
+                    placeholder={String(selectedContrato.percentual)}
+                  />
+                  <p className="text-xs text-muted-foreground">Deixe em branco para manter o percentual atual ({selectedContrato.percentual}%)</p>
+                </div>
+              </div>
+
+              {/* Preview do cálculo */}
+              {calcularPreviewEdicao() && (
+                <Card className="bg-primary/5 border-primary/20">
+                  <CardContent className="pt-4 space-y-2 text-sm">
+                    <p className="font-medium">📊 Preview do Novo Cálculo:</p>
+                    <div className="grid grid-cols-2 gap-2 text-muted-foreground">
+                      <span>Valor Total Anterior:</span>
+                      <span className="font-medium text-foreground">R$ {calcularPreviewEdicao()?.valorTotalAnterior.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                      
+                      <span>Valor Total Novo:</span>
+                      <span className="font-medium text-foreground">R$ {calcularPreviewEdicao()?.valorTotalNovo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                      
+                      <span>Valor Já Pago:</span>
+                      <span className="font-medium text-foreground">R$ {calcularPreviewEdicao()?.valorJaPago.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                      
+                      <span>Valor a Pagar:</span>
+                      <span className="font-medium text-foreground">R$ {calcularPreviewEdicao()?.valorRestante.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                      
+                      <span>Valor Nova Parcela:</span>
+                      <span className="font-medium text-primary">R$ {calcularPreviewEdicao()?.valorNovaParcela.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="w-full sm:w-auto">
+              Cancelar
+            </Button>
+            <Button onClick={handleEditContrato} disabled={isEditLoading} className="w-full sm:w-auto">
+              {isEditLoading ? "Salvando..." : "Confirmar Alteração"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal de Acesso Restrito */}
       <AccessRestrictedModal

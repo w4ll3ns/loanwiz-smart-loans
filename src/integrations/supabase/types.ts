@@ -376,6 +376,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      recalcular_contrato_parcelas: {
+        Args: {
+          p_contrato_id: string
+          p_percentual?: number
+          p_tipo_juros: string
+        }
+        Returns: undefined
+      }
       recalcular_parcelas_futuras: {
         Args: {
           p_contrato_id: string
