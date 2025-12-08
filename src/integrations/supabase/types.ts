@@ -304,6 +304,40 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_get_global_stats: { Args: never; Returns: Json }
+      admin_get_user_clientes: {
+        Args: { p_user_id: string }
+        Returns: {
+          created_at: string
+          endereco: string | null
+          id: string
+          nome: string
+          observacoes: string | null
+          telefone: string | null
+          updated_at: string
+          user_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "clientes"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      admin_get_user_contratos: {
+        Args: { p_user_id: string }
+        Returns: {
+          cliente_nome: string
+          data_emprestimo: string
+          id: string
+          numero_parcelas: number
+          periodicidade: string
+          status: string
+          valor_emprestado: number
+          valor_total: number
+        }[]
+      }
+      admin_get_user_stats: { Args: { p_user_id: string }; Returns: Json }
       ajustar_data_parcela: {
         Args: {
           p_data: string
