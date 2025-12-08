@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
-import { Users, FileText, DollarSign, UserCheck, Settings, Search, MoreVertical, Key, Trash2, MessageSquare, CreditCard, Phone, Pencil } from 'lucide-react';
+import { Users, FileText, DollarSign, UserCheck, Settings, Search, MoreVertical, Key, Trash2, MessageSquare, CreditCard, Phone, Pencil, BarChart3 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -39,6 +39,32 @@ interface Stats {
   totalClientes: number;
   totalContratos: number;
   valorTotalEmprestado: number;
+}
+
+interface UserStats {
+  total_clientes: number;
+  total_contratos: number;
+  valor_emprestado: number;
+  valor_a_receber: number;
+  valor_recebido: number;
+}
+
+interface UserContrato {
+  id: string;
+  cliente_nome: string;
+  valor_emprestado: number;
+  valor_total: number;
+  status: string;
+  data_emprestimo: string;
+  numero_parcelas: number;
+  periodicidade: string;
+}
+
+interface UserCliente {
+  id: string;
+  nome: string;
+  telefone: string | null;
+  endereco: string | null;
 }
 
 type StatusPlano = 'teste' | 'ativo' | 'expirado' | 'cancelado';
@@ -69,6 +95,13 @@ export default function Admin() {
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
   const [observacoesText, setObservacoesText] = useState('');
   const [selectedPlano, setSelectedPlano] = useState<StatusPlano>('teste');
+  
+  // Relatórios por usuário
+  const [selectedReportUser, setSelectedReportUser] = useState<string>('');
+  const [userStats, setUserStats] = useState<UserStats | null>(null);
+  const [userClientes, setUserClientes] = useState<UserCliente[]>([]);
+  const [userContratos, setUserContratos] = useState<UserContrato[]>([]);
+  const [loadingReport, setLoadingReport] = useState(false);
 
   useEffect(() => {
     if (!roleLoading && !isAdmin) {
@@ -102,6 +135,7 @@ export default function Admin() {
 
   const loadData = async () => {
     try {
+      // Carrega profiles (admin pode ver todos os profiles)
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
@@ -110,23 +144,20 @@ export default function Admin() {
       if (profilesError) throw profilesError;
       setProfiles(profilesData || []);
 
-      const { data: clientesData } = await supabase
-        .from('clientes')
-        .select('id', { count: 'exact' });
+      // Carrega estatísticas globais via função SECURITY DEFINER
+      const { data: globalStats, error: statsError } = await supabase
+        .rpc('admin_get_global_stats');
 
-      const { data: contratosData } = await supabase
-        .from('contratos')
-        .select('valor_emprestado');
+      if (statsError) throw statsError;
 
-      const totalContratos = contratosData?.length || 0;
-      const valorTotal = contratosData?.reduce((sum, c) => sum + Number(c.valor_emprestado), 0) || 0;
+      const statsData = globalStats as { total_clientes: number; total_contratos: number; valor_total_emprestado: number } | null;
 
       setStats({
         totalUsuarios: profilesData?.length || 0,
         usuariosAtivos: profilesData?.filter(p => p.ativo).length || 0,
-        totalClientes: clientesData?.length || 0,
-        totalContratos,
-        valorTotalEmprestado: valorTotal,
+        totalClientes: statsData?.total_clientes || 0,
+        totalContratos: statsData?.total_contratos || 0,
+        valorTotalEmprestado: statsData?.valor_total_emprestado || 0,
       });
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
@@ -138,6 +169,46 @@ export default function Admin() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadUserReport = async (userId: string) => {
+    if (!userId) {
+      setUserStats(null);
+      setUserClientes([]);
+      setUserContratos([]);
+      return;
+    }
+
+    setLoadingReport(true);
+    try {
+      const [statsRes, clientesRes, contratosRes] = await Promise.all([
+        supabase.rpc('admin_get_user_stats', { p_user_id: userId }),
+        supabase.rpc('admin_get_user_clientes', { p_user_id: userId }),
+        supabase.rpc('admin_get_user_contratos', { p_user_id: userId }),
+      ]);
+
+      if (statsRes.error) throw statsRes.error;
+      if (clientesRes.error) throw clientesRes.error;
+      if (contratosRes.error) throw contratosRes.error;
+
+      setUserStats(statsRes.data as unknown as UserStats | null);
+      setUserClientes((clientesRes.data as UserCliente[]) || []);
+      setUserContratos((contratosRes.data as UserContrato[]) || []);
+    } catch (error) {
+      console.error('Erro ao carregar relatório:', error);
+      toast({
+        title: 'Erro ao carregar relatório',
+        description: 'Não foi possível carregar os dados do usuário.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingReport(false);
+    }
+  };
+
+  const handleSelectReportUser = (userId: string) => {
+    setSelectedReportUser(userId);
+    loadUserReport(userId);
   };
 
   const handleSaveWhatsapp = async () => {
@@ -619,6 +690,150 @@ export default function Admin() {
                 </TableBody>
               </Table>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Relatórios por Usuário */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-base md:text-lg">Relatórios por Usuário</CardTitle>
+            </div>
+            <CardDescription className="text-xs md:text-sm">
+              Selecione um usuário para visualizar seus dados detalhados
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label>Selecione um usuário</Label>
+              <Select value={selectedReportUser} onValueChange={handleSelectReportUser}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Escolha um usuário..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {profiles.map((profile) => (
+                    <SelectItem key={profile.id} value={profile.id}>
+                      {profile.nome || profile.email || 'Sem nome'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {loadingReport && (
+              <div className="text-center py-4">
+                <p className="text-muted-foreground">Carregando relatório...</p>
+              </div>
+            )}
+
+            {!loadingReport && selectedReportUser && userStats && (
+              <div className="space-y-4">
+                {/* Estatísticas do usuário */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div className="p-3 rounded-lg border bg-muted/50">
+                    <p className="text-xs text-muted-foreground">Clientes</p>
+                    <p className="text-lg font-bold">{userStats.total_clientes}</p>
+                  </div>
+                  <div className="p-3 rounded-lg border bg-muted/50">
+                    <p className="text-xs text-muted-foreground">Contratos</p>
+                    <p className="text-lg font-bold">{userStats.total_contratos}</p>
+                  </div>
+                  <div className="p-3 rounded-lg border bg-muted/50">
+                    <p className="text-xs text-muted-foreground">Total Emprestado</p>
+                    <p className="text-lg font-bold">
+                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(userStats.valor_emprestado)}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg border bg-muted/50">
+                    <p className="text-xs text-muted-foreground">A Receber</p>
+                    <p className="text-lg font-bold">
+                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(userStats.valor_a_receber)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Lista de Clientes */}
+                {userClientes.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium mb-2">Clientes ({userClientes.length})</h4>
+                    <div className="overflow-x-auto border rounded-lg">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Nome</TableHead>
+                            <TableHead>Telefone</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {userClientes.slice(0, 10).map((cliente) => (
+                            <TableRow key={cliente.id}>
+                              <TableCell className="font-medium">{cliente.nome}</TableCell>
+                              <TableCell>{cliente.telefone || '-'}</TableCell>
+                            </TableRow>
+                          ))}
+                          {userClientes.length > 10 && (
+                            <TableRow>
+                              <TableCell colSpan={2} className="text-center text-muted-foreground">
+                                ... e mais {userClientes.length - 10} cliente(s)
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Lista de Contratos */}
+                {userContratos.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium mb-2">Contratos ({userContratos.length})</h4>
+                    <div className="overflow-x-auto border rounded-lg">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Cliente</TableHead>
+                            <TableHead>Valor</TableHead>
+                            <TableHead>Parcelas</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {userContratos.slice(0, 10).map((contrato) => (
+                            <TableRow key={contrato.id}>
+                              <TableCell className="font-medium">{contrato.cliente_nome}</TableCell>
+                              <TableCell>
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(contrato.valor_emprestado)}
+                              </TableCell>
+                              <TableCell>{contrato.numero_parcelas}x</TableCell>
+                              <TableCell>
+                                <Badge variant={contrato.status === 'ativo' ? 'default' : contrato.status === 'quitado' ? 'outline' : 'secondary'}>
+                                  {contrato.status}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                          {userContratos.length > 10 && (
+                            <TableRow>
+                              <TableCell colSpan={4} className="text-center text-muted-foreground">
+                                ... e mais {userContratos.length - 10} contrato(s)
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                )}
+
+                {userClientes.length === 0 && userContratos.length === 0 && (
+                  <p className="text-center text-muted-foreground py-4">
+                    Este usuário não possui clientes ou contratos cadastrados.
+                  </p>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
