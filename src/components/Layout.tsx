@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { useUserRole } from "@/hooks/useUserRole";
+import { InstallAppGuide } from "@/components/InstallAppGuide";
 import type { User } from "@supabase/supabase-js";
 import logo from "@/assets/logo.png";
 
@@ -107,6 +108,7 @@ export default function Layout({ children }: LayoutProps) {
               </span>
             )}
             <span className="text-sm text-muted-foreground">{user?.email}</span>
+            <InstallAppGuide />
             <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair">
               <LogOut className="h-5 w-5" />
             </Button>
@@ -126,9 +128,12 @@ export default function Layout({ children }: LayoutProps) {
               </span>
             )}
           </div>
-          <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair">
-            <LogOut className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <InstallAppGuide />
+            <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair">
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </header>
 
