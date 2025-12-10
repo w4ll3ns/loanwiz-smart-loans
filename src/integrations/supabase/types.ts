@@ -353,8 +353,6 @@ export type Database = {
               p_data_inicio: string
               p_numero_parcelas: number
               p_periodicidade: string
-              p_permite_domingo?: boolean
-              p_permite_sabado?: boolean
               p_valor_parcela: number
             }
             Returns: undefined
@@ -365,6 +363,8 @@ export type Database = {
               p_data_inicio: string
               p_numero_parcelas: number
               p_periodicidade: string
+              p_permite_domingo?: boolean
+              p_permite_sabado?: boolean
               p_valor_parcela: number
             }
             Returns: undefined
