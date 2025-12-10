@@ -1,0 +1,20 @@
+{
+  "name": "WS Empréstimos - Sistema de Controle de Empréstimos",
+  "short_name": "WS Empréstimos",
+  "description": "Sistema completo para gestão de empréstimos, clientes, contratos e parcelas",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["finance", "business"],
+  "lang": "pt-BR"
+}
