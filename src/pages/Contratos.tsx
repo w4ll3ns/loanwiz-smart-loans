@@ -26,7 +26,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Plus, FileText, Eye, Trash2, Undo2, Download, Pencil } from "lucide-react";
+import { Plus, FileText, Eye, Trash2, Undo2, Download, Pencil, RefreshCw } from "lucide-react";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -324,6 +324,30 @@ export default function Contratos() {
       setSelectedContrato(contratoAtualizado as Contrato);
     }
     setIsContratoDetailsOpen(true);
+  };
+
+  const handleRenovarContrato = (contrato: Contrato) => {
+    // Preencher o formulário com os dados do contrato original
+    setFormData({
+      clienteId: contrato.cliente_id,
+      valorEmprestado: contrato.valor_emprestado.toString(),
+      percentual: contrato.percentual.toString(),
+      periodicidade: contrato.periodicidade,
+      numeroParcelas: contrato.numero_parcelas.toString(),
+      dataEmprestimo: new Date().toISOString().split('T')[0], // Data de hoje
+      tipoJuros: contrato.tipo_juros || "simples",
+      permiteCobrancaSabado: contrato.permite_cobranca_sabado ?? true,
+      permiteCobrancaDomingo: contrato.permite_cobranca_domingo ?? false
+    });
+    
+    // Fechar modal de detalhes e abrir o de criação
+    setIsContratoDetailsOpen(false);
+    setIsDialogOpen(true);
+    
+    toast({
+      title: "Renovação de contrato",
+      description: `Formulário preenchido com dados do contrato de ${contrato.clientes?.nome}. Revise e confirme.`,
+    });
   };
 
   const calcularJuros = (parcela: Parcela) => {
@@ -1363,6 +1387,17 @@ export default function Contratos() {
                   >
                     <Pencil className="h-4 w-4 mr-2" />
                     Editar Juros
+                  </Button>
+                )}
+                {selectedContrato?.status === 'quitado' && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => handleRenovarContrato(selectedContrato)}
+                    className="w-full sm:w-auto"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Renovar Contrato
                   </Button>
                 )}
                 <Button
