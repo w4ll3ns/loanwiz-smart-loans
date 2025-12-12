@@ -353,7 +353,12 @@ export default function Contratos() {
   const calcularJuros = (parcela: Parcela) => {
     if (!selectedContrato) return 0;
     const percentual = Number(selectedContrato.percentual) || 0;
-    return (Number(parcela.valor) * percentual) / 100;
+    const numeroParcelas = selectedContrato.numero_parcelas || 1;
+    const valorEmprestado = Number(selectedContrato.valor_emprestado || 0);
+    
+    // Juros calculados sobre o valor emprestado proporcional à parcela
+    const valorPrincipalParcela = valorEmprestado / numeroParcelas;
+    return (valorPrincipalParcela * percentual) / 100;
   };
 
   const abrirModalPagamento = (parcela: Parcela) => {
