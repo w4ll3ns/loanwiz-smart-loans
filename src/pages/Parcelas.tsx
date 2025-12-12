@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, Check, X, Calendar, AlertTriangle, Trash2, Undo2, FileText } from "lucide-react";
+import { Search, Check, X, Calendar, AlertTriangle, Trash2, Undo2, FileText, Banknote } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -84,6 +84,8 @@ export default function Parcelas() {
   const [novaDataVencimento, setNovaDataVencimento] = useState<string>("");
   const [justificativaAlteracao, setJustificativaAlteracao] = useState<string>("");
   const [dataPagamento, setDataPagamento] = useState<string>("");
+  const [totalRecebidoHoje, setTotalRecebidoHoje] = useState<number>(0);
+  const [pagamentosHoje, setPagamentosHoje] = useState<number>(0);
   const { toast } = useToast();
   const { canCreate, userEmail } = useUserRole();
 
@@ -99,7 +101,29 @@ export default function Parcelas() {
 
   useEffect(() => {
     loadParcelas();
+    loadRecebidoHoje();
   }, []);
+
+  const loadRecebidoHoje = async () => {
+    try {
+      const hoje = new Date().toISOString().split('T')[0];
+      
+      const { data, error } = await supabase
+        .from("parcelas_historico")
+        .select("valor_pago")
+        .eq("tipo_evento", "pagamento")
+        .gte("data_pagamento", `${hoje}T00:00:00`)
+        .lt("data_pagamento", `${hoje}T23:59:59.999`);
+
+      if (error) throw error;
+
+      const total = data?.reduce((acc, p) => acc + (Number(p.valor_pago) || 0), 0) || 0;
+      setTotalRecebidoHoje(total);
+      setPagamentosHoje(data?.length || 0);
+    } catch (error) {
+      console.error("Erro ao carregar recebidos hoje:", error);
+    }
+  };
 
   const loadParcelas = async () => {
     try {
@@ -304,6 +328,7 @@ export default function Parcelas() {
       setValorPagamento("");
       setObservacaoPagamento("");
       loadParcelas();
+      loadRecebidoHoje();
     } catch (error: any) {
       toast({
         title: "Não foi possível processar o pagamento",
@@ -642,7 +667,22 @@ export default function Parcelas() {
       </Card>
 
       {/* Cards de Resumo */}
-      <div className="grid gap-2 md:gap-4 grid-cols-1 md:grid-cols-3 w-full">
+      <div className="grid gap-2 md:gap-4 grid-cols-2 md:grid-cols-4 w-full">
+        <Card className="w-full overflow-hidden border-l-4 border-l-primary">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 pt-3">
+            <CardTitle className="text-xs md:text-sm font-medium truncate">Recebido Hoje</CardTitle>
+            <Banknote className="h-3 w-3 md:h-4 md:w-4 text-primary flex-shrink-0 ml-1" />
+          </CardHeader>
+          <CardContent className="px-3 pb-3">
+            <div className="text-base md:text-2xl font-bold text-primary break-all">
+              R$ {totalRecebidoHoje.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </div>
+            <p className="text-[10px] md:text-xs text-muted-foreground truncate">
+              {pagamentosHoje} pagamento{pagamentosHoje !== 1 ? 's' : ''}
+            </p>
+          </CardContent>
+        </Card>
+
         <Card className="w-full overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 pt-3">
             <CardTitle className="text-xs md:text-sm font-medium truncate">A Receber (Pendente)</CardTitle>
