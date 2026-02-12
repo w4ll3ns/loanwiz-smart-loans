@@ -26,7 +26,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Plus, FileText, Eye, Trash2, Undo2, Download, Pencil, RefreshCw } from "lucide-react";
+import { Plus, FileText, Eye, Trash2, Undo2, Download, Pencil, RefreshCw, Upload, Loader2 } from "lucide-react";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -100,6 +100,14 @@ interface Parcela {
   valor_pago: number | null;
 }
 
+interface DadosComprovante {
+  nome_cliente: string;
+  valor: number;
+  data: string;
+  chave_pix?: string;
+  tipo_chave?: string;
+}
+
 export default function Contratos() {
   const [contratos, setContratos] = useState<Contrato[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -125,6 +133,12 @@ export default function Contratos() {
   const [isEditLoading, setIsEditLoading] = useState(false);
   const { toast } = useToast();
   const { canCreate, userEmail } = useUserRole();
+
+  // Import comprovante states
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [isImportLoading, setIsImportLoading] = useState(false);
+  const [dadosComprovante, setDadosComprovante] = useState<DadosComprovante | null>(null);
+  const [importStep, setImportStep] = useState<"upload" | "review">("upload");
 
   const [formData, setFormData] = useState({
     clienteId: "",
@@ -1097,23 +1111,144 @@ export default function Contratos() {
     }
   };
 
+  const handleImportComprovante = async (file: File) => {
+    setIsImportLoading(true);
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          const base64Data = result.split(",")[1];
+          resolve(base64Data);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const { data, error } = await supabase.functions.invoke("parse-comprovante", {
+        body: { image_base64: base64, mime_type: file.type },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      setDadosComprovante(data);
+      setImportStep("review");
+    } catch (error: any) {
+      console.error("Erro ao importar comprovante:", error);
+      toast({
+        title: "Erro ao processar comprovante",
+        description: error.message || "Não foi possível extrair os dados do comprovante.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsImportLoading(false);
+    }
+  };
+
+  const handleConfirmImport = async () => {
+    if (!dadosComprovante) return;
+
+    try {
+      // Buscar cliente por nome (match parcial case-insensitive)
+      const { data: clientesMatch } = await supabase
+        .from("clientes")
+        .select("id, nome")
+        .ilike("nome", `%${dadosComprovante.nome_cliente}%`);
+
+      let clienteId: string;
+
+      if (clientesMatch && clientesMatch.length > 0) {
+        clienteId = clientesMatch[0].id;
+        toast({
+          title: "Cliente encontrado",
+          description: `Cliente "${clientesMatch[0].nome}" selecionado automaticamente.`,
+        });
+      } else {
+        // Criar novo cliente
+        const observacoes = dadosComprovante.chave_pix
+          ? `Chave PIX (${dadosComprovante.tipo_chave || "desconhecido"}): ${dadosComprovante.chave_pix}`
+          : undefined;
+
+        const { data: { user } } = await supabase.auth.getUser();
+
+        const { data: novoCliente, error: clienteError } = await supabase
+          .from("clientes")
+          .insert([{
+            nome: dadosComprovante.nome_cliente,
+            observacoes,
+            user_id: user?.id,
+          }])
+          .select()
+          .single();
+
+        if (clienteError) throw clienteError;
+        clienteId = novoCliente.id;
+        await loadClientes();
+
+        toast({
+          title: "Novo cliente criado",
+          description: `Cliente "${dadosComprovante.nome_cliente}" criado automaticamente.`,
+        });
+      }
+
+      // Pre-preencher formulário e abrir dialog de contrato
+      setFormData({
+        clienteId,
+        valorEmprestado: dadosComprovante.valor.toString(),
+        percentual: "",
+        periodicidade: "",
+        numeroParcelas: "",
+        dataEmprestimo: dadosComprovante.data || new Date().toISOString().split("T")[0],
+        tipoJuros: "simples",
+        permiteCobrancaSabado: true,
+        permiteCobrancaDomingo: false,
+      });
+
+      setIsImportDialogOpen(false);
+      setDadosComprovante(null);
+      setImportStep("upload");
+      setIsDialogOpen(true);
+    } catch (error: any) {
+      toast({
+        title: "Erro ao confirmar importação",
+        description: error.message || "Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="space-y-4 md:space-y-6">
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <h1 className="text-2xl md:text-3xl font-bold">Gestão de Contratos</h1>
         
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="w-full md:w-auto" onClick={(e) => {
-              if (!canCreate) {
-                e.preventDefault();
-                setIsAccessModalOpen(true);
-              }
-            }}>
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Contrato
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2 flex-col sm:flex-row">
+          <Button size="sm" variant="outline" className="w-full md:w-auto" onClick={() => {
+            if (!canCreate) {
+              setIsAccessModalOpen(true);
+              return;
+            }
+            setImportStep("upload");
+            setDadosComprovante(null);
+            setIsImportDialogOpen(true);
+          }}>
+            <Upload className="h-4 w-4 mr-2" />
+            Importar Comprovante
+          </Button>
+
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="w-full md:w-auto" onClick={(e) => {
+                if (!canCreate) {
+                  e.preventDefault();
+                  setIsAccessModalOpen(true);
+                }
+              }}>
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Contrato
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full p-4 sm:p-6">
             <DialogHeader>
               <DialogTitle className="text-lg sm:text-xl">Novo Contrato de Empréstimo</DialogTitle>
@@ -1298,6 +1433,7 @@ export default function Contratos() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Preview Dialog */}
@@ -1860,6 +1996,95 @@ export default function Contratos() {
               {isEditLoading ? "Salvando..." : "Confirmar Alteração"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Import Comprovante Dialog */}
+      <Dialog open={isImportDialogOpen} onOpenChange={(open) => {
+        setIsImportDialogOpen(open);
+        if (!open) {
+          setDadosComprovante(null);
+          setImportStep("upload");
+        }
+      }}>
+        <DialogContent className="max-w-md w-[95vw] sm:w-full p-4 sm:p-6">
+          <DialogHeader>
+            <DialogTitle className="text-lg">Importar Comprovante PIX</DialogTitle>
+            <DialogDescription>
+              {importStep === "upload"
+                ? "Faça upload de uma imagem ou PDF do comprovante PIX para extrair os dados automaticamente."
+                : "Confira os dados extraídos do comprovante antes de confirmar."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {importStep === "upload" && (
+            <div className="space-y-4">
+              <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
+                <Upload className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground mb-3">
+                  Selecione uma imagem (PNG, JPG) ou PDF
+                </p>
+                <Input
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg,application/pdf"
+                  className="max-w-xs mx-auto"
+                  disabled={isImportLoading}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleImportComprovante(file);
+                  }}
+                />
+              </div>
+              {isImportLoading && (
+                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Processando comprovante...
+                </div>
+              )}
+            </div>
+          )}
+
+          {importStep === "review" && dadosComprovante && (
+            <div className="space-y-4">
+              <Card>
+                <CardContent className="pt-4 space-y-3">
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-muted-foreground text-xs">Cliente</p>
+                      <p className="font-medium">{dadosComprovante.nome_cliente}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs">Valor</p>
+                      <p className="font-medium">R$ {dadosComprovante.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs">Data</p>
+                      <p className="font-medium">{dadosComprovante.data ? format(new Date(dadosComprovante.data + "T00:00:00"), "dd/MM/yyyy") : "N/A"}</p>
+                    </div>
+                    {dadosComprovante.chave_pix && (
+                      <div>
+                        <p className="text-muted-foreground text-xs">Chave PIX ({dadosComprovante.tipo_chave})</p>
+                        <p className="font-medium text-xs break-all">{dadosComprovante.chave_pix}</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <DialogFooter className="flex-col sm:flex-row gap-2">
+                <Button variant="outline" onClick={() => {
+                  setImportStep("upload");
+                  setDadosComprovante(null);
+                }} className="w-full sm:w-auto">
+                  Tentar novamente
+                </Button>
+                <Button onClick={handleConfirmImport} className="w-full sm:w-auto">
+                  <FileText className="h-4 w-4 mr-2" />
+                  Confirmar e Criar Contrato
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
