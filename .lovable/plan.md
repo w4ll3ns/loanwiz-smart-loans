@@ -1,101 +1,58 @@
 
 
-## Plano: Importador de Comprovante PIX
+## Plano: Corrigir Suporte a PDF no Importador de Comprovante
 
-### Visao Geral
+### Problema
 
-Criar um fluxo onde o usuario faz upload de um comprovante PIX (imagem ou PDF), uma edge function envia para a API da OpenAI (GPT-4o com visao), extrai os dados estruturados (valor, nome do beneficiario/pagador, data, chave PIX), e pre-preenche o formulario de novo contrato -- criando o cliente automaticamente se necessario.
+A API de visao do OpenAI (GPT-4o) **nao aceita PDFs** diretamente — apenas tipos de imagem (`image/png`, `image/jpeg`, etc.). Quando um PDF e enviado, o `mime_type` vai como `application/pdf`, e a OpenAI retorna erro 400: "Invalid MIME type. Only image types are supported."
 
-### Arquitetura
+### Solucao
+
+Converter o PDF em imagem **no frontend** antes de enviar para a edge function, usando a biblioteca `pdfjs-dist` (PDF.js da Mozilla). Isso renderiza a primeira pagina do PDF em um canvas e exporta como PNG.
+
+### Fluxo Corrigido
 
 ```text
-+------------------+       +------------------------+       +-----------+
-|  Upload no       | ----> | Edge Function          | ----> | OpenAI    |
-|  Frontend        |       | parse-comprovante      |       | GPT-4o    |
-|  (imagem/PDF)    | <---- | (extrai dados)         | <---- | (visao)   |
-+------------------+       +------------------------+       +-----------+
-        |
-        v
-+------------------+
-| Busca cliente    |
-| pelo nome        |
-| (match parcial)  |
-+------------------+
-        |
-        v
-+----------------------------------+
-| Pre-preenche formulario          |
-| - Se cliente existe: seleciona   |
-| - Se nao existe: cria novo       |
-| - Valor, data ja preenchidos     |
-| - Usuario completa os campos     |
-+----------------------------------+
+Upload PDF --> PDF.js renderiza pagina 1 --> Canvas --> PNG base64 --> Edge Function --> OpenAI
+Upload Imagem --> base64 direto --> Edge Function --> OpenAI
 ```
 
-### Pre-requisito: Chave da OpenAI
+### Alteracoes
 
-Sera necessario configurar o secret `OPENAI_API_KEY` no Supabase para que a edge function funcione. O usuario precisara fornecer sua chave da OpenAI.
+**1. Instalar dependencia: `pdfjs-dist`**
+- Biblioteca da Mozilla para renderizar PDFs no navegador
 
-### 1. Edge Function: `parse-comprovante`
+**2. Modificar `src/pages/Contratos.tsx`**
 
-**Arquivo:** `supabase/functions/parse-comprovante/index.ts`
+Na funcao `handleImportComprovante`:
+- Detectar se o arquivo e PDF (`file.type === 'application/pdf'`)
+- Se PDF: usar PDF.js para carregar o documento, renderizar a primeira pagina em um canvas, e converter para PNG base64
+- Se imagem: manter o fluxo atual (FileReader direto)
+- Em ambos os casos, enviar para a edge function com `mime_type: 'image/png'`
 
-- Recebe o comprovante como base64 (imagem) no body da requisicao
-- Envia para a API da OpenAI usando GPT-4o com capacidade de visao
-- Usa tool calling para extrair dados estruturados:
-  - `nome_cliente`: nome do beneficiario ou pagador
-  - `valor`: valor da transferencia
-  - `data`: data da operacao
-  - `chave_pix`: chave PIX utilizada
-  - `tipo_chave`: tipo da chave (CPF, telefone, email, aleatoria)
-- Retorna JSON estruturado para o frontend
+**3. Edge function permanece inalterada**
+- Ja funciona corretamente para imagens
+- So precisa receber imagens validas
 
-### 2. Componente Frontend: Modal de Importacao
+### Detalhes Tecnicos
 
-**Modificacao em:** `src/pages/Contratos.tsx`
+```text
+// Pseudo-codigo da conversao PDF -> imagem
+if (file.type === 'application/pdf') {
+  1. Ler arquivo como ArrayBuffer
+  2. Carregar com pdfjsLib.getDocument(arrayBuffer)
+  3. Obter primeira pagina: pdf.getPage(1)
+  4. Criar canvas com dimensoes da pagina (escala 2x para qualidade)
+  5. Renderizar pagina no canvas: page.render({ canvasContext, viewport })
+  6. Exportar canvas como PNG: canvas.toDataURL('image/png')
+  7. Extrair base64 e enviar com mime_type = 'image/png'
+}
+```
 
-- Adicionar botao "Importar Comprovante" ao lado do botao "Novo Contrato"
-- Icone: `Upload` do Lucide
-- Ao clicar, abre um dialog para:
-  1. Selecionar arquivo (aceita imagem PNG/JPG ou PDF)
-  2. Converter para base64
-  3. Enviar para a edge function
-  4. Exibir dados extraidos para confirmacao
-  5. Ao confirmar:
-     - Buscar cliente pelo nome (match parcial case-insensitive)
-     - Se encontrar: seleciona o cliente existente
-     - Se nao encontrar: cria novo cliente com o nome e chave PIX como observacao
-     - Pre-preenche `valorEmprestado` e `dataEmprestimo` no formulario de contrato
-     - Abre o dialog de criacao de contrato com os dados
-
-### 3. Fluxo do Usuario
-
-1. Clica em "Importar Comprovante"
-2. Seleciona o arquivo (foto ou PDF do comprovante PIX)
-3. Sistema processa e exibe: "Valor: R$ 500,00 | Cliente: Joao Silva | Data: 12/02/2026 | Chave: CPF xxx.xxx.xxx-xx"
-4. Usuario confirma os dados (pode editar se necessario)
-5. Sistema verifica se "Joao Silva" ja existe nos clientes
-   - Se sim: seleciona automaticamente
-   - Se nao: cria o cliente e seleciona
-6. Abre o formulario de novo contrato pre-preenchido
-7. Usuario preenche os campos restantes (parcelas, juros, periodicidade) e confirma
-
-### 4. Configuracao do Supabase
-
-**Arquivo:** `supabase/config.toml`
-- Adicionar configuracao para a nova edge function com `verify_jwt = false`
-
-### Arquivos criados/modificados:
+### Arquivos modificados
 
 | Arquivo | Acao |
 |---|---|
-| `supabase/functions/parse-comprovante/index.ts` | Criar |
-| `supabase/config.toml` | Modificar (adicionar funcao) |
-| `src/pages/Contratos.tsx` | Modificar (adicionar botao + modal + logica) |
-
-### Limitacoes conhecidas:
-
-- A qualidade da extracao depende da clareza do comprovante
-- PDFs com imagens escaneadas podem ter menor precisao
-- O match de cliente e feito por nome (busca parcial), entao nomes muito diferentes nao serao encontrados automaticamente
+| `package.json` | Adicionar `pdfjs-dist` |
+| `src/pages/Contratos.tsx` | Modificar `handleImportComprovante` para converter PDF em imagem |
 
