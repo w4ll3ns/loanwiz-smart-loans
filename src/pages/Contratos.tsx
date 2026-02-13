@@ -26,7 +26,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Plus, FileText, Eye, Trash2, Undo2, Download, Pencil, RefreshCw, Upload, Loader2 } from "lucide-react";
+import { Plus, FileText, Eye, Trash2, Undo2, Download, Pencil, RefreshCw, Upload, Loader2, ArrowRightLeft } from "lucide-react";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -139,6 +139,10 @@ export default function Contratos() {
   const [isImportLoading, setIsImportLoading] = useState(false);
   const [dadosComprovante, setDadosComprovante] = useState<DadosComprovante | null>(null);
   const [importStep, setImportStep] = useState<"upload" | "review">("upload");
+  const [showClienteOverride, setShowClienteOverride] = useState(false);
+  const [clienteOverrideType, setClienteOverrideType] = useState<"existing" | "new">("existing");
+  const [selectedOverrideClienteId, setSelectedOverrideClienteId] = useState("");
+  const [novoClienteNome, setNovoClienteNome] = useState("");
 
   const [formData, setFormData] = useState({
     clienteId: "",
@@ -1179,22 +1183,18 @@ export default function Contratos() {
     if (!dadosComprovante) return;
 
     try {
-      // Buscar cliente por nome (match parcial case-insensitive)
-      const { data: clientesMatch } = await supabase
-        .from("clientes")
-        .select("id, nome")
-        .ilike("nome", `%${dadosComprovante.nome_cliente}%`);
-
       let clienteId: string;
 
-      if (clientesMatch && clientesMatch.length > 0) {
-        clienteId = clientesMatch[0].id;
+      if (showClienteOverride && clienteOverrideType === "existing" && selectedOverrideClienteId) {
+        // User chose an existing client override
+        clienteId = selectedOverrideClienteId;
+        const selectedCliente = clientes.find(c => c.id === selectedOverrideClienteId);
         toast({
-          title: "Cliente encontrado",
-          description: `Cliente "${clientesMatch[0].nome}" selecionado automaticamente.`,
+          title: "Cliente selecionado",
+          description: `Cliente "${selectedCliente?.nome}" selecionado.`,
         });
-      } else {
-        // Criar novo cliente
+      } else if (showClienteOverride && clienteOverrideType === "new" && novoClienteNome.trim()) {
+        // User chose to create a new client with custom name
         const observacoes = dadosComprovante.chave_pix
           ? `Chave PIX (${dadosComprovante.tipo_chave || "desconhecido"}): ${dadosComprovante.chave_pix}`
           : undefined;
@@ -1204,7 +1204,7 @@ export default function Contratos() {
         const { data: novoCliente, error: clienteError } = await supabase
           .from("clientes")
           .insert([{
-            nome: dadosComprovante.nome_cliente,
+            nome: novoClienteNome.trim(),
             observacoes,
             user_id: user?.id,
           }])
@@ -1217,8 +1217,47 @@ export default function Contratos() {
 
         toast({
           title: "Novo cliente criado",
-          description: `Cliente "${dadosComprovante.nome_cliente}" criado automaticamente.`,
+          description: `Cliente "${novoClienteNome.trim()}" criado.`,
         });
+      } else {
+        // Default flow: search by PIX name or create
+        const { data: clientesMatch } = await supabase
+          .from("clientes")
+          .select("id, nome")
+          .ilike("nome", `%${dadosComprovante.nome_cliente}%`);
+
+        if (clientesMatch && clientesMatch.length > 0) {
+          clienteId = clientesMatch[0].id;
+          toast({
+            title: "Cliente encontrado",
+            description: `Cliente "${clientesMatch[0].nome}" selecionado automaticamente.`,
+          });
+        } else {
+          const observacoes = dadosComprovante.chave_pix
+            ? `Chave PIX (${dadosComprovante.tipo_chave || "desconhecido"}): ${dadosComprovante.chave_pix}`
+            : undefined;
+
+          const { data: { user } } = await supabase.auth.getUser();
+
+          const { data: novoCliente, error: clienteError } = await supabase
+            .from("clientes")
+            .insert([{
+              nome: dadosComprovante.nome_cliente,
+              observacoes,
+              user_id: user?.id,
+            }])
+            .select()
+            .single();
+
+          if (clienteError) throw clienteError;
+          clienteId = novoCliente.id;
+          await loadClientes();
+
+          toast({
+            title: "Novo cliente criado",
+            description: `Cliente "${dadosComprovante.nome_cliente}" criado automaticamente.`,
+          });
+        }
       }
 
       // Pre-preencher formulário e abrir dialog de contrato
@@ -1237,6 +1276,9 @@ export default function Contratos() {
       setIsImportDialogOpen(false);
       setDadosComprovante(null);
       setImportStep("upload");
+      setShowClienteOverride(false);
+      setSelectedOverrideClienteId("");
+      setNovoClienteNome("");
       setIsDialogOpen(true);
     } catch (error: any) {
       toast({
@@ -2034,6 +2076,9 @@ export default function Contratos() {
         if (!open) {
           setDadosComprovante(null);
           setImportStep("upload");
+          setShowClienteOverride(false);
+          setSelectedOverrideClienteId("");
+          setNovoClienteNome("");
         }
       }}>
         <DialogContent className="max-w-md w-[95vw] sm:w-full p-4 sm:p-6">
@@ -2078,9 +2123,80 @@ export default function Contratos() {
               <Card>
                 <CardContent className="pt-4 space-y-3">
                   <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div>
-                      <p className="text-muted-foreground text-xs">Cliente</p>
-                      <p className="font-medium">{dadosComprovante.nome_cliente}</p>
+                    <div className="col-span-2">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-muted-foreground text-xs">Cliente</p>
+                          {!showClienteOverride ? (
+                            <p className="font-medium">{dadosComprovante.nome_cliente}</p>
+                          ) : (
+                            <p className="font-medium text-muted-foreground text-xs italic">Original: {dadosComprovante.nome_cliente}</p>
+                          )}
+                        </div>
+                        {!showClienteOverride && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setShowClienteOverride(true);
+                              setClienteOverrideType("existing");
+                              setSelectedOverrideClienteId("");
+                              setNovoClienteNome(dadosComprovante.nome_cliente);
+                            }}
+                            className="h-8 px-2 text-xs"
+                          >
+                            <ArrowRightLeft className="h-3 w-3 mr-1" />
+                            Trocar
+                          </Button>
+                        )}
+                      </div>
+
+                      {showClienteOverride && (
+                        <div className="mt-3 space-y-3 border rounded-md p-3 bg-muted/30">
+                          <RadioGroup value={clienteOverrideType} onValueChange={(v) => setClienteOverrideType(v as "existing" | "new")}>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="existing" id="override-existing" />
+                              <Label htmlFor="override-existing" className="cursor-pointer text-xs">Cliente existente</Label>
+                            </div>
+                            {clienteOverrideType === "existing" && (
+                              <Select value={selectedOverrideClienteId} onValueChange={setSelectedOverrideClienteId}>
+                                <SelectTrigger className="h-9 text-xs">
+                                  <SelectValue placeholder="Selecione um cliente" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {clientes.map((c) => (
+                                    <SelectItem key={c.id} value={c.id} className="text-xs">{c.nome}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="new" id="override-new" />
+                              <Label htmlFor="override-new" className="cursor-pointer text-xs">Novo cliente</Label>
+                            </div>
+                            {clienteOverrideType === "new" && (
+                              <Input
+                                value={novoClienteNome}
+                                onChange={(e) => setNovoClienteNome(e.target.value)}
+                                placeholder="Nome do novo cliente"
+                                className="h-9 text-xs"
+                              />
+                            )}
+                          </RadioGroup>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setShowClienteOverride(false);
+                              setSelectedOverrideClienteId("");
+                              setNovoClienteNome("");
+                            }}
+                            className="h-7 text-xs"
+                          >
+                            Cancelar
+                          </Button>
+                        </div>
+                      )}
                     </div>
                     <div>
                       <p className="text-muted-foreground text-xs">Valor</p>
@@ -2104,10 +2220,11 @@ export default function Contratos() {
                 <Button variant="outline" onClick={() => {
                   setImportStep("upload");
                   setDadosComprovante(null);
+                  setShowClienteOverride(false);
                 }} className="w-full sm:w-auto">
                   Tentar novamente
                 </Button>
-                <Button onClick={handleConfirmImport} className="w-full sm:w-auto">
+                <Button onClick={handleConfirmImport} className="w-full sm:w-auto" disabled={showClienteOverride && clienteOverrideType === "existing" && !selectedOverrideClienteId || showClienteOverride && clienteOverrideType === "new" && !novoClienteNome.trim()}>
                   <FileText className="h-4 w-4 mr-2" />
                   Confirmar e Criar Contrato
                 </Button>
