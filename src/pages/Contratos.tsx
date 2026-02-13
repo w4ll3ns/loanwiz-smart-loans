@@ -1111,22 +1111,51 @@ export default function Contratos() {
     }
   };
 
+  const convertPdfToImage = async (file: File): Promise<string> => {
+    const pdfjsLib = await import("pdfjs-dist");
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const page = await pdf.getPage(1);
+    
+    const scale = 2;
+    const viewport = page.getViewport({ scale });
+    const canvas = document.createElement("canvas");
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const ctx = canvas.getContext("2d")!;
+    
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    
+    const dataUrl = canvas.toDataURL("image/png");
+    return dataUrl.split(",")[1];
+  };
+
   const handleImportComprovante = async (file: File) => {
     setIsImportLoading(true);
     try {
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = reader.result as string;
-          const base64Data = result.split(",")[1];
-          resolve(base64Data);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+      let base64: string;
+      let mimeType: string;
+
+      if (file.type === "application/pdf") {
+        base64 = await convertPdfToImage(file);
+        mimeType = "image/png";
+      } else {
+        base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            resolve(result.split(",")[1]);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        mimeType = file.type;
+      }
 
       const { data, error } = await supabase.functions.invoke("parse-comprovante", {
-        body: { image_base64: base64, mime_type: file.type },
+        body: { image_base64: base64, mime_type: mimeType },
       });
 
       if (error) throw error;
