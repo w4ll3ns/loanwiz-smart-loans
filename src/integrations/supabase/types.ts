@@ -387,7 +387,7 @@ export type Database = {
       recalcular_parcelas_futuras: {
         Args: {
           p_contrato_id: string
-          p_intervalo: unknown
+          p_intervalo: string
           p_permite_domingo: boolean
           p_permite_sabado: boolean
         }
