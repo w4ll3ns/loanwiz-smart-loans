@@ -1275,7 +1275,7 @@ export default function Contratos() {
         percentual: "",
         periodicidade: "",
         numeroParcelas: "",
-        dataEmprestimo: dadosComprovante.data || new Date().toISOString().split("T")[0],
+        dataEmprestimo: dadosComprovante.data || getLocalDateString(),
         tipoJuros: "simples",
         permiteCobrancaSabado: true,
         permiteCobrancaDomingo: false,
