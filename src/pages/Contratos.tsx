@@ -144,6 +144,14 @@ export default function Contratos() {
   const [selectedOverrideClienteId, setSelectedOverrideClienteId] = useState("");
   const [novoClienteNome, setNovoClienteNome] = useState("");
 
+  const [statusFilter, setStatusFilter] = useState<"ativos" | "quitados" | "todos">("ativos");
+
+  const contratosFiltrados = contratos.filter((c) => {
+    if (statusFilter === "ativos") return c.status === "ativo";
+    if (statusFilter === "quitados") return c.status === "quitado";
+    return true;
+  });
+
   const [formData, setFormData] = useState({
     clienteId: "",
     valorEmprestado: "",
