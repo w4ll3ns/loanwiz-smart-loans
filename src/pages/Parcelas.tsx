@@ -445,7 +445,7 @@ export default function Parcelas() {
           .update({
             valor_pago: novoValorPago,
             status: novoValorPago >= valorOriginal ? "pago" : "pendente",
-            data_pagamento: novoValorPago >= valorOriginal ? new Date().toISOString().split('T')[0] : null,
+            data_pagamento: novoValorPago >= valorOriginal ? getLocalDateString() : null,
           })
           .eq("id", parcelaHistorico.id);
 
