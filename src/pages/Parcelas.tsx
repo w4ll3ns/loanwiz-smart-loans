@@ -26,6 +26,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { AccessRestrictedModal } from "@/components/AccessRestrictedModal";
 
+function getLocalDateString(date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 interface Parcela {
   id: string;
   contrato_id: string;
@@ -106,7 +113,7 @@ export default function Parcelas() {
 
   const loadRecebidoHoje = async () => {
     try {
-      const hoje = new Date().toISOString().split('T')[0];
+      const hoje = getLocalDateString();
       
       const { data, error } = await supabase
         .from("parcelas_historico")
@@ -256,7 +263,7 @@ export default function Parcelas() {
           parcela_id: parcelaToPay.id,
           valor_pago: valorPagar,
           tipo_pagamento: tipoPag,
-          data_pagamento: new Date(dataPagamento).toISOString(),
+          data_pagamento: dataPagamento + "T12:00:00",
           observacao: observacaoPagamento.trim() || null,
           tipo_evento: "pagamento",
         } as any);
@@ -445,7 +452,7 @@ export default function Parcelas() {
           .update({
             valor_pago: novoValorPago,
             status: novoValorPago >= valorOriginal ? "pago" : "pendente",
-            data_pagamento: novoValorPago >= valorOriginal ? new Date().toISOString().split('T')[0] : null,
+            data_pagamento: novoValorPago >= valorOriginal ? getLocalDateString() : null,
           })
           .eq("id", parcelaHistorico.id);
 
@@ -559,7 +566,7 @@ export default function Parcelas() {
           data_vencimento_anterior: parcelaToEditData.data_vencimento,
           data_vencimento_nova: novaDataVencimento,
           observacao: justificativaAlteracao.trim(),
-          data_pagamento: new Date().toISOString(),
+          data_pagamento: getLocalDateString() + "T12:00:00",
         } as any);
 
       if (historicoError) {
