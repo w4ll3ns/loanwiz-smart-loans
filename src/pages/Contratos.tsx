@@ -1917,8 +1917,36 @@ export default function Contratos() {
 
       {/* Lista de Contratos */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base md:text-lg">Contratos Ativos ({contratos.length})</CardTitle>
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <CardTitle className="text-base md:text-lg">
+            {statusFilter === "ativos" ? "Contratos Ativos" : statusFilter === "quitados" ? "Contratos Quitados" : "Todos os Contratos"} ({contratosFiltrados.length})
+          </CardTitle>
+          <div className="flex gap-1">
+            <Button
+              size="sm"
+              variant={statusFilter === "ativos" ? "default" : "outline"}
+              onClick={() => setStatusFilter("ativos")}
+              className="text-xs"
+            >
+              Ativos
+            </Button>
+            <Button
+              size="sm"
+              variant={statusFilter === "quitados" ? "default" : "outline"}
+              onClick={() => setStatusFilter("quitados")}
+              className="text-xs"
+            >
+              Quitados
+            </Button>
+            <Button
+              size="sm"
+              variant={statusFilter === "todos" ? "default" : "outline"}
+              onClick={() => setStatusFilter("todos")}
+              className="text-xs"
+            >
+              Todos
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="p-0 md:p-6">
           <div className="overflow-x-auto">
