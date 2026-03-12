@@ -26,12 +26,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { AccessRestrictedModal } from "@/components/AccessRestrictedModal";
 
-function getLocalDateString(date = new Date()): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
+import { getLocalDateString } from "@/lib/utils";
 
 interface Parcela {
   id: string;
@@ -233,7 +228,7 @@ export default function Parcelas() {
     const valorOriginal = Number(parcela.valor_original || parcela.valor);
     setValorPagamento(valorOriginal.toString());
     setObservacaoPagamento("");
-    setDataPagamento(new Date().toISOString().split('T')[0]);
+    setDataPagamento(getLocalDateString());
     setIsPagamentoDialogOpen(true);
   };
 
@@ -794,12 +789,12 @@ export default function Parcelas() {
                     calcularDiasAtraso(parcela.data_vencimento) > 0 ? "hsl(var(--destructive))" : 
                     "hsl(var(--warning))"
                 }}>
-                  <CardContent className="p-2.5 space-y-2">
+                  <CardContent className="p-3 space-y-2">
                     {/* Header do Card */}
                     <div className="flex items-start justify-between gap-1.5">
                       <div className="flex-1 min-w-0 overflow-hidden">
-                        <p className="font-semibold text-xs truncate">{parcela.contratos?.clientes?.nome}</p>
-                        <p className="text-[10px] text-muted-foreground">Parcela {parcela.numero_parcela}</p>
+                        <p className="font-semibold text-sm truncate">{parcela.contratos?.clientes?.nome}</p>
+                        <p className="text-xs text-muted-foreground">Parcela {parcela.numero_parcela}</p>
                       </div>
                       <div className="flex-shrink-0">
                         {getStatusBadge(parcela)}
@@ -807,21 +802,21 @@ export default function Parcelas() {
                     </div>
 
                     {/* Informações Principais */}
-                    <div className="grid grid-cols-2 gap-1.5 text-sm">
+                    <div className="grid grid-cols-2 gap-1.5">
                       <div className="overflow-hidden">
-                        <p className="text-muted-foreground text-[10px]">Valor</p>
-                        <p className="font-semibold text-[11px] break-all">R$ {Number(parcela.valor_original || parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                        <p className="text-muted-foreground text-xs">Valor</p>
+                        <p className="font-semibold text-sm break-all">R$ {Number(parcela.valor_original || parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                         {parcela.valor_pago && parcela.valor_pago > 0 && (
-                          <p className="text-[10px] text-success break-all">
+                          <p className="text-xs text-success break-all">
                             Pago: R$ {Number(parcela.valor_pago).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </p>
                         )}
                       </div>
                       <div className="overflow-hidden">
-                        <p className="text-muted-foreground text-[10px]">Vencimento</p>
-                        <p className="font-semibold text-[11px]">{formatDate(parcela.data_vencimento)}</p>
+                        <p className="text-muted-foreground text-xs">Vencimento</p>
+                        <p className="font-semibold text-sm">{formatDate(parcela.data_vencimento)}</p>
                         {calcularDiasAtraso(parcela.data_vencimento) > 0 && (
-                          <p className="text-[10px] text-destructive">
+                          <p className="text-xs text-destructive">
                             {calcularDiasAtraso(parcela.data_vencimento)}d atraso
                           </p>
                         )}
@@ -835,18 +830,18 @@ export default function Parcelas() {
                           variant="outline"
                           size="sm"
                           onClick={() => abrirModalEditarData(parcela)}
-                          className="flex-1 h-7 text-[10px] px-2"
+                          className="flex-1 h-9 text-xs px-2"
                         >
-                          <Calendar className="h-3 w-3 mr-1" />
+                          <Calendar className="h-3.5 w-3.5 mr-1" />
                           Editar Data
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => loadHistorico(parcela)}
-                          className="flex-1 h-7 text-[10px] px-2"
+                          className="flex-1 h-9 text-xs px-2"
                         >
-                          <FileText className="h-3 w-3 mr-1" />
+                          <FileText className="h-3.5 w-3.5 mr-1" />
                           Histórico
                         </Button>
                       </div>
@@ -855,9 +850,9 @@ export default function Parcelas() {
                           <Button
                             size="sm"
                             onClick={() => abrirModalPagamento(parcela)}
-                            className="flex-1 bg-success hover:bg-success/90 h-7 text-[10px] px-2"
+                            className="flex-1 bg-success hover:bg-success/90 h-9 text-xs px-2"
                           >
-                            <Check className="h-3 w-3 mr-1" />
+                            <Check className="h-3.5 w-3.5 mr-1" />
                             Baixar
                           </Button>
                         ) : (
@@ -865,9 +860,9 @@ export default function Parcelas() {
                             variant="outline"
                             size="sm"
                             onClick={() => handleMarcarPendente(parcela.id)}
-                            className="flex-1 text-warning hover:bg-warning hover:text-warning-foreground h-7 text-[10px] px-2"
+                            className="flex-1 text-warning hover:bg-warning hover:text-warning-foreground h-9 text-xs px-2"
                           >
-                            <Undo2 className="h-3 w-3 mr-1" />
+                            <Undo2 className="h-3.5 w-3.5 mr-1" />
                             Desfazer
                           </Button>
                         )}
@@ -878,9 +873,9 @@ export default function Parcelas() {
                             setParcelaToDelete(parcela.id);
                             setIsDeleteDialogOpen(true);
                           }}
-                          className="flex-1 text-destructive hover:bg-destructive hover:text-destructive-foreground h-7 text-[10px] px-2"
+                          className="flex-1 text-destructive hover:bg-destructive hover:text-destructive-foreground h-9 text-xs px-2"
                         >
-                          <Trash2 className="h-3 w-3 mr-1" />
+                          <Trash2 className="h-3.5 w-3.5 mr-1" />
                           Excluir
                         </Button>
                       </div>
@@ -1078,7 +1073,7 @@ export default function Parcelas() {
                 type="date"
                 value={dataPagamento}
                 onChange={(e) => setDataPagamento(e.target.value)}
-                max={new Date().toISOString().split('T')[0]}
+                max={getLocalDateString()}
               />
             </div>
 

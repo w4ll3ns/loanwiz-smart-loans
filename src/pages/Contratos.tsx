@@ -32,6 +32,7 @@ import html2canvas from 'html2canvas';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { getLocalDateString } from "@/lib/utils";
 import { useUserRole } from "@/hooks/useUserRole";
 import { AccessRestrictedModal } from "@/components/AccessRestrictedModal";
 
@@ -290,7 +291,7 @@ export default function Contratos() {
       
       parcelas.push({
         numero: i,
-        data: dataParcela.toISOString().split('T')[0],
+        data: getLocalDateString(dataParcela),
         valor: calcularContrato()?.valorParcela || 0
       });
     }
@@ -360,7 +361,7 @@ export default function Contratos() {
       percentual: contrato.percentual.toString(),
       periodicidade: contrato.periodicidade,
       numeroParcelas: contrato.numero_parcelas.toString(),
-      dataEmprestimo: new Date().toISOString().split('T')[0], // Data de hoje
+      dataEmprestimo: getLocalDateString(), // Data de hoje
       tipoJuros: contrato.tipo_juros || "simples",
       permiteCobrancaSabado: contrato.permite_cobranca_sabado ?? true,
       permiteCobrancaDomingo: contrato.permite_cobranca_domingo ?? false
@@ -391,7 +392,7 @@ export default function Contratos() {
     setParcelaToPay(parcela);
     setTipoPagamento("total");
     setValorPagamento(parcela.valor.toString());
-    setDataPagamento(new Date().toISOString().split('T')[0]);
+    setDataPagamento(getLocalDateString());
     setIsPagamentoDialogOpen(true);
   };
 
@@ -1275,7 +1276,7 @@ export default function Contratos() {
         percentual: "",
         periodicidade: "",
         numeroParcelas: "",
-        dataEmprestimo: dadosComprovante.data || new Date().toISOString().split("T")[0],
+        dataEmprestimo: dadosComprovante.data || getLocalDateString(),
         tipoJuros: "simples",
         permiteCobrancaSabado: true,
         permiteCobrancaDomingo: false,
@@ -1868,7 +1869,7 @@ export default function Contratos() {
                 type="date"
                 value={dataPagamento}
                 onChange={(e) => setDataPagamento(e.target.value)}
-                max={new Date().toISOString().split('T')[0]}
+                max={getLocalDateString()}
               />
             </div>
           </div>

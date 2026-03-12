@@ -14,6 +14,7 @@ import {
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { DashboardSkeleton } from "@/components/LoadingSkeletons";
 
 interface DashboardStats {
   totalEmprestado: number;
@@ -32,6 +33,7 @@ interface ProximoVencimento {
 }
 
 export default function Dashboard() {
+  const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats>({
     totalEmprestado: 0,
     totalReceber: 0,
@@ -134,8 +136,12 @@ export default function Dashboard() {
         description: "Verifique sua conexão com a internet e recarregue a página.",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
+
+  if (loading) return <DashboardSkeleton />;
 
   return (
     <div className="space-y-4 md:space-y-6">
