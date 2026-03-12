@@ -32,6 +32,7 @@ import html2canvas from 'html2canvas';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { getLocalDateString } from "@/lib/utils";
 import { useUserRole } from "@/hooks/useUserRole";
 import { AccessRestrictedModal } from "@/components/AccessRestrictedModal";
 
