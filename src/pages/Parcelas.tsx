@@ -106,7 +106,7 @@ export default function Parcelas() {
 
   const loadRecebidoHoje = async () => {
     try {
-      const hoje = new Date().toISOString().split('T')[0];
+      const hoje = getLocalDateString();
       
       const { data, error } = await supabase
         .from("parcelas_historico")
