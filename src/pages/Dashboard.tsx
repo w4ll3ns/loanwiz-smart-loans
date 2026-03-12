@@ -14,6 +14,7 @@ import {
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { DashboardSkeleton } from "@/components/LoadingSkeletons";
 
 interface DashboardStats {
   totalEmprestado: number;
