@@ -802,21 +802,21 @@ export default function Parcelas() {
                     </div>
 
                     {/* Informações Principais */}
-                    <div className="grid grid-cols-2 gap-1.5 text-sm">
+                    <div className="grid grid-cols-2 gap-1.5">
                       <div className="overflow-hidden">
-                        <p className="text-muted-foreground text-[10px]">Valor</p>
-                        <p className="font-semibold text-[11px] break-all">R$ {Number(parcela.valor_original || parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                        <p className="text-muted-foreground text-xs">Valor</p>
+                        <p className="font-semibold text-sm break-all">R$ {Number(parcela.valor_original || parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                         {parcela.valor_pago && parcela.valor_pago > 0 && (
-                          <p className="text-[10px] text-success break-all">
+                          <p className="text-xs text-success break-all">
                             Pago: R$ {Number(parcela.valor_pago).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </p>
                         )}
                       </div>
                       <div className="overflow-hidden">
-                        <p className="text-muted-foreground text-[10px]">Vencimento</p>
-                        <p className="font-semibold text-[11px]">{formatDate(parcela.data_vencimento)}</p>
+                        <p className="text-muted-foreground text-xs">Vencimento</p>
+                        <p className="font-semibold text-sm">{formatDate(parcela.data_vencimento)}</p>
                         {calcularDiasAtraso(parcela.data_vencimento) > 0 && (
-                          <p className="text-[10px] text-destructive">
+                          <p className="text-xs text-destructive">
                             {calcularDiasAtraso(parcela.data_vencimento)}d atraso
                           </p>
                         )}
