@@ -360,7 +360,7 @@ export default function Contratos() {
       percentual: contrato.percentual.toString(),
       periodicidade: contrato.periodicidade,
       numeroParcelas: contrato.numero_parcelas.toString(),
-      dataEmprestimo: new Date().toISOString().split('T')[0], // Data de hoje
+      dataEmprestimo: getLocalDateString(), // Data de hoje
       tipoJuros: contrato.tipo_juros || "simples",
       permiteCobrancaSabado: contrato.permite_cobranca_sabado ?? true,
       permiteCobrancaDomingo: contrato.permite_cobranca_domingo ?? false
