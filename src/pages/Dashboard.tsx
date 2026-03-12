@@ -136,8 +136,12 @@ export default function Dashboard() {
         description: "Verifique sua conexão com a internet e recarregue a página.",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
+
+  if (loading) return <DashboardSkeleton />;
 
   return (
     <div className="space-y-4 md:space-y-6">
