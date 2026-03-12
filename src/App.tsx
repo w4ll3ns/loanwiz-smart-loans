@@ -9,6 +9,7 @@ import Clientes from "./pages/Clientes";
 import Contratos from "./pages/Contratos";
 import Parcelas from "./pages/Parcelas";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
