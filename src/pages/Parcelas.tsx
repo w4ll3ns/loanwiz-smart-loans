@@ -637,25 +637,25 @@ export default function Parcelas() {
           <CardTitle className="text-sm font-medium">Filtrar Período</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 pb-4">
-          <div className="flex flex-wrap gap-2 items-end">
-            <div className="flex-shrink-0">
+          <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-end">
+            <div className="flex-1 min-w-0">
               <Label htmlFor="data-inicio" className="text-xs mb-1 block">Data Inicial</Label>
               <Input
                 id="data-inicio"
                 type="date"
                 value={dataInicioDashboard}
                 onChange={(e) => setDataInicioDashboard(e.target.value)}
-                className="w-[140px] h-8 text-base md:text-xs"
+                className="w-full sm:w-[140px] h-8 text-base md:text-xs"
               />
             </div>
-            <div className="flex-shrink-0">
+            <div className="flex-1 min-w-0">
               <Label htmlFor="data-fim" className="text-xs mb-1 block">Data Final</Label>
               <Input
                 id="data-fim"
                 type="date"
                 value={dataFimDashboard}
                 onChange={(e) => setDataFimDashboard(e.target.value)}
-                className="w-[140px] h-8 text-base md:text-xs"
+                className="w-full sm:w-[140px] h-8 text-base md:text-xs"
               />
             </div>
             <Button

@@ -152,17 +152,17 @@ export default function Dashboard() {
       </div>
 
       {/* Cards de Resumo */}
-      <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-3 md:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs md:text-sm font-medium">Total Emprestado</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl md:text-2xl font-bold">
+            <div className="text-lg md:text-2xl font-bold truncate">
               R$ {stats.totalEmprestado.toLocaleString('pt-BR')}
             </div>
-            <p className="text-[10px] sm:text-xs text-muted-foreground">Capital em circulação</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Capital em circulação</p>
           </CardContent>
         </Card>
 
@@ -172,10 +172,10 @@ export default function Dashboard() {
             <Calendar className="h-4 w-4 text-warning" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl md:text-2xl font-bold text-warning">
+            <div className="text-lg md:text-2xl font-bold text-warning truncate">
               R$ {stats.totalReceber.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-[10px] sm:text-xs text-muted-foreground">
+            <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
               Valor a quitar
             </p>
           </CardContent>
@@ -187,10 +187,10 @@ export default function Dashboard() {
             <CheckCircle2 className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl md:text-2xl font-bold text-success">
+            <div className="text-lg md:text-2xl font-bold text-success truncate">
               R$ {stats.totalRecebido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-[10px] sm:text-xs text-muted-foreground">
+            <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
               Inclui parciais e quitações
             </p>
           </CardContent>

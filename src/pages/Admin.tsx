@@ -760,17 +760,20 @@ export default function Admin() {
                     <div className="overflow-x-auto border rounded-lg">
                       <Table>
                         <TableHeader>
-                          <TableRow>
-                            <TableHead>Nome</TableHead>
-                            <TableHead>Telefone</TableHead>
-                          </TableRow>
+                         <TableRow>
+                             <TableHead>Nome</TableHead>
+                             <TableHead className="hidden sm:table-cell">Telefone</TableHead>
+                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {userClientes.slice(0, 10).map((cliente) => (
-                            <TableRow key={cliente.id}>
-                              <TableCell className="font-medium">{cliente.nome}</TableCell>
-                              <TableCell>{cliente.telefone || '-'}</TableCell>
-                            </TableRow>
+                             <TableRow key={cliente.id}>
+                               <TableCell className="font-medium">
+                                 {cliente.nome}
+                                 <div className="sm:hidden text-xs text-muted-foreground">{cliente.telefone || '-'}</div>
+                               </TableCell>
+                               <TableCell className="hidden sm:table-cell">{cliente.telefone || '-'}</TableCell>
+                             </TableRow>
                           ))}
                           {userClientes.length > 10 && (
                             <TableRow>
@@ -792,11 +795,11 @@ export default function Admin() {
                     <div className="overflow-x-auto border rounded-lg">
                       <Table>
                         <TableHeader>
-                          <TableRow>
-                            <TableHead>Cliente</TableHead>
-                            <TableHead>Valor</TableHead>
-                            <TableHead>Parcelas</TableHead>
-                            <TableHead>Status</TableHead>
+                           <TableRow>
+                             <TableHead>Cliente</TableHead>
+                             <TableHead>Valor</TableHead>
+                             <TableHead className="hidden sm:table-cell">Parcelas</TableHead>
+                             <TableHead>Status</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -806,7 +809,7 @@ export default function Admin() {
                               <TableCell>
                                 {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(contrato.valor_emprestado)}
                               </TableCell>
-                              <TableCell>{contrato.numero_parcelas}x</TableCell>
+                              <TableCell className="hidden sm:table-cell">{contrato.numero_parcelas}x</TableCell>
                               <TableCell>
                                 <Badge variant={contrato.status === 'ativo' ? 'default' : contrato.status === 'quitado' ? 'outline' : 'secondary'}>
                                   {contrato.status}
