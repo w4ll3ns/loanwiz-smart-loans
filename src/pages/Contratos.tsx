@@ -290,7 +290,7 @@ export default function Contratos() {
       
       parcelas.push({
         numero: i,
-        data: dataParcela.toISOString().split('T')[0],
+        data: getLocalDateString(dataParcela),
         valor: calcularContrato()?.valorParcela || 0
       });
     }
