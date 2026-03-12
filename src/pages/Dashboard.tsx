@@ -33,6 +33,7 @@ interface ProximoVencimento {
 }
 
 export default function Dashboard() {
+  const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats>({
     totalEmprestado: 0,
     totalReceber: 0,
