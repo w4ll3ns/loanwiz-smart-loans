@@ -830,18 +830,18 @@ export default function Parcelas() {
                           variant="outline"
                           size="sm"
                           onClick={() => abrirModalEditarData(parcela)}
-                          className="flex-1 h-7 text-[10px] px-2"
+                          className="flex-1 h-9 text-xs px-2"
                         >
-                          <Calendar className="h-3 w-3 mr-1" />
+                          <Calendar className="h-3.5 w-3.5 mr-1" />
                           Editar Data
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => loadHistorico(parcela)}
-                          className="flex-1 h-7 text-[10px] px-2"
+                          className="flex-1 h-9 text-xs px-2"
                         >
-                          <FileText className="h-3 w-3 mr-1" />
+                          <FileText className="h-3.5 w-3.5 mr-1" />
                           Histórico
                         </Button>
                       </div>
@@ -850,9 +850,9 @@ export default function Parcelas() {
                           <Button
                             size="sm"
                             onClick={() => abrirModalPagamento(parcela)}
-                            className="flex-1 bg-success hover:bg-success/90 h-7 text-[10px] px-2"
+                            className="flex-1 bg-success hover:bg-success/90 h-9 text-xs px-2"
                           >
-                            <Check className="h-3 w-3 mr-1" />
+                            <Check className="h-3.5 w-3.5 mr-1" />
                             Baixar
                           </Button>
                         ) : (
@@ -860,9 +860,9 @@ export default function Parcelas() {
                             variant="outline"
                             size="sm"
                             onClick={() => handleMarcarPendente(parcela.id)}
-                            className="flex-1 text-warning hover:bg-warning hover:text-warning-foreground h-7 text-[10px] px-2"
+                            className="flex-1 text-warning hover:bg-warning hover:text-warning-foreground h-9 text-xs px-2"
                           >
-                            <Undo2 className="h-3 w-3 mr-1" />
+                            <Undo2 className="h-3.5 w-3.5 mr-1" />
                             Desfazer
                           </Button>
                         )}
@@ -873,9 +873,9 @@ export default function Parcelas() {
                             setParcelaToDelete(parcela.id);
                             setIsDeleteDialogOpen(true);
                           }}
-                          className="flex-1 text-destructive hover:bg-destructive hover:text-destructive-foreground h-7 text-[10px] px-2"
+                          className="flex-1 text-destructive hover:bg-destructive hover:text-destructive-foreground h-9 text-xs px-2"
                         >
-                          <Trash2 className="h-3 w-3 mr-1" />
+                          <Trash2 className="h-3.5 w-3.5 mr-1" />
                           Excluir
                         </Button>
                       </div>

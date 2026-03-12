@@ -1868,7 +1868,7 @@ export default function Contratos() {
                 type="date"
                 value={dataPagamento}
                 onChange={(e) => setDataPagamento(e.target.value)}
-                max={new Date().toISOString().split('T')[0]}
+                max={getLocalDateString()}
               />
             </div>
           </div>
