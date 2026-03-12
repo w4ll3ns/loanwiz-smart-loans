@@ -795,11 +795,11 @@ export default function Admin() {
                     <div className="overflow-x-auto border rounded-lg">
                       <Table>
                         <TableHeader>
-                          <TableRow>
-                            <TableHead>Cliente</TableHead>
-                            <TableHead>Valor</TableHead>
-                            <TableHead>Parcelas</TableHead>
-                            <TableHead>Status</TableHead>
+                           <TableRow>
+                             <TableHead>Cliente</TableHead>
+                             <TableHead>Valor</TableHead>
+                             <TableHead className="hidden sm:table-cell">Parcelas</TableHead>
+                             <TableHead>Status</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
