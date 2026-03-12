@@ -1,115 +1,67 @@
 
 
-## Analise Completa: UX, Usabilidade, Design e Sugestoes de Funcionalidades
+## Plano: Melhorias gerais de UX - Login, Loading, Timezone e Mobile
 
-### 1. UX e Usabilidade - Problemas Identificados
+### 1. Login com logo e "Esqueci minha senha" (`src/pages/Auth.tsx`)
 
-**1.1 Tela de Login (Auth.tsx)**
-- Falta logo/branding da empresa na tela de login -- o usuario entra e ve apenas "Login" sem identidade visual
-- Nao ha opcao de "Esqueci minha senha" -- o usuario fica preso se esquecer
-- Nao ha feedback visual de forca da senha no cadastro
-- O card de login fica centralizado verticalmente mas sem nenhum elemento visual atrativo
+- Adicionar logo (`src/assets/logo.png`) acima do card de login
+- Adicionar link "Esqueci minha senha" abaixo do campo de senha no form de login
+- Criar funcionalidade de reset: ao clicar, exibir um form alternativo que pede apenas o email e chama `supabase.auth.resetPasswordForEmail()` com `redirectTo` para `/reset-password`
+- Criar nova pagina `src/pages/ResetPassword.tsx` que escuta o evento `PASSWORD_RECOVERY` e exibe form para nova senha, chamando `supabase.auth.updateUser({ password })`
+- Registrar rota `/reset-password` no `App.tsx`
 
-**1.2 Dashboard (Dashboard.tsx)**
-- Grid de 5 cards em `grid-cols-2` no mobile deixa o quinto card sozinho na ultima linha, quebrando a simetria visual
-- O botao "Novo Cliente" no Dashboard leva para `/clientes` mas nao abre o dialog diretamente -- o usuario precisa clicar novamente la
-- "Proximos Vencimentos" mostra apenas 4 itens sem opcao de ver mais
-- Nao ha indicacao de "loading" enquanto os dados carregam -- a tela fica vazia por um momento
+### 2. Loading skeletons e empty states
 
-**1.3 Parcelas (Parcelas.tsx - 1360 linhas)**
-- Arquivo monolitico com 1360 linhas -- dificil manutencao e performance
-- O filtro padrao "Proximos 7 Dias" pode confundir usuarios que esperam ver tudo
-- Nao ha paginacao -- se houver centenas de parcelas, a performance degrada
-- O card mobile tem fontes muito pequenas (`text-[10px]`, `text-[11px]`) -- dificuldade de leitura
-- Botoes de acao nos cards mobile sao pequenos (`h-7 text-[10px]`) -- dificil tocar em telas touch
-- O dialog de pagamento usa `type="number"` que e problematico em mobile para valores monetarios (nao mostra virgula)
-- Data de pagamento com `max={new Date().toISOString().split('T')[0]}` -- mesmo bug de timezone que ja corrigimos (deveria usar `getLocalDateString()`)
+Criar componente reutilizavel `src/components/LoadingSkeletons.tsx` com variantes:
+- `DashboardSkeleton`: 5 cards skeleton + lista skeleton
+- `TableSkeleton`: linhas de tabela skeleton
+- `CardListSkeleton`: cards skeleton para views mobile
 
-**1.4 Contratos (Contratos.tsx - 2307 linhas)**
-- Arquivo enorme com 2307 linhas -- o maior do projeto, dificil manutencao
-- O formulario de novo contrato tem muitos campos sem agrupamento visual claro
-- A preview de parcelas antes de salvar nao mostra scroll indicator -- pode parecer que tem poucas parcelas
-- Na view de detalhes do contrato, ha pagamento de parcelas duplicado (ja existe em Parcelas.tsx tambem) -- logica de negocio repetida
-- O `gerarParcelas` usa `toISOString().split('T')[0]` na linha 292 -- potencial bug de timezone nas datas geradas
-- Import de comprovante via imagem e um fluxo complexo sem indicacao clara de progresso
+Adicionar estado `loading` em cada pagina:
+- **Dashboard.tsx**: estado `loading` inicializado como `true`, setar `false` apos carregar dados. Enquanto `true`, mostrar `DashboardSkeleton`
+- **Parcelas.tsx**: ja tem `loadingParcelas` -- usar para mostrar skeleton na listagem
+- **Contratos.tsx**: adicionar estado `loading` similar
+- **Clientes.tsx**: adicionar estado `loading` similar
 
-**1.5 Clientes (Clientes.tsx)**
-- A listagem usa tabela mesmo no mobile -- funciona mas cards seriam mais amigaveis
-- Nao ha visualizacao dos contratos de um cliente diretamente da tela de clientes
-- Nao ha contador de contratos ativos por cliente na listagem
-- Nao ha mascara no campo telefone
+Melhorar empty states com icone + texto descritivo em vez de apenas "Nenhum encontrado"
 
-**1.6 Admin (Admin.tsx - 949 linhas)**
-- Apenas admins acessam, mas a rota `/admin` nao usa o `Layout` no App.tsx (falta sidebar/nav)
-- Relatorios por usuario nao tem opcao de exportar
+### 3. Corrigir bug de timezone (`toISOString().split('T')[0]`)
 
-**1.7 Navegacao e Layout (Layout.tsx)**
-- Bottom nav no mobile com 5 itens (quando admin) fica apertado
-- Nao ha indicacao de "pull to refresh" -- comportamento esperado em apps mobile
-- Nao ha transicoes entre paginas -- a navegacao e abrupta
-- Nao ha dark mode implementado apesar de ter variaveis CSS definidas
+Substituir todas as ocorrencias de `new Date().toISOString().split('T')[0]` por `getLocalDateString()`:
 
----
+**Parcelas.tsx** (2 ocorrencias):
+- Linha 236: `setDataPagamento(getLocalDateString())`
+- Linha 1081: `max={getLocalDateString()}`
 
-### 2. Design - Pontos de Melhoria
+**Contratos.tsx** (5 ocorrencias):
+- Linha 293: `dataParcela.toISOString().split('T')[0]` -- substituir por helper local que formata a data sem UTC
+- Linha 363: `new Date().toISOString().split('T')[0]` -- usar `getLocalDateString()`
+- Linha 394: `new Date().toISOString().split('T')[0]` -- usar `getLocalDateString()`
+- Linha 1278: `new Date().toISOString().split('T')[0]` -- usar `getLocalDateString()`
+- Linha 1871: `max={new Date().toISOString().split('T')[0]}` -- usar `getLocalDateString()`
 
-**2.1 Consistencia Visual**
-- Cards de resumo tem estilos inconsistentes entre Dashboard e Parcelas (border-left no Parcelas, sem border no Dashboard)
-- Badges de status usam cores diferentes em contextos diferentes (success, destructive, secondary)
-- Tamanhos de fonte variam sem padrao claro (`text-xs`, `text-[10px]`, `text-[11px]`)
+Copiar a funcao `getLocalDateString` para Contratos.tsx (ou extrair para `src/lib/utils.ts`)
 
-**2.2 Espacamento e Hierarquia**
-- Headers de pagina nao seguem padrao consistente (alguns com botoes, outros sem)
-- Cards de resumo tem padding diferente entre paginas
+### 4. Melhorar fontes e botoes mobile
 
-**2.3 Feedback Visual**
-- Nenhuma pagina mostra skeleton/loading state enquanto carrega dados
-- Toasts de erro sao genericos demais em alguns casos
-- Nao ha empty states atrativos (apenas texto "Nenhum encontrado")
+**Parcelas.tsx** - Cards mobile:
+- Aumentar fontes de `text-[10px]` para `text-xs` (12px)
+- Aumentar fontes de `text-[11px]` para `text-sm` (14px)
+- Aumentar altura dos botoes de `h-7` para `h-9` (36px -- minimo recomendado para touch)
+- Aumentar fonte dos botoes de `text-[10px]` para `text-xs`
+- Aumentar icones de `h-3 w-3` para `h-3.5 w-3.5`
 
----
+### Arquivos modificados
 
-### 3. Sugestoes de Melhorias de Rotinas e Funcionalidades
-
-**3.1 Funcionalidades Prioritarias**
-- **Notificacoes de vencimento**: alertas push (PWA ja esta configurado) para parcelas que vencem hoje ou estao vencidas
-- **Relatorio de inadimplencia**: lista consolidada de clientes com parcelas vencidas, agrupado por cliente com total em atraso
-- **Busca global**: campo de busca unificado que encontra clientes, contratos e parcelas
-- **Filtro por cliente na tela de Parcelas**: ao clicar num cliente, ver todas as parcelas dele
-
-**3.2 Melhorias de Rotina**
-- **Pagamento em lote**: selecionar multiplas parcelas e dar baixa de uma vez
-- **WhatsApp direto do sistema**: botao para enviar lembrete de cobranca via WhatsApp com mensagem pre-formatada
-- **Historico de pagamentos do dia**: tela/relatorio com todos os pagamentos feitos no dia, exportavel
-- **Calculo automatico de multa/juros por atraso**: configuravel por contrato
-
-**3.3 Melhorias de UX**
-- **Esqueci minha senha**: adicionar na tela de login
-- **Loading skeletons**: mostrar esqueletos enquanto dados carregam
-- **Confirmacao de acoes destrutivas com duplo clique**: excluir contrato deveria pedir digitacao de confirmacao
-- **Atalhos de teclado**: para usuarios desktop, atalhos para acoes frequentes
-- **Ordenacao nas listagens**: clicar no header da coluna para ordenar
-
-**3.4 Melhorias Tecnicas (nao visiveis ao usuario)**
-- Componentizar Parcelas.tsx e Contratos.tsx em componentes menores
-- Implementar React Query para cache e refetch automatico (ja instalado mas nao usado)
-- Adicionar paginacao server-side nas listagens
-
----
-
-### 4. Bug Potencial Identificado
-
-Na linha 292 de `Contratos.tsx`, `gerarParcelas` usa `dataParcela.toISOString().split('T')[0]` que pode gerar data errada em fusos negativos (mesmo bug de timezone que ja corrigimos em outros locais). Isso afetaria a geracao de datas de vencimento ao criar contratos.
-
----
-
-### Resumo
-
-O sistema esta funcional e cobre bem o fluxo principal de emprestimos. As maiores oportunidades estao em:
-1. **UX mobile**: fontes maiores, botoes maiores, loading states
-2. **Produtividade**: pagamento em lote, cobranca via WhatsApp, busca global
-3. **Confiabilidade**: loading states, tratamento de timezone restante, paginacao
-4. **Manutencao**: componentizacao dos arquivos grandes
-
-Nenhuma alteracao sera feita agora -- este e apenas o diagnostico para priorizar o que implementar.
+| Arquivo | Acao |
+|---|---|
+| `src/pages/Auth.tsx` | Logo, "Esqueci minha senha", form de reset |
+| `src/pages/ResetPassword.tsx` | Nova pagina para redefinir senha |
+| `src/App.tsx` | Rota `/reset-password` |
+| `src/components/LoadingSkeletons.tsx` | Componente reutilizavel de skeletons |
+| `src/pages/Dashboard.tsx` | Loading state + skeleton |
+| `src/pages/Parcelas.tsx` | Loading skeleton, fix timezone, fontes/botoes maiores |
+| `src/pages/Contratos.tsx` | Loading skeleton, fix timezone |
+| `src/pages/Clientes.tsx` | Loading skeleton |
+| `src/lib/utils.ts` | Extrair `getLocalDateString` como funcao compartilhada |
 
