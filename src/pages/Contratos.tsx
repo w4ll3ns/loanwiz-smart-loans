@@ -1962,14 +1962,14 @@ export default function Contratos() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {contratos.length === 0 ? (
+                {contratosFiltrados.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                       Nenhum contrato encontrado
                     </TableCell>
                   </TableRow>
                 ) : (
-                  contratos.map((contrato) => (
+                  contratosFiltrados.map((contrato) => (
                     <TableRow 
                       key={contrato.id} 
                       className="cursor-pointer hover:bg-muted/50"
