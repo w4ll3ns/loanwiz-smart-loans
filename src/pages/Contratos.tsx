@@ -391,7 +391,7 @@ export default function Contratos() {
     setParcelaToPay(parcela);
     setTipoPagamento("total");
     setValorPagamento(parcela.valor.toString());
-    setDataPagamento(new Date().toISOString().split('T')[0]);
+    setDataPagamento(getLocalDateString());
     setIsPagamentoDialogOpen(true);
   };
 
