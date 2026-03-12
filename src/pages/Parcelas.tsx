@@ -566,7 +566,7 @@ export default function Parcelas() {
           data_vencimento_anterior: parcelaToEditData.data_vencimento,
           data_vencimento_nova: novaDataVencimento,
           observacao: justificativaAlteracao.trim(),
-          data_pagamento: getLocalDateString() + "T12:00:00",
+          data_pagamento: new Date().toISOString(),
         } as any);
 
       if (historicoError) {
