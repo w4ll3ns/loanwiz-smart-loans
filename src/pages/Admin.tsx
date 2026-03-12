@@ -760,10 +760,10 @@ export default function Admin() {
                     <div className="overflow-x-auto border rounded-lg">
                       <Table>
                         <TableHeader>
-                          <TableRow>
-                            <TableHead>Nome</TableHead>
-                            <TableHead>Telefone</TableHead>
-                          </TableRow>
+                         <TableRow>
+                             <TableHead>Nome</TableHead>
+                             <TableHead className="hidden sm:table-cell">Telefone</TableHead>
+                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {userClientes.slice(0, 10).map((cliente) => (
