@@ -228,7 +228,7 @@ export default function Parcelas() {
     const valorOriginal = Number(parcela.valor_original || parcela.valor);
     setValorPagamento(valorOriginal.toString());
     setObservacaoPagamento("");
-    setDataPagamento(new Date().toISOString().split('T')[0]);
+    setDataPagamento(getLocalDateString());
     setIsPagamentoDialogOpen(true);
   };
 
