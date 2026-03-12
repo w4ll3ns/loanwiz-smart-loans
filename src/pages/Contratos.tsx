@@ -144,6 +144,14 @@ export default function Contratos() {
   const [selectedOverrideClienteId, setSelectedOverrideClienteId] = useState("");
   const [novoClienteNome, setNovoClienteNome] = useState("");
 
+  const [statusFilter, setStatusFilter] = useState<"ativos" | "quitados" | "todos">("ativos");
+
+  const contratosFiltrados = contratos.filter((c) => {
+    if (statusFilter === "ativos") return c.status === "ativo";
+    if (statusFilter === "quitados") return c.status === "quitado";
+    return true;
+  });
+
   const [formData, setFormData] = useState({
     clienteId: "",
     valorEmprestado: "",
@@ -1909,8 +1917,36 @@ export default function Contratos() {
 
       {/* Lista de Contratos */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base md:text-lg">Contratos Ativos ({contratos.length})</CardTitle>
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <CardTitle className="text-base md:text-lg">
+            {statusFilter === "ativos" ? "Contratos Ativos" : statusFilter === "quitados" ? "Contratos Quitados" : "Todos os Contratos"} ({contratosFiltrados.length})
+          </CardTitle>
+          <div className="flex gap-1">
+            <Button
+              size="sm"
+              variant={statusFilter === "ativos" ? "default" : "outline"}
+              onClick={() => setStatusFilter("ativos")}
+              className="text-xs"
+            >
+              Ativos
+            </Button>
+            <Button
+              size="sm"
+              variant={statusFilter === "quitados" ? "default" : "outline"}
+              onClick={() => setStatusFilter("quitados")}
+              className="text-xs"
+            >
+              Quitados
+            </Button>
+            <Button
+              size="sm"
+              variant={statusFilter === "todos" ? "default" : "outline"}
+              onClick={() => setStatusFilter("todos")}
+              className="text-xs"
+            >
+              Todos
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="p-0 md:p-6">
           <div className="overflow-x-auto">
@@ -1926,14 +1962,14 @@ export default function Contratos() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {contratos.length === 0 ? (
+                {contratosFiltrados.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                       Nenhum contrato encontrado
                     </TableCell>
                   </TableRow>
                 ) : (
-                  contratos.map((contrato) => (
+                  contratosFiltrados.map((contrato) => (
                     <TableRow 
                       key={contrato.id} 
                       className="cursor-pointer hover:bg-muted/50"
