@@ -172,10 +172,10 @@ export default function Dashboard() {
             <Calendar className="h-4 w-4 text-warning" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl md:text-2xl font-bold text-warning">
+            <div className="text-lg md:text-2xl font-bold text-warning truncate">
               R$ {stats.totalReceber.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-[10px] sm:text-xs text-muted-foreground">
+            <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
               Valor a quitar
             </p>
           </CardContent>
