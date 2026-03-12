@@ -263,7 +263,7 @@ export default function Parcelas() {
           parcela_id: parcelaToPay.id,
           valor_pago: valorPagar,
           tipo_pagamento: tipoPag,
-          data_pagamento: dataPagamento + "T12:00:00",
+          data_pagamento: new Date().toISOString(),
           observacao: observacaoPagamento.trim() || null,
           tipo_evento: "pagamento",
         } as any);
