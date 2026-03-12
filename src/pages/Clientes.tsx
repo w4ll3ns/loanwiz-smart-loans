@@ -328,10 +328,17 @@ export default function Clientes() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredClientes.length === 0 ? (
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={3} className="p-0">
+                      <TableSkeleton rows={5} />
+                    </TableCell>
+                  </TableRow>
+                ) : filteredClientes.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
-                      Nenhum cliente encontrado
+                      <Users className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+                      {searchTerm ? "Nenhum cliente encontrado para esta busca" : "Nenhum cliente cadastrado ainda"}
                     </TableCell>
                   </TableRow>
                 ) : (
