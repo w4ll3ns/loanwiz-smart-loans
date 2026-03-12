@@ -89,6 +89,8 @@ export default function Clientes() {
         description: "Verifique sua conexão com a internet e tente novamente.",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
