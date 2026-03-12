@@ -789,12 +789,12 @@ export default function Parcelas() {
                     calcularDiasAtraso(parcela.data_vencimento) > 0 ? "hsl(var(--destructive))" : 
                     "hsl(var(--warning))"
                 }}>
-                  <CardContent className="p-2.5 space-y-2">
+                  <CardContent className="p-3 space-y-2">
                     {/* Header do Card */}
                     <div className="flex items-start justify-between gap-1.5">
                       <div className="flex-1 min-w-0 overflow-hidden">
-                        <p className="font-semibold text-xs truncate">{parcela.contratos?.clientes?.nome}</p>
-                        <p className="text-[10px] text-muted-foreground">Parcela {parcela.numero_parcela}</p>
+                        <p className="font-semibold text-sm truncate">{parcela.contratos?.clientes?.nome}</p>
+                        <p className="text-xs text-muted-foreground">Parcela {parcela.numero_parcela}</p>
                       </div>
                       <div className="flex-shrink-0">
                         {getStatusBadge(parcela)}
