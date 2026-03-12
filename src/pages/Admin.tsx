@@ -767,10 +767,13 @@ export default function Admin() {
                         </TableHeader>
                         <TableBody>
                           {userClientes.slice(0, 10).map((cliente) => (
-                            <TableRow key={cliente.id}>
-                              <TableCell className="font-medium">{cliente.nome}</TableCell>
-                              <TableCell>{cliente.telefone || '-'}</TableCell>
-                            </TableRow>
+                             <TableRow key={cliente.id}>
+                               <TableCell className="font-medium">
+                                 {cliente.nome}
+                                 <div className="sm:hidden text-xs text-muted-foreground">{cliente.telefone || '-'}</div>
+                               </TableCell>
+                               <TableCell className="hidden sm:table-cell">{cliente.telefone || '-'}</TableCell>
+                             </TableRow>
                           ))}
                           {userClientes.length > 10 && (
                             <TableRow>
