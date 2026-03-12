@@ -23,6 +23,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/auth" element={<Auth />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/" element={<Layout><Dashboard /></Layout>} />
           <Route path="/clientes" element={<Layout><Clientes /></Layout>} />
           <Route path="/contratos" element={<Layout><Contratos /></Layout>} />
