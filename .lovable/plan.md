@@ -1,56 +1,40 @@
 
 
-## Plano: Botao "Trocar Cliente" na Revisao do Comprovante
+## Plano: Registrar horario real da baixa no historico
 
-### Comportamento Atual
-Ao importar o comprovante, o sistema automaticamente busca ou cria um cliente pelo nome extraido do PIX. O usuario nao tem opcao de escolher outro cliente.
+### Problema
 
-### Novo Comportamento
-O fluxo padrao continua igual (usa o nome do PIX automaticamente). Porem, na tela de revisao, ao lado do nome do cliente extraido, aparece um botao "Trocar" que permite:
-- Selecionar um cliente ja cadastrado (dropdown)
-- Cadastrar um novo cliente (campo de texto)
+O fix anterior substituiu `new Date().toISOString()` por `dataPagamento + "T12:00:00"`, o que grava um horario ficticio (12:00 UTC = 09:00 local). O usuario quer ver o horario real em que a baixa foi feita.
 
-### Alteracoes em `src/pages/Contratos.tsx`
+### Causa raiz
 
-**1. Novos estados**
-- `clienteOverride`: `null` | `{ tipo: "existing", id: string, nome: string }` | `{ tipo: "new", nome: string }`
-- Quando `null`, usa o fluxo padrao (nome do PIX)
+Havia dois problemas distintos sendo misturados:
+1. **`parcelas.data_pagamento`** (tipo `date`) -- aqui so importa a data, sem horario. O fix com `getLocalDateString()` esta correto.
+2. **`parcelas_historico.data_pagamento`** (tipo `timestamp with time zone`) -- aqui o horario importa. Deve gravar o momento exato da acao, nao um horario inventado.
 
-**2. UI na tela de revisao (importStep === "review")**
+### Solucao
 
-Na linha do "Cliente", adicionar um botao "Trocar" (icone de troca ou tres pontinhos) ao lado do nome. Ao clicar:
-- Expande uma secao abaixo com duas opcoes (RadioGroup):
-  - "Cliente existente" -- exibe Select com lista de clientes
-  - "Novo cliente" -- exibe Input pre-preenchido com o nome do PIX
-- Um botao "Cancelar" para voltar ao nome original do PIX
+Nos inserts em `parcelas_historico`, usar `new Date().toISOString()` para capturar o momento real da baixa. O `"T12:00:00"` so era necessario para o campo `date` da tabela `parcelas`, nao para o `timestamp` do historico.
 
-**3. Logica em `handleConfirmImport`**
+### Alteracoes em `src/pages/Parcelas.tsx`
 
-- Se `clienteOverride` e `null`: comportamento atual (busca por nome do PIX ou cria)
-- Se `clienteOverride.tipo === "existing"`: usa o `clienteOverride.id` diretamente
-- Se `clienteOverride.tipo === "new"`: cria cliente com `clienteOverride.nome` e chave PIX nas observacoes
-
-### Resultado Visual
-
-```text
-+-----------------------------------+
-| Cliente                           |
-| Joao Silva         [Trocar]      |
-+-----------------------------------+
-|  (ao clicar "Trocar")            |
-|  ( ) Cliente existente  [v Select]|
-|  ( ) Novo cliente    [________]  |
-|              [Cancelar]          |
-+-----------------------------------+
-| Valor: R$ 500,00                 |
-| Data: 12/02/2026                 |
-| Chave PIX: xxx.xxx.xxx-xx       |
-+-----------------------------------+
+**1. Linha ~266** - Pagamento no historico:
+```typescript
+// Antes:  data_pagamento: dataPagamento + "T12:00:00"
+// Depois: data_pagamento: new Date().toISOString()
 ```
+
+**2. Linha ~569** - Alteracao de data no historico:
+```typescript
+// Antes:  data_pagamento: getLocalDateString() + "T12:00:00"
+// Depois: data_pagamento: new Date().toISOString()
+```
+
+O formato de exibicao com `HH:mm` nas linhas ~1158 e ~1222 permanece como esta, pois agora mostrara o horario real.
 
 ### Arquivo modificado
 
 | Arquivo | Acao |
 |---|---|
-| `src/pages/Contratos.tsx` | Adicionar estado `clienteOverride`, UI de troca de cliente, e logica condicional no `handleConfirmImport` |
+| `src/pages/Parcelas.tsx` | Usar `new Date().toISOString()` nos inserts de `parcelas_historico` (2 ocorrencias) |
 
