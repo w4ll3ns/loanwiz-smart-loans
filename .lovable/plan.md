@@ -1,56 +1,65 @@
 
 
-## Plano: Botao "Trocar Cliente" na Revisao do Comprovante
+## Plano: Corrigir Problemas de Timezone nas Datas de Pagamento
 
-### Comportamento Atual
-Ao importar o comprovante, o sistema automaticamente busca ou cria um cliente pelo nome extraido do PIX. O usuario nao tem opcao de escolher outro cliente.
+### Problema Identificado
 
-### Novo Comportamento
-O fluxo padrao continua igual (usa o nome do PIX automaticamente). Porem, na tela de revisao, ao lado do nome do cliente extraido, aparece um botao "Trocar" que permite:
-- Selecionar um cliente ja cadastrado (dropdown)
-- Cadastrar um novo cliente (campo de texto)
+Ha dois bugs de timezone que causam pagamentos aparecendo no dia errado:
 
-### Alteracoes em `src/pages/Contratos.tsx`
+**Bug 1 - Gravacao do pagamento (Parcelas.tsx, linha 259):**
+```
+data_pagamento: new Date(dataPagamento).toISOString()
+```
+`dataPagamento` e uma string como `"2026-03-12"`. O `new Date("2026-03-12")` interpreta como **UTC meia-noite**, e o `.toISOString()` mantem em UTC. Para um usuario no Brasil (UTC-3), isso grava o timestamp como `2026-03-12T00:00:00.000Z`, que corresponde a `2026-03-11T21:00:00` no horario local. O resultado e que o pagamento pode aparecer no dia anterior.
 
-**1. Novos estados**
-- `clienteOverride`: `null` | `{ tipo: "existing", id: string, nome: string }` | `{ tipo: "new", nome: string }`
-- Quando `null`, usa o fluxo padrao (nome do PIX)
+**Bug 2 - Consulta "Recebido Hoje" (Parcelas.tsx, linha 109):**
+```
+const hoje = new Date().toISOString().split('T')[0]
+```
+Usa `toISOString()` que converte para UTC. Apos as 21h no Brasil, `hoje` ja seria o dia seguinte em UTC, causando divergencia no filtro.
 
-**2. UI na tela de revisao (importStep === "review")**
+**Bug 3 - Estorno recalcula data (Parcelas.tsx, linha 448):**
+```
+data_pagamento: novoValorPago >= valorOriginal ? new Date().toISOString().split('T')[0] : null
+```
+Mesmo problema de UTC.
 
-Na linha do "Cliente", adicionar um botao "Trocar" (icone de troca ou tres pontinhos) ao lado do nome. Ao clicar:
-- Expande uma secao abaixo com duas opcoes (RadioGroup):
-  - "Cliente existente" -- exibe Select com lista de clientes
-  - "Novo cliente" -- exibe Input pre-preenchido com o nome do PIX
-- Um botao "Cancelar" para voltar ao nome original do PIX
+### Solucao
 
-**3. Logica em `handleConfirmImport`**
+**1. Criar funcao utilitaria para obter data local**
 
-- Se `clienteOverride` e `null`: comportamento atual (busca por nome do PIX ou cria)
-- Se `clienteOverride.tipo === "existing"`: usa o `clienteOverride.id` diretamente
-- Se `clienteOverride.tipo === "new"`: cria cliente com `clienteOverride.nome` e chave PIX nas observacoes
-
-### Resultado Visual
-
-```text
-+-----------------------------------+
-| Cliente                           |
-| Joao Silva         [Trocar]      |
-+-----------------------------------+
-|  (ao clicar "Trocar")            |
-|  ( ) Cliente existente  [v Select]|
-|  ( ) Novo cliente    [________]  |
-|              [Cancelar]          |
-+-----------------------------------+
-| Valor: R$ 500,00                 |
-| Data: 12/02/2026                 |
-| Chave PIX: xxx.xxx.xxx-xx       |
-+-----------------------------------+
+```typescript
+function getLocalDateString(date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 ```
 
-### Arquivo modificado
+**2. Corrigir gravacao do pagamento em `Parcelas.tsx`**
+
+Linha 259 - Ao gravar no historico, usar a data selecionada com horario local meio-dia para evitar shift de timezone:
+```typescript
+// Antes:  new Date(dataPagamento).toISOString()
+// Depois: dataPagamento + "T12:00:00"
+```
+
+**3. Corrigir consulta "Recebido Hoje" em `Parcelas.tsx`**
+
+Linha 109 - Usar `getLocalDateString()` em vez de `new Date().toISOString().split('T')[0]`
+
+**4. Corrigir estorno em `Parcelas.tsx`**
+
+Linha 448 - Usar `getLocalDateString()` em vez de `new Date().toISOString().split('T')[0]`
+
+**5. Corrigir evento de alteracao de data em `Parcelas.tsx`**
+
+Linha 562 - Mesmo padrao: `dataPagamento + "T12:00:00"` ou `getLocalDateString() + "T12:00:00"`
+
+### Arquivos modificados
 
 | Arquivo | Acao |
 |---|---|
-| `src/pages/Contratos.tsx` | Adicionar estado `clienteOverride`, UI de troca de cliente, e logica condicional no `handleConfirmImport` |
+| `src/pages/Parcelas.tsx` | Corrigir todas as conversoes de data que usam `toISOString()` ou `new Date("YYYY-MM-DD")` |
 
