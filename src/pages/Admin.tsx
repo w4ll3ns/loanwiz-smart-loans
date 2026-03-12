@@ -809,7 +809,7 @@ export default function Admin() {
                               <TableCell>
                                 {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(contrato.valor_emprestado)}
                               </TableCell>
-                              <TableCell>{contrato.numero_parcelas}x</TableCell>
+                              <TableCell className="hidden sm:table-cell">{contrato.numero_parcelas}x</TableCell>
                               <TableCell>
                                 <Badge variant={contrato.status === 'ativo' ? 'default' : contrato.status === 'quitado' ? 'outline' : 'secondary'}>
                                   {contrato.status}

@@ -1949,16 +1949,47 @@ export default function Contratos() {
           </div>
         </CardHeader>
         <CardContent className="p-0 md:p-6">
-          <div className="overflow-x-auto">
+          {/* Mobile - Cards */}
+          <div className="md:hidden space-y-2 p-3">
+            {contratosFiltrados.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">Nenhum contrato encontrado</p>
+            ) : (
+              contratosFiltrados.map((contrato) => (
+                <Card
+                  key={contrato.id}
+                  className="cursor-pointer hover:bg-muted/50 p-3"
+                  onClick={() => handleContratoClick(contrato)}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-sm truncate">{contrato.clientes?.nome}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {contrato.periodicidade} • {Number(contrato.percentual)}% • {contrato.numero_parcelas}x
+                      </p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-sm font-semibold">R$ {Number(contrato.valor_total).toLocaleString('pt-BR')}</p>
+                      <Badge variant={contrato.status === "ativo" ? "default" : contrato.status === "quitado" ? "outline" : "secondary"} className="text-[10px] mt-0.5">
+                        {contrato.status === "ativo" ? "Ativo" : contrato.status === "quitado" ? "Quitado" : contrato.status}
+                      </Badge>
+                    </div>
+                  </div>
+                </Card>
+              ))
+            )}
+          </div>
+
+          {/* Desktop - Table */}
+          <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[120px] pl-4 md:pl-3">Cliente</TableHead>
-                  <TableHead className="hidden md:table-cell">Valor Emprestado</TableHead>
+                  <TableHead className="min-w-[120px] pl-3">Cliente</TableHead>
+                  <TableHead>Valor Emprestado</TableHead>
                   <TableHead className="hidden lg:table-cell">Percentual</TableHead>
-                  <TableHead className="hidden md:table-cell">Periodicidade</TableHead>
-                  <TableHead className="pr-4 md:pr-3">Valor Total</TableHead>
-                  <TableHead className="hidden md:table-cell">Status</TableHead>
+                  <TableHead>Periodicidade</TableHead>
+                  <TableHead>Valor Total</TableHead>
+                  <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1975,17 +2006,12 @@ export default function Contratos() {
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => handleContratoClick(contrato)}
                     >
-                      <TableCell className="font-medium pl-4 md:pl-3">
-                        {contrato.clientes?.nome}
-                        <div className="md:hidden text-xs text-muted-foreground mt-1">
-                          {contrato.periodicidade} • {contrato.percentual}%
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell text-sm">R$ {Number(contrato.valor_emprestado).toLocaleString('pt-BR')}</TableCell>
+                      <TableCell className="font-medium pl-3">{contrato.clientes?.nome}</TableCell>
+                      <TableCell className="text-sm">R$ {Number(contrato.valor_emprestado).toLocaleString('pt-BR')}</TableCell>
                       <TableCell className="hidden lg:table-cell text-sm">{Number(contrato.percentual)}%</TableCell>
-                      <TableCell className="hidden md:table-cell text-sm capitalize">{contrato.periodicidade}</TableCell>
-                      <TableCell className="pr-4 md:pr-3 text-sm">R$ {Number(contrato.valor_total).toLocaleString('pt-BR')}</TableCell>
-                      <TableCell className="hidden md:table-cell">
+                      <TableCell className="text-sm capitalize">{contrato.periodicidade}</TableCell>
+                      <TableCell className="text-sm">R$ {Number(contrato.valor_total).toLocaleString('pt-BR')}</TableCell>
+                      <TableCell>
                         <Badge variant={contrato.status === "ativo" ? "default" : contrato.status === "quitado" ? "outline" : "secondary"} className="text-xs">
                           {contrato.status === "ativo" ? "Ativo" : contrato.status === "quitado" ? "Quitado" : contrato.status}
                         </Badge>

@@ -187,10 +187,10 @@ export default function Dashboard() {
             <CheckCircle2 className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl md:text-2xl font-bold text-success">
+            <div className="text-lg md:text-2xl font-bold text-success truncate">
               R$ {stats.totalRecebido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-[10px] sm:text-xs text-muted-foreground">
+            <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
               Inclui parciais e quitações
             </p>
           </CardContent>
