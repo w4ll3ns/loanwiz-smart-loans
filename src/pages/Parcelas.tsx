@@ -783,7 +783,7 @@ export default function Parcelas() {
               </div>
             ) : (
               filteredParcelas.map((parcela) => (
-                <Card key={parcela.id} className="border-l-4 w-full overflow-hidden" style={{
+                <Card key={parcela.id} className="border-l-4 min-w-0 overflow-hidden" style={{
                   borderLeftColor: 
                     parcela.status === "pago" ? "hsl(var(--success))" : 
                     calcularDiasAtraso(parcela.data_vencimento) > 0 ? "hsl(var(--destructive))" : 
