@@ -715,16 +715,16 @@ export default function Parcelas() {
           </CardContent>
         </Card>
 
-        <Card className="w-full overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 pt-3">
+        <Card className="min-w-0 overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-2 md:px-3 pt-2 md:pt-3">
             <CardTitle className="text-xs md:text-sm font-medium truncate">Total Vencido</CardTitle>
             <AlertTriangle className="h-3 w-3 md:h-4 md:w-4 text-destructive flex-shrink-0 ml-1" />
           </CardHeader>
-          <CardContent className="px-3 pb-3">
-            <div className="text-base md:text-2xl font-bold text-destructive break-all">
+          <CardContent className="px-2 md:px-3 pb-2 md:pb-3">
+            <div className="text-sm md:text-2xl font-bold text-destructive truncate">
               R$ {totalVencido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-[10px] md:text-xs text-muted-foreground truncate">
+            <p className="text-xs text-muted-foreground truncate">
               {dashboardParcelas.filter(p => (p.status === "pendente" || p.status === "parcialmente_pago") && calcularDiasAtraso(p.data_vencimento) > 0).length} parcelas em atraso
             </p>
           </CardContent>
