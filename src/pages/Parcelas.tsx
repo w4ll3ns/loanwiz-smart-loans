@@ -700,16 +700,16 @@ export default function Parcelas() {
           </CardContent>
         </Card>
 
-        <Card className="w-full overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 pt-3">
+        <Card className="min-w-0 overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-2 md:px-3 pt-2 md:pt-3">
             <CardTitle className="text-xs md:text-sm font-medium truncate">Total Recebido</CardTitle>
             <Check className="h-3 w-3 md:h-4 md:w-4 text-success flex-shrink-0 ml-1" />
           </CardHeader>
-          <CardContent className="px-3 pb-3">
-            <div className="text-base md:text-2xl font-bold text-success break-all">
+          <CardContent className="px-2 md:px-3 pb-2 md:pb-3">
+            <div className="text-sm md:text-2xl font-bold text-success truncate">
               R$ {totalPago.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-[10px] md:text-xs text-muted-foreground truncate">
+            <p className="text-xs text-muted-foreground truncate">
               Inclui parciais e quitações
             </p>
           </CardContent>
