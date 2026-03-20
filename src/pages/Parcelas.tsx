@@ -776,7 +776,7 @@ export default function Parcelas() {
         </CardHeader>
         <CardContent className="p-0 md:p-6">
           {/* View Mobile - Cards */}
-          <div className="md:hidden space-y-3 p-3 w-full max-w-full">
+          <div className="md:hidden space-y-3 p-2 w-full min-w-0 max-w-full">
             {filteredParcelas.length === 0 ? (
               <div className="text-center text-muted-foreground py-8">
                 Nenhuma parcela encontrada
