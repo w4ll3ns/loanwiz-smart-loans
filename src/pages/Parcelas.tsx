@@ -669,7 +669,7 @@ export default function Parcelas() {
       </Card>
 
       {/* Cards de Resumo */}
-      <div className="grid gap-2 md:gap-4 grid-cols-2 md:grid-cols-4 w-full">
+      <div className="grid gap-1.5 md:gap-4 grid-cols-2 md:grid-cols-4 w-full min-w-0">
         <Card className="w-full overflow-hidden border-l-4 border-l-primary">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 pt-3">
             <CardTitle className="text-xs md:text-sm font-medium truncate">Recebido Hoje</CardTitle>
