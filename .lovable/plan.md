@@ -1,56 +1,28 @@
 
 
-## Plano: Botao "Trocar Cliente" na Revisao do Comprovante
+## Plano: Corrigir cards cortados no mobile da pagina Parcelas
 
-### Comportamento Atual
-Ao importar o comprovante, o sistema automaticamente busca ou cria um cliente pelo nome extraido do PIX. O usuario nao tem opcao de escolher outro cliente.
+### Problema
 
-### Novo Comportamento
-O fluxo padrao continua igual (usa o nome do PIX automaticamente). Porem, na tela de revisao, ao lado do nome do cliente extraido, aparece um botao "Trocar" que permite:
-- Selecionar um cliente ja cadastrado (dropdown)
-- Cadastrar um novo cliente (campo de texto)
+Na tela de 390px, os cards de resumo e os cards de parcelas estao sendo cortados no lado direito. O container pai tem `p-4` (16px de cada lado) e os cards usam `w-full`, mas o grid de 2 colunas com `gap-2` pode estar causando overflow sutil quando combinado com `border-l-4` e padding interno.
 
-### Alteracoes em `src/pages/Contratos.tsx`
+### Causa raiz
 
-**1. Novos estados**
-- `clienteOverride`: `null` | `{ tipo: "existing", id: string, nome: string }` | `{ tipo: "new", nome: string }`
-- Quando `null`, usa o fluxo padrao (nome do PIX)
+1. O `main` do Layout tem `p-4` (16px padding), totalizando area util de 358px em tela de 390px
+2. Os cards de resumo em `grid-cols-2 gap-2` com `border-l-4` (4px extra) e `px-3` interno podem estourar por pixels
+3. O container raiz da pagina tem `overflow-hidden` mas o conteudo real dos cards (valores monetarios longos com `break-all`) pode nao estar respeitando o limite
 
-**2. UI na tela de revisao (importStep === "review")**
+### Alteracoes em `src/pages/Parcelas.tsx`
 
-Na linha do "Cliente", adicionar um botao "Trocar" (icone de troca ou tres pontinhos) ao lado do nome. Ao clicar:
-- Expande uma secao abaixo com duas opcoes (RadioGroup):
-  - "Cliente existente" -- exibe Select com lista de clientes
-  - "Novo cliente" -- exibe Input pre-preenchido com o nome do PIX
-- Um botao "Cancelar" para voltar ao nome original do PIX
-
-**3. Logica em `handleConfirmImport`**
-
-- Se `clienteOverride` e `null`: comportamento atual (busca por nome do PIX ou cria)
-- Se `clienteOverride.tipo === "existing"`: usa o `clienteOverride.id` diretamente
-- Se `clienteOverride.tipo === "new"`: cria cliente com `clienteOverride.nome` e chave PIX nas observacoes
-
-### Resultado Visual
-
-```text
-+-----------------------------------+
-| Cliente                           |
-| Joao Silva         [Trocar]      |
-+-----------------------------------+
-|  (ao clicar "Trocar")            |
-|  ( ) Cliente existente  [v Select]|
-|  ( ) Novo cliente    [________]  |
-|              [Cancelar]          |
-+-----------------------------------+
-| Valor: R$ 500,00                 |
-| Data: 12/02/2026                 |
-| Chave PIX: xxx.xxx.xxx-xx       |
-+-----------------------------------+
-```
+1. **Container raiz**: adicionar `min-w-0` para garantir que flex children respeitem limites
+2. **Grid de resumo**: reduzir `gap-2` para `gap-1.5` no mobile e garantir que cada card tenha `min-w-0`
+3. **Cards de resumo**: reduzir padding dos headers de `px-3` para `px-2` no mobile, usar `text-sm` em vez de `text-base` para valores monetarios no mobile para evitar overflow
+4. **Cards de parcelas (listagem)**: adicionar `min-w-0` e reduzir padding se necessario
+5. **Container dos cards de parcelas**: garantir `overflow-hidden` no wrapper
 
 ### Arquivo modificado
 
 | Arquivo | Acao |
 |---|---|
-| `src/pages/Contratos.tsx` | Adicionar estado `clienteOverride`, UI de troca de cliente, e logica condicional no `handleConfirmImport` |
+| `src/pages/Parcelas.tsx` | Ajustar paddings, gaps e min-w-0 nos cards mobile para eliminar corte lateral |
 
