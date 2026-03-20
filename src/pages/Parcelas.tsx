@@ -620,7 +620,7 @@ export default function Parcelas() {
     .reduce((acc, p) => acc + Number(p.valor_original || p.valor), 0);
 
   return (
-    <div className="space-y-4 md:space-y-6 w-full max-w-full overflow-hidden">
+    <div className="space-y-4 md:space-y-6 w-full min-w-0 max-w-full overflow-hidden">
       {/* Header */}
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <h1 className="text-xl md:text-3xl font-bold truncate">Gestão de Parcelas</h1>
@@ -669,62 +669,62 @@ export default function Parcelas() {
       </Card>
 
       {/* Cards de Resumo */}
-      <div className="grid gap-2 md:gap-4 grid-cols-2 md:grid-cols-4 w-full">
-        <Card className="w-full overflow-hidden border-l-4 border-l-primary">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 pt-3">
+      <div className="grid gap-1.5 md:gap-4 grid-cols-2 md:grid-cols-4 w-full min-w-0">
+        <Card className="min-w-0 overflow-hidden border-l-4 border-l-primary">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-2 md:px-3 pt-2 md:pt-3">
             <CardTitle className="text-xs md:text-sm font-medium truncate">Recebido Hoje</CardTitle>
             <Banknote className="h-3 w-3 md:h-4 md:w-4 text-primary flex-shrink-0 ml-1" />
           </CardHeader>
-          <CardContent className="px-3 pb-3">
-            <div className="text-base md:text-2xl font-bold text-primary break-all">
+          <CardContent className="px-2 md:px-3 pb-2 md:pb-3">
+            <div className="text-sm md:text-2xl font-bold text-primary truncate">
               R$ {totalRecebidoHoje.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-[10px] md:text-xs text-muted-foreground truncate">
+            <p className="text-xs text-muted-foreground truncate">
               {pagamentosHoje} pagamento{pagamentosHoje !== 1 ? 's' : ''}
             </p>
           </CardContent>
         </Card>
 
-        <Card className="w-full overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 pt-3">
+        <Card className="min-w-0 overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-2 md:px-3 pt-2 md:pt-3">
             <CardTitle className="text-xs md:text-sm font-medium truncate">A Receber (Pendente)</CardTitle>
             <Calendar className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground flex-shrink-0 ml-1" />
           </CardHeader>
-          <CardContent className="px-3 pb-3">
-            <div className="text-base md:text-2xl font-bold break-all">
+          <CardContent className="px-2 md:px-3 pb-2 md:pb-3">
+            <div className="text-sm md:text-2xl font-bold truncate">
               R$ {totalPendente.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-[10px] md:text-xs text-muted-foreground truncate">
+            <p className="text-xs text-muted-foreground truncate">
               {dashboardParcelas.filter(p => p.status !== "pago").length} parcelas a quitar
             </p>
           </CardContent>
         </Card>
 
-        <Card className="w-full overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 pt-3">
+        <Card className="min-w-0 overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-2 md:px-3 pt-2 md:pt-3">
             <CardTitle className="text-xs md:text-sm font-medium truncate">Total Recebido</CardTitle>
             <Check className="h-3 w-3 md:h-4 md:w-4 text-success flex-shrink-0 ml-1" />
           </CardHeader>
-          <CardContent className="px-3 pb-3">
-            <div className="text-base md:text-2xl font-bold text-success break-all">
+          <CardContent className="px-2 md:px-3 pb-2 md:pb-3">
+            <div className="text-sm md:text-2xl font-bold text-success truncate">
               R$ {totalPago.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-[10px] md:text-xs text-muted-foreground truncate">
+            <p className="text-xs text-muted-foreground truncate">
               Inclui parciais e quitações
             </p>
           </CardContent>
         </Card>
 
-        <Card className="w-full overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 pt-3">
+        <Card className="min-w-0 overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-2 md:px-3 pt-2 md:pt-3">
             <CardTitle className="text-xs md:text-sm font-medium truncate">Total Vencido</CardTitle>
             <AlertTriangle className="h-3 w-3 md:h-4 md:w-4 text-destructive flex-shrink-0 ml-1" />
           </CardHeader>
-          <CardContent className="px-3 pb-3">
-            <div className="text-base md:text-2xl font-bold text-destructive break-all">
+          <CardContent className="px-2 md:px-3 pb-2 md:pb-3">
+            <div className="text-sm md:text-2xl font-bold text-destructive truncate">
               R$ {totalVencido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-[10px] md:text-xs text-muted-foreground truncate">
+            <p className="text-xs text-muted-foreground truncate">
               {dashboardParcelas.filter(p => (p.status === "pendente" || p.status === "parcialmente_pago") && calcularDiasAtraso(p.data_vencimento) > 0).length} parcelas em atraso
             </p>
           </CardContent>
@@ -776,14 +776,14 @@ export default function Parcelas() {
         </CardHeader>
         <CardContent className="p-0 md:p-6">
           {/* View Mobile - Cards */}
-          <div className="md:hidden space-y-3 p-3 w-full max-w-full">
+          <div className="md:hidden space-y-3 p-2 w-full min-w-0 max-w-full">
             {filteredParcelas.length === 0 ? (
               <div className="text-center text-muted-foreground py-8">
                 Nenhuma parcela encontrada
               </div>
             ) : (
               filteredParcelas.map((parcela) => (
-                <Card key={parcela.id} className="border-l-4 w-full overflow-hidden" style={{
+                <Card key={parcela.id} className="border-l-4 min-w-0 overflow-hidden" style={{
                   borderLeftColor: 
                     parcela.status === "pago" ? "hsl(var(--success))" : 
                     calcularDiasAtraso(parcela.data_vencimento) > 0 ? "hsl(var(--destructive))" : 
