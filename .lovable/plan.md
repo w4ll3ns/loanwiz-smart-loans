@@ -1,28 +1,32 @@
 
 
-## Plano: Corrigir cards cortados no mobile da pagina Parcelas
-
-### Problema
-
-Na tela de 390px, os cards de resumo e os cards de parcelas estao sendo cortados no lado direito. O container pai tem `p-4` (16px de cada lado) e os cards usam `w-full`, mas o grid de 2 colunas com `gap-2` pode estar causando overflow sutil quando combinado com `border-l-4` e padding interno.
+## Plano: Corrigir cards cortados - remover padding do #root
 
 ### Causa raiz
 
-1. O `main` do Layout tem `p-4` (16px padding), totalizando area util de 358px em tela de 390px
-2. Os cards de resumo em `grid-cols-2 gap-2` com `border-l-4` (4px extra) e `px-3` interno podem estourar por pixels
-3. O container raiz da pagina tem `overflow-hidden` mas o conteudo real dos cards (valores monetarios longos com `break-all`) pode nao estar respeitando o limite
+O arquivo `src/App.css` contem estilos boilerplate do Vite que nunca foram removidos:
 
-### Alteracoes em `src/pages/Parcelas.tsx`
+```css
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;    /* <-- 32px de cada lado! */
+  text-align: center;
+}
+```
 
-1. **Container raiz**: adicionar `min-w-0` para garantir que flex children respeitem limites
-2. **Grid de resumo**: reduzir `gap-2` para `gap-1.5` no mobile e garantir que cada card tenha `min-w-0`
-3. **Cards de resumo**: reduzir padding dos headers de `px-3` para `px-2` no mobile, usar `text-sm` em vez de `text-base` para valores monetarios no mobile para evitar overflow
-4. **Cards de parcelas (listagem)**: adicionar `min-w-0` e reduzir padding se necessario
-5. **Container dos cards de parcelas**: garantir `overflow-hidden` no wrapper
+Em uma tela de 390px, isso reduz a area util para ~326px. Somado ao `p-4` (16px) do Layout, sobram apenas ~294px para o conteudo. Os cards de Parcelas com `border-l-4`, grids e padding interno estouram esse espaco.
 
-### Arquivo modificado
+### Solucao
+
+Remover **todo o conteudo** de `src/App.css` (ou pelo menos as regras do `#root`). Esses estilos sao restos do template inicial do Vite e nao sao usados pelo sistema -- todo o styling vem do Tailwind via `index.css`.
+
+Tambem simplificar o container raiz de `Parcelas.tsx` removendo os workarounds (`min-w-0 max-w-full overflow-hidden`) que foram adicionados para compensar o problema real.
+
+### Alteracoes
 
 | Arquivo | Acao |
 |---|---|
-| `src/pages/Parcelas.tsx` | Ajustar paddings, gaps e min-w-0 nos cards mobile para eliminar corte lateral |
+| `src/App.css` | Remover todo o conteudo (estilos boilerplate nao utilizados) |
+| `src/pages/Parcelas.tsx` | Simplificar container raiz: trocar `w-full min-w-0 max-w-full overflow-hidden` por apenas `space-y-4 md:space-y-6` (mesmo padrao do Dashboard) |
 
