@@ -1,32 +1,55 @@
 
 
-## Analise de Responsividade - Todas as Paginas
-
-### Estado Atual
-
-O Layout ja tem `min-w-0 overflow-x-hidden` no `<main>` e o `App.css` esta limpo. Isso resolve o overflow global. Analisando pagina por pagina:
-
-### Paginas sem problemas
-
-**Dashboard.tsx** - Grid `grid-cols-2 sm:grid-cols-3 lg:grid-cols-5` com `truncate` nos valores. Cards simples, sem overflow. OK.
-
-**Parcelas.tsx** - Cards mobile com `min-w-0 overflow-hidden`, `truncate`, `break-all` nos valores, botoes `h-9`. Grid de resumo com `gap-1.5`, padding reduzido no mobile. OK.
-
-**Contratos.tsx (listagem)** - Cards mobile com `min-w-0 flex-1 truncate`. Tabela desktop com `hidden md:block overflow-x-auto`. OK.
+## Analise: Baixa de parcelas via Contratos vs Parcelas
 
 ### Problemas encontrados
 
-**1. Clientes.tsx (linha 321)** - Tabela com `overflow-x-auto` sem view mobile em cards. Em 390px, a tabela com `min-w-[150px]` no nome + coluna acoes pode causar scroll horizontal sutil. No entanto, a coluna telefone ja e `hidden md:table-cell`, entao ficam so 2 colunas visiveis (Nome + Acoes). Isso geralmente cabe, mas com nomes longos pode apertar.
+**1. Contratos NAO registra historico de pagamento**
 
-**2. Admin.tsx (linha 595)** - Tabela de usuarios com `overflow-x-auto` e `min-w-[120px]` no nome. No mobile ficam visiveis: Nome, Status, Acoes. Email e `hidden md:table-cell`, Plano e `hidden lg:table-cell`. A celula de Nome ja mostra email e badge do plano inline no mobile (linhas 620-623). Funciona razoavelmente.
+A pagina de Parcelas insere em `parcelas_historico` a cada pagamento (linha 255-264). A pagina de Contratos NAO faz isso -- paga a parcela diretamente sem registro de historico. Isso significa que pagamentos feitos via Contratos ficam "invisiveis" no historico.
 
-**3. Admin.tsx (linhas 760, 795)** - Tabelas de relatorio de clientes e contratos por usuario dentro de dialog. Usam `overflow-x-auto` com colunas que podem estourar em mobile.
+**2. Logica de pagamento parcial DIVERGENTE da regra de negocio**
 
-**4. Contratos.tsx (linha 1550)** - Tabela de cronograma de parcelas dentro do dialog com `-mx-4 sm:mx-0`. O `-mx-4` no mobile pode causar problemas se o dialog nao contiver o overflow.
+Conforme a regra de negocio documentada (memory: partial-payment-business-rule), pagamentos parciais NAO devem alterar o status para "pago" nem transferir saldo. Porem, no Contratos.tsx (linhas 459-508):
+- Pagamento parcial marca a parcela como **"pago"** (errado -- deveria manter "pendente")
+- Transfere o saldo restante para a proxima parcela (errado -- deveria manter o valor original)
+- Nao preserva `valor_original`
 
-### Conclusao
+Na pagina de Parcelas, a logica esta correta: pagamento parcial mantem status "pendente" e nao transfere saldo.
 
-A maioria das paginas esta bem configurada. Os problemas remanescentes sao menores e estao dentro de dialogs (que tem scroll proprio) ou em tabelas que ja escondem colunas no mobile. O fix principal (`min-w-0 overflow-x-hidden` no Layout) impede que qualquer overflow afete a pagina inteira.
+**3. Verificacao de quitacao do contrato FUNCIONA**
 
-**Nenhuma alteracao e necessaria neste momento.** As paginas estao funcionando corretamente com o fix global no Layout. Os poucos casos de `overflow-x-auto` em tabelas sao intencionais -- permitem scroll horizontal apenas dentro do container da tabela, sem afetar a pagina.
+Tanto Contratos (linha 441-457) quanto Parcelas (linha 300-320) verificam se todas as parcelas estao pagas e atualizam o contrato para "quitado". Porem, no Contratos, como pagamentos parciais marcam indevidamente como "pago", isso pode causar quitacao prematura do contrato.
+
+**4. Dashboard NAO e afetado diretamente**
+
+O Dashboard busca dados frescos do banco (contratos ativos, parcelas pendentes, valores pagos). Se os dados estiverem corretos no banco, o Dashboard reflete corretamente. O problema e que dados gravados via Contratos podem estar inconsistentes por causa dos bugs acima.
+
+### Solucao proposta
+
+Alinhar a logica de pagamento em `Contratos.tsx` com a de `Parcelas.tsx`:
+
+| Alteracao | Arquivo |
+|---|---|
+| Inserir em `parcelas_historico` ao registrar pagamento | `src/pages/Contratos.tsx` |
+| Pagamento parcial: manter status "pendente", acumular `valor_pago`, nao transferir saldo | `src/pages/Contratos.tsx` |
+| Preservar `valor_original` na primeira alteracao | `src/pages/Contratos.tsx` |
+| Quitacao: so verificar se contrato deve ser quitado quando status = "pago" | `src/pages/Contratos.tsx` |
+
+### Detalhes das alteracoes em `Contratos.tsx`
+
+**Substituir `handleConfirmarPagamento` (linhas 399-541)** pela mesma logica da pagina Parcelas:
+
+1. Calcular `valorPagar` baseado no tipo (total, juros, personalizado)
+2. **Inserir em `parcelas_historico`** com `tipo_evento: "pagamento"`, `valor_pago`, `tipo_pagamento`, `data_pagamento: new Date().toISOString()`
+3. Acumular `valor_pago` (`novoValorPago = atual + valorPagar`)
+4. Se `tipoPagamento === "total"`: status = "pago", `valor_pago = valor_original`
+5. Se parcial: status = "pendente", `valor_pago = acumulado`
+6. Preservar `valor_original` se nao existir
+7. So verificar quitacao do contrato se `novoStatus === "pago"`
+8. **Remover** logica de transferencia de saldo para proxima parcela
+
+### Dashboard
+
+Nenhuma alteracao necessaria. O Dashboard ja busca dados corretos do banco -- o problema era apenas que dados gravados via Contratos podiam estar errados.
 
