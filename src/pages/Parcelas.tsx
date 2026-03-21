@@ -192,7 +192,7 @@ export default function Parcelas() {
     // Se um card filter está ativo, aplicar filtro específico
     if (cardFilter === "recebido_hoje") {
       const hoje = getLocalDateString();
-      return parcela.status === "pago" && parcela.data_pagamento && parcela.data_pagamento.startsWith(hoje);
+      return (parcela.status === "pago" || parcela.status === "parcialmente_pago") && parcela.data_pagamento && parcela.data_pagamento.startsWith(hoje);
     }
     if (cardFilter === "vencido") {
       return (parcela.status === "pendente" || parcela.status === "parcialmente_pago") && calcularDiasAtraso(parcela.data_vencimento) > 0;
