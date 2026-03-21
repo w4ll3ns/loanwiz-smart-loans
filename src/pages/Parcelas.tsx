@@ -680,7 +680,10 @@ export default function Parcelas() {
 
       {/* Cards de Resumo */}
       <div className="grid gap-1.5 md:gap-4 grid-cols-2 md:grid-cols-4 w-full min-w-0">
-        <Card className="min-w-0 overflow-hidden border-l-4 border-l-primary">
+        <Card
+          className={`min-w-0 overflow-hidden border-l-4 border-l-primary cursor-pointer transition-shadow hover:shadow-md ${cardFilter === "recebido_hoje" ? "ring-2 ring-primary" : ""}`}
+          onClick={() => setCardFilter(cardFilter === "recebido_hoje" ? null : "recebido_hoje")}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-2 md:px-3 pt-2 md:pt-3">
             <CardTitle className="text-xs md:text-sm font-medium truncate">Recebido Hoje</CardTitle>
             <Banknote className="h-3 w-3 md:h-4 md:w-4 text-primary flex-shrink-0 ml-1" />
