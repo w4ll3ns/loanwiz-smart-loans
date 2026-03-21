@@ -88,6 +88,7 @@ export default function Parcelas() {
   const [dataPagamento, setDataPagamento] = useState<string>("");
   const [totalRecebidoHoje, setTotalRecebidoHoje] = useState<number>(0);
   const [pagamentosHoje, setPagamentosHoje] = useState<number>(0);
+  const [cardFilter, setCardFilter] = useState<"recebido_hoje" | "vencido" | null>(null);
   const { toast } = useToast();
   const { canCreate, userEmail } = useUserRole();
 
@@ -188,6 +189,15 @@ export default function Parcelas() {
 
   // Filtro para a lista (por busca, status e período de 7 dias)
   const filteredParcelas = parcelas.filter(parcela => {
+    // Se um card filter está ativo, aplicar filtro específico
+    if (cardFilter === "recebido_hoje") {
+      const hoje = getLocalDateString();
+      return parcela.status === "pago" && parcela.data_pagamento && parcela.data_pagamento.startsWith(hoje);
+    }
+    if (cardFilter === "vencido") {
+      return (parcela.status === "pendente" || parcela.status === "parcialmente_pago") && calcularDiasAtraso(parcela.data_vencimento) > 0;
+    }
+
     const clienteNome = parcela.contratos?.clientes?.nome || "";
     const matchesSearch = removerAcentos(clienteNome.toLowerCase()).includes(removerAcentos(searchTerm.toLowerCase()));
     const matchesStatus = statusFilter === "todos" || parcela.status === statusFilter;
@@ -670,7 +680,10 @@ export default function Parcelas() {
 
       {/* Cards de Resumo */}
       <div className="grid gap-1.5 md:gap-4 grid-cols-2 md:grid-cols-4 w-full min-w-0">
-        <Card className="min-w-0 overflow-hidden border-l-4 border-l-primary">
+        <Card
+          className={`min-w-0 overflow-hidden border-l-4 border-l-primary cursor-pointer transition-shadow hover:shadow-md ${cardFilter === "recebido_hoje" ? "ring-2 ring-primary" : ""}`}
+          onClick={() => setCardFilter(cardFilter === "recebido_hoje" ? null : "recebido_hoje")}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-2 md:px-3 pt-2 md:pt-3">
             <CardTitle className="text-xs md:text-sm font-medium truncate">Recebido Hoje</CardTitle>
             <Banknote className="h-3 w-3 md:h-4 md:w-4 text-primary flex-shrink-0 ml-1" />
@@ -715,7 +728,10 @@ export default function Parcelas() {
           </CardContent>
         </Card>
 
-        <Card className="min-w-0 overflow-hidden">
+        <Card
+          className={`min-w-0 overflow-hidden cursor-pointer transition-shadow hover:shadow-md ${cardFilter === "vencido" ? "ring-2 ring-destructive" : ""}`}
+          onClick={() => setCardFilter(cardFilter === "vencido" ? null : "vencido")}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-2 md:px-3 pt-2 md:pt-3">
             <CardTitle className="text-xs md:text-sm font-medium truncate">Total Vencido</CardTitle>
             <AlertTriangle className="h-3 w-3 md:h-4 md:w-4 text-destructive flex-shrink-0 ml-1" />
@@ -761,10 +777,21 @@ export default function Parcelas() {
       {/* Lista de Parcelas */}
       <Card className="w-full overflow-hidden">
         <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3">
-          <CardTitle className="text-base md:text-lg">
-            Parcelas ({filteredParcelas.length})
-            {!mostrarTodas && <span className="text-sm font-normal text-muted-foreground ml-2 hidden sm:inline">(Próximos 7 dias)</span>}
-          </CardTitle>
+          <div className="flex items-center gap-2 flex-wrap">
+            <CardTitle className="text-base md:text-lg">
+              Parcelas ({filteredParcelas.length})
+              {!mostrarTodas && !cardFilter && <span className="text-sm font-normal text-muted-foreground ml-2 hidden sm:inline">(Próximos 7 dias)</span>}
+            </CardTitle>
+            {cardFilter && (
+              <Badge
+                variant="secondary"
+                className="cursor-pointer text-xs"
+                onClick={() => setCardFilter(null)}
+              >
+                {cardFilter === "recebido_hoje" ? "Recebido Hoje" : "Vencidas"} ✕
+              </Badge>
+            )}
+          </div>
           <Button
             variant="outline"
             size="sm"
