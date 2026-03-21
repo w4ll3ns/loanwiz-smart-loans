@@ -728,7 +728,10 @@ export default function Parcelas() {
           </CardContent>
         </Card>
 
-        <Card className="min-w-0 overflow-hidden">
+        <Card
+          className={`min-w-0 overflow-hidden cursor-pointer transition-shadow hover:shadow-md ${cardFilter === "vencido" ? "ring-2 ring-destructive" : ""}`}
+          onClick={() => setCardFilter(cardFilter === "vencido" ? null : "vencido")}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-2 md:px-3 pt-2 md:pt-3">
             <CardTitle className="text-xs md:text-sm font-medium truncate">Total Vencido</CardTitle>
             <AlertTriangle className="h-3 w-3 md:h-4 md:w-4 text-destructive flex-shrink-0 ml-1" />
