@@ -777,10 +777,21 @@ export default function Parcelas() {
       {/* Lista de Parcelas */}
       <Card className="w-full overflow-hidden">
         <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3">
-          <CardTitle className="text-base md:text-lg">
-            Parcelas ({filteredParcelas.length})
-            {!mostrarTodas && <span className="text-sm font-normal text-muted-foreground ml-2 hidden sm:inline">(Próximos 7 dias)</span>}
-          </CardTitle>
+          <div className="flex items-center gap-2 flex-wrap">
+            <CardTitle className="text-base md:text-lg">
+              Parcelas ({filteredParcelas.length})
+              {!mostrarTodas && !cardFilter && <span className="text-sm font-normal text-muted-foreground ml-2 hidden sm:inline">(Próximos 7 dias)</span>}
+            </CardTitle>
+            {cardFilter && (
+              <Badge
+                variant="secondary"
+                className="cursor-pointer text-xs"
+                onClick={() => setCardFilter(null)}
+              >
+                {cardFilter === "recebido_hoje" ? "Recebido Hoje" : "Vencidas"} ✕
+              </Badge>
+            )}
+          </div>
           <Button
             variant="outline"
             size="sm"
