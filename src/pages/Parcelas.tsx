@@ -606,9 +606,17 @@ export default function Parcelas() {
 
   const getStatusBadge = (parcela: Parcela) => {
     if (parcela.status === "pago") {
-      return <Badge variant="default" className="bg-success">Pago</Badge>;
+      return <Badge variant="default" className="bg-success">Pago Total</Badge>;
     }
-    
+
+    if (parcela.status === "parcialmente_pago") {
+      const diasAtraso = calcularDiasAtraso(parcela.data_vencimento);
+      if (diasAtraso > 0) {
+        return <Badge className="bg-amber-500 text-white">Parcial - Atrasado ({diasAtraso}d)</Badge>;
+      }
+      return <Badge className="bg-amber-500 text-white">Pago Parcial</Badge>;
+    }
+
     const diasAtraso = calcularDiasAtraso(parcela.data_vencimento);
     if (diasAtraso > 0) {
       return <Badge variant="destructive">Atrasado ({diasAtraso}d)</Badge>;
