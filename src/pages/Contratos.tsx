@@ -99,6 +99,7 @@ interface Parcela {
   status: string;
   data_pagamento: string | null;
   valor_pago: number | null;
+  valor_original: number | null;
 }
 
 interface DadosComprovante {
