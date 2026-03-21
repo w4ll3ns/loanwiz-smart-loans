@@ -400,111 +400,88 @@ export default function Contratos() {
     if (!parcelaToPay) return;
 
     try {
-      let valorFinal = 0;
+      let valorPagar = 0;
+      let tipoPag = tipoPagamento;
+      const valorOriginal = Number(parcelaToPay.valor_original || parcelaToPay.valor);
 
       if (tipoPagamento === "total") {
-        valorFinal = Number(parcelaToPay.valor);
+        valorPagar = valorOriginal;
       } else if (tipoPagamento === "juros") {
-        valorFinal = calcularJuros(parcelaToPay);
+        valorPagar = calcularJuros(parcelaToPay);
+        tipoPag = "juros";
       } else if (tipoPagamento === "personalizado") {
-        valorFinal = Number(valorPagamento);
+        valorPagar = Number(valorPagamento);
+        tipoPag = "parcial";
       }
 
-      const valorRestante = Number(parcelaToPay.valor) - valorFinal;
+      // Registrar pagamento no histórico
+      const { error: historicoError } = await supabase
+        .from("parcelas_historico")
+        .insert({
+          parcela_id: parcelaToPay.id,
+          valor_pago: valorPagar,
+          tipo_pagamento: tipoPag,
+          data_pagamento: new Date().toISOString(),
+          tipo_evento: "pagamento",
+        } as any);
 
-      // Se pagou o valor total ou mais, marca como pago
-      if (valorRestante <= 0) {
-        const { error } = await supabase
+      if (historicoError) throw historicoError;
+
+      // Acumular valor pago
+      const novoValorPago = (Number(parcelaToPay.valor_pago) || 0) + valorPagar;
+
+      // Só marca como "pago" quando for quitação (pagamento total)
+      const novoStatus = tipoPagamento === "total" ? "pago" : "pendente";
+
+      // Atualizar parcela
+      const updateData: any = {
+        valor_pago: novoValorPago,
+        status: novoStatus,
+        data_pagamento: dataPagamento,
+      };
+
+      // Preservar valor_original se não existir
+      if (!parcelaToPay.valor_original) {
+        updateData.valor_original = parcelaToPay.valor;
+      }
+
+      const { error: updateError } = await supabase
+        .from("parcelas")
+        .update(updateData)
+        .eq("id", parcelaToPay.id);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: novoStatus === "pago" ? "Parcela quitada!" : "Pagamento parcial registrado",
+        description: novoStatus === "pago"
+          ? `Parcela quitada com R$ ${valorPagar.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+          : `Valor pago: R$ ${valorPagar.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}. Ainda deve: R$ ${valorOriginal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      });
+
+      // Verificar quitação do contrato apenas se parcela foi totalmente paga
+      if (novoStatus === "pago" && parcelaToPay.contrato_id) {
+        const { data: todasParcelas, error: parcelasError } = await supabase
           .from("parcelas")
-          .update({
-            data_pagamento: dataPagamento,
-            valor_pago: Number(parcelaToPay.valor),
-            status: "pago",
-          })
-          .eq("id", parcelaToPay.id);
+          .select("status")
+          .eq("contrato_id", parcelaToPay.contrato_id);
 
-        if (error) throw error;
+        if (!parcelasError && todasParcelas) {
+          const todasPagas = todasParcelas.every(p => p.status === "pago");
+          
+          if (todasPagas) {
+            const { error: contratoError } = await supabase
+              .from("contratos")
+              .update({ status: "quitado" })
+              .eq("id", parcelaToPay.contrato_id);
 
-        toast({
-          title: "Parcela paga com sucesso",
-          description: `Valor pago: R$ ${valorFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-        });
-
-        // Verificar se todas as parcelas do contrato estão pagas
-        if (parcelaToPay.contrato_id) {
-          const { data: todasParcelas, error: parcelasError } = await supabase
-            .from("parcelas")
-            .select("status")
-            .eq("contrato_id", parcelaToPay.contrato_id);
-
-          if (!parcelasError && todasParcelas) {
-            const todasPagas = todasParcelas.every(p => p.status === "pago");
-            
-            if (todasPagas) {
-              // Atualizar status do contrato para quitado
-              const { error: contratoError } = await supabase
-                .from("contratos")
-                .update({ status: "quitado" })
-                .eq("id", parcelaToPay.contrato_id);
-
-              if (!contratoError) {
-                toast({
-                  title: "Contrato quitado! 🎉",
-                  description: "Todas as parcelas foram pagas. O contrato foi marcado como quitado.",
-                });
-              }
+            if (!contratoError) {
+              toast({
+                title: "Contrato quitado! 🎉",
+                description: "Todas as parcelas foram pagas. O contrato foi marcado como quitado.",
+              });
             }
           }
-        }
-      } else {
-        // Pagamento parcial - marca como pago e transfere saldo para próxima parcela
-        const { error: updateError } = await supabase
-          .from("parcelas")
-          .update({
-            data_pagamento: dataPagamento,
-            valor_pago: valorFinal,
-            status: "pago",
-          })
-          .eq("id", parcelaToPay.id);
-
-        if (updateError) throw updateError;
-
-        // Buscar próxima parcela do mesmo contrato
-        const { data: proximaParcela, error: proximaError } = await supabase
-          .from("parcelas")
-          .select("*")
-          .eq("contrato_id", parcelaToPay.contrato_id)
-          .eq("status", "pendente")
-          .gt("numero_parcela", parcelaToPay.numero_parcela)
-          .order("numero_parcela", { ascending: true })
-          .limit(1)
-          .maybeSingle();
-
-        if (proximaError) throw proximaError;
-
-        if (proximaParcela) {
-          // Adiciona o valor restante à próxima parcela
-          const novoValorProxima = Number(proximaParcela.valor) + valorRestante;
-          
-          const { error: updateProximaError } = await supabase
-            .from("parcelas")
-            .update({
-              valor: novoValorProxima
-            })
-            .eq("id", proximaParcela.id);
-
-          if (updateProximaError) throw updateProximaError;
-
-          toast({
-            title: "Pagamento parcial registrado",
-            description: `Valor pago: R$ ${valorFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}. Saldo de R$ ${valorRestante.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} transferido para parcela ${proximaParcela.numero_parcela}.`,
-          });
-        } else {
-          toast({
-            title: "Pagamento parcial registrado",
-            description: `Valor pago: R$ ${valorFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}. Não há próxima parcela para transferir o saldo de R$ ${valorRestante.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`,
-            variant: "destructive",
-          });
         }
       }
 
@@ -515,7 +492,6 @@ export default function Contratos() {
       
       if (selectedContrato) {
         await loadParcelas(selectedContrato.id);
-        // Recarregar contrato para pegar status atualizado
         const { data: contratoAtualizado } = await supabase
           .from("contratos")
           .select(`
@@ -530,7 +506,6 @@ export default function Contratos() {
         }
       }
       
-      // Recarregar lista de contratos na página principal
       await loadContratos();
     } catch (error: any) {
       toast({
