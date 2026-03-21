@@ -1,20 +1,25 @@
 
 
-## Plano: Tornar cards "Recebido Hoje" e "Total Vencido" clicaveis
+## Plano: Corrigir filtro "Recebido Hoje" para incluir pagamentos parciais
 
-### Comportamento esperado
+### Problema
 
-- **Clicar em "Recebido Hoje"**: filtra a lista para mostrar apenas parcelas pagas hoje (status "pago" com data_pagamento = hoje)
-- **Clicar em "Total Vencido"**: filtra a lista para mostrar apenas parcelas vencidas (status "pendente" ou "parcialmente_pago" com dias de atraso > 0)
-- **Clicar novamente** no mesmo card: remove o filtro e volta ao estado anterior
-- Visual: cursor pointer + hover sutil nos cards clicaveis
+O card "Recebido Hoje" conta **2 pagamentos** porque consulta `parcelas_historico` (que registra cada evento de pagamento, incluindo parciais). Porém, ao clicar, o filtro busca na lista de `parcelas` onde `status === "pago" && data_pagamento === hoje`. Isso exclui parcelas que receberam pagamento parcial hoje (status permanece "pendente" ou "parcialmente_pago").
 
-### Alteracoes em `src/pages/Parcelas.tsx`
+### Solução
 
-1. **Novo estado**: `cardFilter` com valores `null | "recebido_hoje" | "vencido"`
-2. **Cards**: envolver "Recebido Hoje" e "Total Vencido" com `onClick` que alterna o `cardFilter`, adicionar `cursor-pointer hover:shadow-md transition-shadow` e borda de destaque quando ativo (`ring-2 ring-primary` / `ring-destructive`)
-3. **`filteredParcelas`**: quando `cardFilter` esta ativo, aplicar filtro adicional:
-   - `"recebido_hoje"`: parcelas com `status === "pago"` e `data_pagamento` de hoje
-   - `"vencido"`: parcelas com `(status === "pendente" || status === "parcialmente_pago")` e `calcularDiasAtraso(data_vencimento) > 0`
-4. **Indicador visual**: badge ou texto "Filtro ativo" proximo ao titulo da lista + botao para limpar
+Alterar o filtro `recebido_hoje` em `filteredParcelas` para incluir também parcelas com `status === "parcialmente_pago"` que tenham `data_pagamento` de hoje. Parcelas parcialmente pagas também registram `data_pagamento` com a data do último pagamento.
+
+### Alteração em `src/pages/Parcelas.tsx`
+
+Linha 193-195: mudar de:
+```ts
+return parcela.status === "pago" && parcela.data_pagamento && parcela.data_pagamento.startsWith(hoje);
+```
+Para:
+```ts
+return (parcela.status === "pago" || parcela.status === "parcialmente_pago") && parcela.data_pagamento && parcela.data_pagamento.startsWith(hoje);
+```
+
+Isso alinha o filtro com a mesma lógica do card, que conta todos os pagamentos feitos hoje (totais e parciais).
 
