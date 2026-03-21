@@ -846,6 +846,11 @@ export default function Parcelas() {
                             Pago: R$ {Number(parcela.valor_pago).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </p>
                         )}
+                        {parcela.status === "parcialmente_pago" && parcela.valor_pago && (
+                          <p className="text-xs text-amber-600 break-all">
+                            Resta: R$ {(Number(parcela.valor_original || parcela.valor) - Number(parcela.valor_pago)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </p>
+                        )}
                       </div>
                       <div className="overflow-hidden">
                         <p className="text-muted-foreground text-xs">Vencimento</p>
