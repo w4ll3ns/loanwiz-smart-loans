@@ -189,6 +189,15 @@ export default function Parcelas() {
 
   // Filtro para a lista (por busca, status e período de 7 dias)
   const filteredParcelas = parcelas.filter(parcela => {
+    // Se um card filter está ativo, aplicar filtro específico
+    if (cardFilter === "recebido_hoje") {
+      const hoje = getLocalDateString();
+      return parcela.status === "pago" && parcela.data_pagamento && parcela.data_pagamento.startsWith(hoje);
+    }
+    if (cardFilter === "vencido") {
+      return (parcela.status === "pendente" || parcela.status === "parcialmente_pago") && calcularDiasAtraso(parcela.data_vencimento) > 0;
+    }
+
     const clienteNome = parcela.contratos?.clientes?.nome || "";
     const matchesSearch = removerAcentos(clienteNome.toLowerCase()).includes(removerAcentos(searchTerm.toLowerCase()));
     const matchesStatus = statusFilter === "todos" || parcela.status === statusFilter;
