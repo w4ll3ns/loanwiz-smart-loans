@@ -376,6 +376,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_user_active: { Args: { p_user_id: string }; Returns: boolean }
       recalcular_contrato_parcelas: {
         Args: {
           p_contrato_id: string
