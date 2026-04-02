@@ -703,7 +703,7 @@ export default function Parcelas() {
       </Card>
 
       {/* Cards de Resumo */}
-      <div className="grid gap-1.5 md:gap-4 grid-cols-2 md:grid-cols-4 w-full min-w-0">
+      <div className="grid gap-1.5 md:gap-4 grid-cols-2 md:grid-cols-5 w-full min-w-0">
         <Card
           className={`min-w-0 overflow-hidden border-l-4 border-l-primary cursor-pointer transition-shadow hover:shadow-md ${cardFilter === "recebido_hoje" ? "ring-2 ring-primary" : ""}`}
           onClick={() => setCardFilter(cardFilter === "recebido_hoje" ? null : "recebido_hoje")}
