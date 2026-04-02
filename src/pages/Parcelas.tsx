@@ -752,6 +752,21 @@ export default function Parcelas() {
           </CardContent>
         </Card>
 
+        <Card className="min-w-0 overflow-hidden border-l-4 border-l-emerald-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-2 md:px-3 pt-2 md:pt-3">
+            <CardTitle className="text-xs md:text-sm font-medium truncate">Juros Recebidos</CardTitle>
+            <TrendingUp className="h-3 w-3 md:h-4 md:w-4 text-emerald-500 flex-shrink-0 ml-1" />
+          </CardHeader>
+          <CardContent className="px-2 md:px-3 pb-2 md:pb-3">
+            <div className="text-sm md:text-2xl font-bold text-emerald-600 truncate">
+              R$ {totalJurosRecebido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </div>
+            <p className="text-xs text-muted-foreground truncate">
+              Lucro sobre capital
+            </p>
+          </CardContent>
+        </Card>
+
         <Card
           className={`min-w-0 overflow-hidden cursor-pointer transition-shadow hover:shadow-md ${cardFilter === "vencido" ? "ring-2 ring-destructive" : ""}`}
           onClick={() => setCardFilter(cardFilter === "vencido" ? null : "vencido")}
