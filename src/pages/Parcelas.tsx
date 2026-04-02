@@ -638,6 +638,17 @@ export default function Parcelas() {
   const totalPago = dashboardParcelas
     .reduce((acc, p) => acc + (Number(p.valor_pago) || 0), 0);
 
+  const totalJurosRecebido = dashboardParcelas
+    .filter(p => p.status === "pago" || p.status === "parcialmente_pago")
+    .reduce((acc, p) => {
+      const valorEmprestado = Number(p.contratos?.valor_emprestado || 0);
+      const numeroParcelas = p.contratos?.numero_parcelas || 1;
+      const principalParcela = valorEmprestado / numeroParcelas;
+      const pago = Number(p.valor_pago) || 0;
+      const lucro = pago - principalParcela;
+      return acc + Math.max(lucro, 0);
+    }, 0);
+
   const totalVencido = dashboardParcelas
     .filter(p => (p.status === "pendente" || p.status === "parcialmente_pago") && calcularDiasAtraso(p.data_vencimento) > 0)
     .reduce((acc, p) => acc + Number(p.valor_original || p.valor), 0);
