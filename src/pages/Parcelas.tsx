@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, Check, X, Calendar, AlertTriangle, Trash2, Undo2, FileText, Banknote } from "lucide-react";
+import { Search, Check, X, Calendar, AlertTriangle, Trash2, Undo2, FileText, Banknote, TrendingUp } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -638,6 +638,17 @@ export default function Parcelas() {
   const totalPago = dashboardParcelas
     .reduce((acc, p) => acc + (Number(p.valor_pago) || 0), 0);
 
+  const totalJurosRecebido = dashboardParcelas
+    .filter(p => p.status === "pago" || p.status === "parcialmente_pago")
+    .reduce((acc, p) => {
+      const valorEmprestado = Number(p.contratos?.valor_emprestado || 0);
+      const numeroParcelas = p.contratos?.numero_parcelas || 1;
+      const principalParcela = valorEmprestado / numeroParcelas;
+      const pago = Number(p.valor_pago) || 0;
+      const lucro = pago - principalParcela;
+      return acc + Math.max(lucro, 0);
+    }, 0);
+
   const totalVencido = dashboardParcelas
     .filter(p => (p.status === "pendente" || p.status === "parcialmente_pago") && calcularDiasAtraso(p.data_vencimento) > 0)
     .reduce((acc, p) => acc + Number(p.valor_original || p.valor), 0);
@@ -692,7 +703,7 @@ export default function Parcelas() {
       </Card>
 
       {/* Cards de Resumo */}
-      <div className="grid gap-1.5 md:gap-4 grid-cols-2 md:grid-cols-4 w-full min-w-0">
+      <div className="grid gap-1.5 md:gap-4 grid-cols-2 md:grid-cols-5 w-full min-w-0">
         <Card
           className={`min-w-0 overflow-hidden border-l-4 border-l-primary cursor-pointer transition-shadow hover:shadow-md ${cardFilter === "recebido_hoje" ? "ring-2 ring-primary" : ""}`}
           onClick={() => setCardFilter(cardFilter === "recebido_hoje" ? null : "recebido_hoje")}
@@ -737,6 +748,21 @@ export default function Parcelas() {
             </div>
             <p className="text-xs text-muted-foreground truncate">
               Inclui parciais e quitações
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="min-w-0 overflow-hidden border-l-4 border-l-emerald-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-2 md:px-3 pt-2 md:pt-3">
+            <CardTitle className="text-xs md:text-sm font-medium truncate">Juros Recebidos</CardTitle>
+            <TrendingUp className="h-3 w-3 md:h-4 md:w-4 text-emerald-500 flex-shrink-0 ml-1" />
+          </CardHeader>
+          <CardContent className="px-2 md:px-3 pb-2 md:pb-3">
+            <div className="text-sm md:text-2xl font-bold text-emerald-600 truncate">
+              R$ {totalJurosRecebido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </div>
+            <p className="text-xs text-muted-foreground truncate">
+              Lucro sobre capital
             </p>
           </CardContent>
         </Card>
