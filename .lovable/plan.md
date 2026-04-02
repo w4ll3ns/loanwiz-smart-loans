@@ -1,44 +1,28 @@
 
+## Plano: Corrigir zoom automático em inputs no mobile (Safari)
 
-## Plano: Adicionar card "Total Juros/Lucro Recebido"
+### Problema
 
-### Logica de calculo
+No Safari mobile (iOS), inputs com `font-size` menor que `16px` disparam zoom automático da página ao receber foco. Isso afeta todos os modais e formulários do sistema.
 
-Para cada parcela paga (ou parcialmente paga), o lucro recebido e:
+### Solução
 
-```
-valor_pago - (valor_emprestado / numero_parcelas)
-```
+Adicionar uma regra CSS global em `src/index.css` que força `font-size: 16px` em todos os campos de texto quando o dispositivo é touch (mobile). Isso previne o zoom sem desabilitar pinch-to-zoom do usuário.
 
-Ou seja, do total recebido, subtrai-se a parte do principal. O restante e juros/lucro. Isso usa a mesma logica ja existente em `calcularJuros`.
+### Alteração em `src/index.css`
 
-### Alteracoes em `src/pages/Parcelas.tsx`
+Adicionar no final do bloco `@layer base`:
 
-**1. Novo calculo do dashboard** (junto aos outros, ~linha 638):
-
-```ts
-const totalJurosRecebido = dashboardParcelas
-  .filter(p => p.status === "pago" || p.status === "parcialmente_pago")
-  .reduce((acc, p) => {
-    const valorEmprestado = Number(p.contratos?.valor_emprestado || 0);
-    const numeroParcelas = p.contratos?.numero_parcelas || 1;
-    const principalParcela = valorEmprestado / numeroParcelas;
-    const pago = Number(p.valor_pago) || 0;
-    const lucro = pago - principalParcela;
-    return acc + Math.max(lucro, 0);
-  }, 0);
+```css
+@media (hover: none) and (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  textarea,
+  select,
+  [contenteditable="true"],
+  [role="textbox"] {
+    font-size: 16px !important;
+  }
+}
 ```
 
-**2. Grid de cards**: Mudar de `grid-cols-2 md:grid-cols-4` para `grid-cols-2 md:grid-cols-5` (linha 695).
-
-**3. Novo card** apos "Total Recebido" (apos linha 742):
-
-- Titulo: "Juros Recebidos"
-- Icone: `TrendingUp` (importar de lucide-react)
-- Cor: texto em verde/emerald para diferenciar
-- Subtexto: "Lucro sobre capital"
-
-| Arquivo | Acao |
-|---|---|
-| `src/pages/Parcelas.tsx` | Adicionar calculo + card de juros recebidos |
-
+Uma única alteração, um único arquivo. Corrige o problema em todo o sistema de uma vez.
