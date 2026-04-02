@@ -117,7 +117,7 @@ export default function Parcelas() {
 
       const { data, error } = await supabase
         .from("parcelas_historico")
-        .select("valor_pago")
+        .select("valor_pago, parcela_id")
         .eq("tipo_evento", "pagamento")
         .gte("data_pagamento", inicioHoje.toISOString())
         .lt("data_pagamento", fimHoje.toISOString());
@@ -127,6 +127,8 @@ export default function Parcelas() {
       const total = data?.reduce((acc, p) => acc + (Number(p.valor_pago) || 0), 0) || 0;
       setTotalRecebidoHoje(total);
       setPagamentosHoje(data?.length || 0);
+      const ids = [...new Set(data?.map(p => p.parcela_id) || [])];
+      setParcelasRecebidoHojeIds(ids);
     } catch (error) {
       console.error("Erro ao carregar recebidos hoje:", error);
     }
