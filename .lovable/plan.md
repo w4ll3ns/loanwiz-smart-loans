@@ -1,28 +1,32 @@
 
-## Plano: Corrigir zoom automático em inputs no mobile (Safari)
+
+## Plano: Corrigir políticas RLS do profiles para permitir operações de Admin
 
 ### Problema
+A migração de segurança anterior criou uma política "Users can update own profile limited" que impede alterações nos campos `ativo`, `status_plano`, `data_expiracao_teste` e `observacoes_admin`. Isso é correto para usuários comuns, mas bloqueia admins de gerenciar usuários no painel Admin (`src/pages/Admin.tsx`).
 
-No Safari mobile (iOS), inputs com `font-size` menor que `16px` disparam zoom automático da página ao receber foco. Isso afeta todos os modais e formulários do sistema.
+Campos afetados no Admin:
+- `toggleUserStatus` → atualiza `ativo`
+- `handleSaveObservacoes` → atualiza `observacoes_admin`  
+- `handleSavePlano` → atualiza `status_plano`
 
 ### Solução
 
-Adicionar uma regra CSS global em `src/index.css` que força `font-size: 16px` em todos os campos de texto quando o dispositivo é touch (mobile). Isso previne o zoom sem desabilitar pinch-to-zoom do usuário.
+**1. Migração SQL** — Adicionar política de UPDATE para admins:
 
-### Alteração em `src/index.css`
-
-Adicionar no final do bloco `@layer base`:
-
-```css
-@media (hover: none) and (pointer: coarse) {
-  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
-  textarea,
-  select,
-  [contenteditable="true"],
-  [role="textbox"] {
-    font-size: 16px !important;
-  }
-}
+```sql
+-- Allow admins to update any profile field
+CREATE POLICY "Admins can update any profile"
+  ON public.profiles FOR UPDATE
+  TO authenticated
+  USING (public.has_role(auth.uid(), 'admin'))
+  WITH CHECK (public.has_role(auth.uid(), 'admin'));
 ```
 
-Uma única alteração, um único arquivo. Corrige o problema em todo o sistema de uma vez.
+Isso usa a função `has_role` que já existe no sistema.
+
+**2. Nenhuma alteração no frontend** — O código do Admin.tsx já faz as queries corretas; só precisa da permissão no banco.
+
+### Sobre o erro de publicação
+O erro "sandbox head mismatch" é temporário e da infraestrutura do Lovable. Basta tentar publicar novamente após alguns minutos.
+
