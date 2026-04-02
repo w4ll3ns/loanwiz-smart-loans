@@ -394,6 +394,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      update_own_profile: {
+        Args: { p_email?: string; p_nome?: string; p_telefone?: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "user"
