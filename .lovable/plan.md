@@ -1,53 +1,39 @@
 
 
-## Plano: Corrigir filtro de data do card "Recebido Hoje" (bug de timezone)
+## Plano: Corrigir filtro do card "Recebido Hoje" ao clicar
 
 ### Problema identificado
 
-O card "Recebido Hoje" mostra valores de **outra data** por causa de um bug de timezone. A causa raiz:
+Existem **dois problemas distintos**:
 
-1. **Gravação**: `data_pagamento` em `parcelas_historico` é salvo com `new Date().toISOString()` — que gera timestamp em **UTC** (ex: `2026-04-02T01:00:00.000Z` para um pagamento feito às 22h no Brasil)
-2. **Leitura**: A query filtra com `getLocalDateString()` (data local, ex: `2026-04-02`) mas monta os limites como `2026-04-02T00:00:00` e `2026-04-02T23:59:59.999` **sem timezone** — o PostgREST interpreta como UTC
-3. **Resultado**: Pagamentos feitos à noite no Brasil (após 21h) caem no "dia seguinte" em UTC e não aparecem. Pagamentos do dia anterior feitos à noite aparecem indevidamente como "hoje"
+1. **Card mostra valor de outra data**: Os pagamentos feitos em 01/04 à noite (horário Brasil) foram gravados com timestamps UTC de `2026-04-02 03:2x`, que caem no "dia seguinte" em UTC. A correção de timezone feita anteriormente resolve isso parcialmente, mas os dados já gravados têm `parcelas.data_pagamento = 2026-04-01` (data escolhida pelo usuário), enquanto o `parcelas_historico.data_pagamento` tem o timestamp real `2026-04-02T03:xx UTC`.
+
+2. **Ao clicar no card, mostra "Nenhuma parcela encontrada"**: O filtro `recebido_hoje` compara `parcela.data_pagamento` (campo `date` da tabela `parcelas`) com a data de hoje. Mas `parcela.data_pagamento` pode ser uma data diferente (ex: `2026-04-01`) porque é a data efetiva do pagamento definida pelo usuário, não o timestamp do registro. O card calcula o total consultando `parcelas_historico` (timestamp real), mas o filtro da lista usa `parcelas.data_pagamento` — fontes de dados diferentes.
 
 ### Solução
 
-Converter os limites do dia local para ISO strings com offset correto, para que a query filtre pelo dia local real do usuario.
+Ao clicar no card "Recebido Hoje", carregar os IDs das parcelas que têm registros em `parcelas_historico` com pagamento hoje, e filtrar a lista por esses IDs.
 
-### Alteração em `src/pages/Parcelas.tsx`
+### Alterações em `src/pages/Parcelas.tsx`
 
-**Função `loadRecebidoHoje` (linhas 110-129)**: substituir a construção dos limites de data:
-
+**1. Novo estado** para armazenar os IDs de parcelas com pagamento hoje:
 ```ts
-const loadRecebidoHoje = async () => {
-  try {
-    // Criar limites do dia LOCAL em formato ISO (com timezone correto)
-    const hoje = new Date();
-    const inicioHoje = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 0, 0, 0, 0);
-    const fimHoje = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59, 999);
-
-    const { data, error } = await supabase
-      .from("parcelas_historico")
-      .select("valor_pago")
-      .eq("tipo_evento", "pagamento")
-      .gte("data_pagamento", inicioHoje.toISOString())
-      .lt("data_pagamento", fimHoje.toISOString());
-
-    // ... resto igual
-  }
-};
+const [parcelasRecebidoHojeIds, setParcelasRecebidoHojeIds] = useState<string[]>([]);
 ```
 
-Isso garante que `inicioHoje.toISOString()` produz `2026-04-02T03:00:00.000Z` (para UTC-3), filtrando corretamente pelo dia local.
+**2. Atualizar `loadRecebidoHoje`** para também salvar os `parcela_id`s:
+- Alterar o select para incluir `parcela_id` além de `valor_pago`
+- Extrair os IDs únicos e salvar no novo estado
 
-### Cards afetados — análise completa
+**3. Alterar o filtro `recebido_hoje`** em `filteredParcelas`:
+- De: comparar `parcela.data_pagamento` com hoje
+- Para: verificar se `parcela.id` está na lista `parcelasRecebidoHojeIds`
 
-| Card | Fonte de dados | Status |
-|---|---|---|
-| **Recebido Hoje** | `parcelas_historico.data_pagamento` (timestamp) | **BUG** — corrigido acima |
-| **A Receber (Pendente)** | `parcelas.valor_original` onde `status !== "pago"` | OK — usa valor, não data |
-| **Total Recebido** | `parcelas.valor_pago` (soma de todos) | OK — usa valor, não data |
-| **Total Vencido** | `parcelas.data_vencimento` (tipo `date`) + `calcularDiasAtraso` | OK — usa `T00:00:00` para neutralizar timezone |
+```ts
+if (cardFilter === "recebido_hoje") {
+  return parcelasRecebidoHojeIds.includes(parcela.id);
+}
+```
 
-Apenas o card "Recebido Hoje" tem o bug, pois é o único que filtra por timestamp com timezone.
+Isso garante que a lista exibe exatamente as parcelas cujos pagamentos aparecem no total do card.
 
