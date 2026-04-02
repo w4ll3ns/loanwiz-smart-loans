@@ -109,14 +109,17 @@ export default function Parcelas() {
 
   const loadRecebidoHoje = async () => {
     try {
-      const hoje = getLocalDateString();
-      
+      // Criar limites do dia LOCAL em formato ISO (com timezone correto)
+      const hoje = new Date();
+      const inicioHoje = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 0, 0, 0, 0);
+      const fimHoje = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59, 999);
+
       const { data, error } = await supabase
         .from("parcelas_historico")
         .select("valor_pago")
         .eq("tipo_evento", "pagamento")
-        .gte("data_pagamento", `${hoje}T00:00:00`)
-        .lt("data_pagamento", `${hoje}T23:59:59.999`);
+        .gte("data_pagamento", inicioHoje.toISOString())
+        .lt("data_pagamento", fimHoje.toISOString());
 
       if (error) throw error;
 
