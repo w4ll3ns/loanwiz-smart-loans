@@ -1,39 +1,44 @@
 
 
-## Plano: Corrigir filtro do card "Recebido Hoje" ao clicar
+## Plano: Adicionar card "Total Juros/Lucro Recebido"
 
-### Problema identificado
+### Logica de calculo
 
-Existem **dois problemas distintos**:
+Para cada parcela paga (ou parcialmente paga), o lucro recebido e:
 
-1. **Card mostra valor de outra data**: Os pagamentos feitos em 01/04 à noite (horário Brasil) foram gravados com timestamps UTC de `2026-04-02 03:2x`, que caem no "dia seguinte" em UTC. A correção de timezone feita anteriormente resolve isso parcialmente, mas os dados já gravados têm `parcelas.data_pagamento = 2026-04-01` (data escolhida pelo usuário), enquanto o `parcelas_historico.data_pagamento` tem o timestamp real `2026-04-02T03:xx UTC`.
-
-2. **Ao clicar no card, mostra "Nenhuma parcela encontrada"**: O filtro `recebido_hoje` compara `parcela.data_pagamento` (campo `date` da tabela `parcelas`) com a data de hoje. Mas `parcela.data_pagamento` pode ser uma data diferente (ex: `2026-04-01`) porque é a data efetiva do pagamento definida pelo usuário, não o timestamp do registro. O card calcula o total consultando `parcelas_historico` (timestamp real), mas o filtro da lista usa `parcelas.data_pagamento` — fontes de dados diferentes.
-
-### Solução
-
-Ao clicar no card "Recebido Hoje", carregar os IDs das parcelas que têm registros em `parcelas_historico` com pagamento hoje, e filtrar a lista por esses IDs.
-
-### Alterações em `src/pages/Parcelas.tsx`
-
-**1. Novo estado** para armazenar os IDs de parcelas com pagamento hoje:
-```ts
-const [parcelasRecebidoHojeIds, setParcelasRecebidoHojeIds] = useState<string[]>([]);
+```
+valor_pago - (valor_emprestado / numero_parcelas)
 ```
 
-**2. Atualizar `loadRecebidoHoje`** para também salvar os `parcela_id`s:
-- Alterar o select para incluir `parcela_id` além de `valor_pago`
-- Extrair os IDs únicos e salvar no novo estado
+Ou seja, do total recebido, subtrai-se a parte do principal. O restante e juros/lucro. Isso usa a mesma logica ja existente em `calcularJuros`.
 
-**3. Alterar o filtro `recebido_hoje`** em `filteredParcelas`:
-- De: comparar `parcela.data_pagamento` com hoje
-- Para: verificar se `parcela.id` está na lista `parcelasRecebidoHojeIds`
+### Alteracoes em `src/pages/Parcelas.tsx`
+
+**1. Novo calculo do dashboard** (junto aos outros, ~linha 638):
 
 ```ts
-if (cardFilter === "recebido_hoje") {
-  return parcelasRecebidoHojeIds.includes(parcela.id);
-}
+const totalJurosRecebido = dashboardParcelas
+  .filter(p => p.status === "pago" || p.status === "parcialmente_pago")
+  .reduce((acc, p) => {
+    const valorEmprestado = Number(p.contratos?.valor_emprestado || 0);
+    const numeroParcelas = p.contratos?.numero_parcelas || 1;
+    const principalParcela = valorEmprestado / numeroParcelas;
+    const pago = Number(p.valor_pago) || 0;
+    const lucro = pago - principalParcela;
+    return acc + Math.max(lucro, 0);
+  }, 0);
 ```
 
-Isso garante que a lista exibe exatamente as parcelas cujos pagamentos aparecem no total do card.
+**2. Grid de cards**: Mudar de `grid-cols-2 md:grid-cols-4` para `grid-cols-2 md:grid-cols-5` (linha 695).
+
+**3. Novo card** apos "Total Recebido" (apos linha 742):
+
+- Titulo: "Juros Recebidos"
+- Icone: `TrendingUp` (importar de lucide-react)
+- Cor: texto em verde/emerald para diferenciar
+- Subtexto: "Lucro sobre capital"
+
+| Arquivo | Acao |
+|---|---|
+| `src/pages/Parcelas.tsx` | Adicionar calculo + card de juros recebidos |
 
