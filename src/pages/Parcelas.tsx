@@ -88,6 +88,7 @@ export default function Parcelas() {
   const [dataPagamento, setDataPagamento] = useState<string>("");
   const [totalRecebidoHoje, setTotalRecebidoHoje] = useState<number>(0);
   const [pagamentosHoje, setPagamentosHoje] = useState<number>(0);
+  const [parcelasRecebidoHojeIds, setParcelasRecebidoHojeIds] = useState<string[]>([]);
   const [cardFilter, setCardFilter] = useState<"recebido_hoje" | "vencido" | null>(null);
   const { toast } = useToast();
   const { canCreate, userEmail } = useUserRole();
