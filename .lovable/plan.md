@@ -1,60 +1,53 @@
 
 
-## Plano: Indicador visual de pagamento total vs parcial nos cards de parcelas
+## Plano: Corrigir filtro de data do card "Recebido Hoje" (bug de timezone)
 
-### Problema atual
+### Problema identificado
 
-A funcao `getStatusBadge` nao diferencia entre "pago" e "parcialmente_pago". Parcelas com status `parcialmente_pago` caem no bloco de "Pendente" ou "Atrasado", sem indicacao clara de que ja houve pagamento parcial.
+O card "Recebido Hoje" mostra valores de **outra data** por causa de um bug de timezone. A causa raiz:
 
-### Alteracoes em `src/pages/Parcelas.tsx`
+1. **Gravação**: `data_pagamento` em `parcelas_historico` é salvo com `new Date().toISOString()` — que gera timestamp em **UTC** (ex: `2026-04-02T01:00:00.000Z` para um pagamento feito às 22h no Brasil)
+2. **Leitura**: A query filtra com `getLocalDateString()` (data local, ex: `2026-04-02`) mas monta os limites como `2026-04-02T00:00:00` e `2026-04-02T23:59:59.999` **sem timezone** — o PostgREST interpreta como UTC
+3. **Resultado**: Pagamentos feitos à noite no Brasil (após 21h) caem no "dia seguinte" em UTC e não aparecem. Pagamentos do dia anterior feitos à noite aparecem indevidamente como "hoje"
 
-**1. Atualizar `getStatusBadge` (linhas 607-618)** para tratar `parcialmente_pago` como um status distinto:
+### Solução
+
+Converter os limites do dia local para ISO strings com offset correto, para que a query filtre pelo dia local real do usuario.
+
+### Alteração em `src/pages/Parcelas.tsx`
+
+**Função `loadRecebidoHoje` (linhas 110-129)**: substituir a construção dos limites de data:
 
 ```ts
-const getStatusBadge = (parcela: Parcela) => {
-  if (parcela.status === "pago") {
-    return <Badge variant="default" className="bg-success">Pago Total</Badge>;
-  }
+const loadRecebidoHoje = async () => {
+  try {
+    // Criar limites do dia LOCAL em formato ISO (com timezone correto)
+    const hoje = new Date();
+    const inicioHoje = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 0, 0, 0, 0);
+    const fimHoje = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59, 999);
 
-  if (parcela.status === "parcialmente_pago") {
-    const diasAtraso = calcularDiasAtraso(parcela.data_vencimento);
-    if (diasAtraso > 0) {
-      return <Badge className="bg-amber-500 text-white">Parcial - Atrasado ({diasAtraso}d)</Badge>;
-    }
-    return <Badge className="bg-amber-500 text-white">Pago Parcial</Badge>;
-  }
+    const { data, error } = await supabase
+      .from("parcelas_historico")
+      .select("valor_pago")
+      .eq("tipo_evento", "pagamento")
+      .gte("data_pagamento", inicioHoje.toISOString())
+      .lt("data_pagamento", fimHoje.toISOString());
 
-  const diasAtraso = calcularDiasAtraso(parcela.data_vencimento);
-  if (diasAtraso > 0) {
-    return <Badge variant="destructive">Atrasado ({diasAtraso}d)</Badge>;
+    // ... resto igual
   }
-
-  return <Badge variant="secondary">Pendente</Badge>;
 };
 ```
 
-**2. Cards mobile (linhas 836-840)** - Ja mostram "Pago: R$ X" quando `valor_pago > 0`. Adicionar tambem o **saldo restante** para parcelas parcialmente pagas:
+Isso garante que `inicioHoje.toISOString()` produz `2026-04-02T03:00:00.000Z` (para UTC-3), filtrando corretamente pelo dia local.
 
-Apos a linha que mostra "Pago: R$ X", adicionar:
-```tsx
-{parcela.status === "parcialmente_pago" && parcela.valor_pago && (
-  <p className="text-xs text-amber-600 break-all">
-    Resta: R$ {(Number(parcela.valor_original || parcela.valor) - Number(parcela.valor_pago)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-  </p>
-)}
-```
+### Cards afetados — análise completa
 
-**3. Tabela desktop** - O badge ja e renderizado por `getStatusBadge`, entao a atualizacao da funcao cobre automaticamente a view desktop. Adicionar coluna de saldo restante nao e necessario pois ja existe a coluna "Valor Pago".
+| Card | Fonte de dados | Status |
+|---|---|---|
+| **Recebido Hoje** | `parcelas_historico.data_pagamento` (timestamp) | **BUG** — corrigido acima |
+| **A Receber (Pendente)** | `parcelas.valor_original` onde `status !== "pago"` | OK — usa valor, não data |
+| **Total Recebido** | `parcelas.valor_pago` (soma de todos) | OK — usa valor, não data |
+| **Total Vencido** | `parcelas.data_vencimento` (tipo `date`) + `calcularDiasAtraso` | OK — usa `T00:00:00` para neutralizar timezone |
 
-### Resultado visual
-
-- **Pago Total**: badge verde "Pago Total"
-- **Pago Parcial (em dia)**: badge amber/amarelo "Pago Parcial" + texto "Resta: R$ X"
-- **Pago Parcial (atrasado)**: badge amber "Parcial - Atrasado (Xd)"
-- **Pendente**: badge cinza "Pendente" (sem mudanca)
-- **Atrasado**: badge vermelho "Atrasado (Xd)" (sem mudanca)
-
-| Arquivo | Acao |
-|---|---|
-| `src/pages/Parcelas.tsx` | Atualizar `getStatusBadge` + adicionar saldo restante nos cards mobile |
+Apenas o card "Recebido Hoje" tem o bug, pois é o único que filtra por timestamp com timezone.
 
