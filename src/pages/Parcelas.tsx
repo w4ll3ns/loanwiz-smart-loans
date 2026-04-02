@@ -88,6 +88,7 @@ export default function Parcelas() {
   const [dataPagamento, setDataPagamento] = useState<string>("");
   const [totalRecebidoHoje, setTotalRecebidoHoje] = useState<number>(0);
   const [pagamentosHoje, setPagamentosHoje] = useState<number>(0);
+  const [parcelasRecebidoHojeIds, setParcelasRecebidoHojeIds] = useState<string[]>([]);
   const [cardFilter, setCardFilter] = useState<"recebido_hoje" | "vencido" | null>(null);
   const { toast } = useToast();
   const { canCreate, userEmail } = useUserRole();
@@ -116,7 +117,7 @@ export default function Parcelas() {
 
       const { data, error } = await supabase
         .from("parcelas_historico")
-        .select("valor_pago")
+        .select("valor_pago, parcela_id")
         .eq("tipo_evento", "pagamento")
         .gte("data_pagamento", inicioHoje.toISOString())
         .lt("data_pagamento", fimHoje.toISOString());
@@ -126,6 +127,8 @@ export default function Parcelas() {
       const total = data?.reduce((acc, p) => acc + (Number(p.valor_pago) || 0), 0) || 0;
       setTotalRecebidoHoje(total);
       setPagamentosHoje(data?.length || 0);
+      const ids = [...new Set(data?.map(p => p.parcela_id) || [])];
+      setParcelasRecebidoHojeIds(ids);
     } catch (error) {
       console.error("Erro ao carregar recebidos hoje:", error);
     }
@@ -194,8 +197,7 @@ export default function Parcelas() {
   const filteredParcelas = parcelas.filter(parcela => {
     // Se um card filter está ativo, aplicar filtro específico
     if (cardFilter === "recebido_hoje") {
-      const hoje = getLocalDateString();
-      return (parcela.status === "pago" || parcela.status === "parcialmente_pago") && parcela.data_pagamento && parcela.data_pagamento.startsWith(hoje);
+      return parcelasRecebidoHojeIds.includes(parcela.id);
     }
     if (cardFilter === "vencido") {
       return (parcela.status === "pendente" || parcela.status === "parcialmente_pago") && calcularDiasAtraso(parcela.data_vencimento) > 0;
