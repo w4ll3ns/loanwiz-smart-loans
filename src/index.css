@@ -109,6 +109,16 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
     overflow-x: hidden;
   }
+
+  @media (hover: none) and (pointer: coarse) {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+    textarea,
+    select,
+    [contenteditable="true"],
+    [role="textbox"] {
+      font-size: 16px !important;
+    }
+  }
 }
 
 a[href*="lovable.dev"], iframe[src*="lovable.dev"], div[style*="Edit with Lovable"], .lovable-badge { display: none !important; opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; position: absolute !important; z-index: -9999 !important; }
