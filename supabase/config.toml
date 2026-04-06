@@ -1,4 +1,4 @@
 project_id = "goovjmtyhpzyduzkfswx"
 
 [functions.parse-comprovante]
-verify_jwt = false
+verify_jwt = true
