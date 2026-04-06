@@ -1,7 +1,7 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Calculator, Users, FileText, DollarSign, LogOut, Shield } from "lucide-react";
+import { Calculator, Users, FileText, DollarSign, LogOut, Shield, UserCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -107,7 +107,10 @@ export default function Layout({ children }: LayoutProps) {
                 Admin
               </span>
             )}
-            <span className="text-sm text-muted-foreground">{user?.email}</span>
+            <Link to="/perfil" className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+              <UserCircle className="h-4 w-4" />
+              {user?.email}
+            </Link>
             <InstallAppGuide />
             <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair">
               <LogOut className="h-5 w-5" />
