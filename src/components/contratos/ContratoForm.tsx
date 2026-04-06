@@ -295,7 +295,7 @@ export function ContratoForm({
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
         <DialogTrigger asChild>
           <Button size="sm" className="w-full md:w-auto" onClick={(e) => {
             if (!canCreate) {
