@@ -353,7 +353,7 @@ export default function Clientes() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredClientes.map((cliente) => (
+                  clientesPaginados.map((cliente) => (
                     <TableRow key={cliente.id}>
                       <TableCell className="font-medium pl-4 md:pl-3">
                         {cliente.nome}
@@ -390,6 +390,14 @@ export default function Clientes() {
               </TableBody>
             </Table>
           </div>
+          {showPagination && (
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPrevPage={goToPrevPage}
+              onNextPage={goToNextPage}
+            />
+          )}
         </CardContent>
       </Card>
 
