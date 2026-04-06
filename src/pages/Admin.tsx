@@ -16,9 +16,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
-import { Users, FileText, DollarSign, UserCheck, Settings, Search, MoreVertical, Key, Trash2, MessageSquare, CreditCard, Phone, Pencil, BarChart3 } from 'lucide-react';
+import { Users, FileText, DollarSign, UserCheck, Settings, Search, MoreVertical, Key, Trash2, MessageSquare, CreditCard, Phone, Pencil, BarChart3, ScrollText } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+
+interface AuditLog {
+  id: string;
+  user_id: string;
+  action: string;
+  target_user_id: string | null;
+  details: Record<string, unknown>;
+  created_at: string;
+}
 
 interface Profile {
   id: string;
@@ -102,7 +111,8 @@ export default function Admin() {
   const [userClientes, setUserClientes] = useState<UserCliente[]>([]);
   const [userContratos, setUserContratos] = useState<UserContrato[]>([]);
   const [loadingReport, setLoadingReport] = useState(false);
-
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [loadingAudit, setLoadingAudit] = useState(false);
   useEffect(() => {
     if (!roleLoading && !isAdmin) {
       navigate('/');
