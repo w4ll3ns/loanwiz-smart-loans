@@ -1,77 +1,41 @@
 
 
-# Próximas Sprints — WS Empréstimos
-
-Sprints 1 (Segurança) e 2 (Usabilidade base) já foram concluídas, além do gráfico de lucro mensal e correção do cálculo de lucro no Dashboard. Abaixo estão as próximas sprints pendentes.
-
----
-
-## Sprint 3 — Qualidade de Código (Refatoração)
-
-O objetivo é quebrar os dois arquivos monolíticos em componentes menores e extrair lógica compartilhada.
-
-### 3.1 Refatorar `Contratos.tsx` (2284 linhas)
-Extrair em componentes separados:
-- `ContratoForm` — formulário de criação/edição com preview de cálculo
-- `ContratoDetails` — modal/sheet de detalhes do contrato
-- `PagamentoDialog` — dialog de registro de pagamento
-- `ImportComprovante` — upload e parsing de comprovante
-- `RelatorioGenerator` — geração de PDF/imagem do contrato
-
-### 3.2 Refatorar `Parcelas.tsx` (1426 linhas)
-Extrair:
-- `ParcelasList` — listagem com filtros e busca
-- `PagamentoModal` — modal de pagamento de parcela
-- `HistoricoModal` — modal do histórico de pagamentos
-- `EditarDataModal` — modal de edição de data de vencimento
-
-### 3.3 Extrair lógica compartilhada
-- `src/lib/calculos.ts` — funções `calcularJuros`, cálculo de lucro por parcela
-- `src/hooks/usePagamento.ts` — hook de registro de pagamento (usado por Contratos e Parcelas)
-- Tipar corretamente props e estados (remover usos de `any`)
-
----
-
-## Sprint 4 — Usabilidade Avançada
+## Sprint 4 — Usabilidade Avancada
 
 ### 4.1 Busca em Contratos
-Adicionar campo de busca por nome do cliente, similar ao que já existe em Clientes e Parcelas.
+**Arquivo**: `src/pages/Contratos.tsx`
+- Adicionar estado `searchTerm` e campo `Input` com icone `Search` acima da listagem (no CardHeader, ao lado dos filtros de status)
+- Filtrar `contratosFiltrados` pelo nome do cliente usando busca accent-insensitive (mesmo padrao de Clientes/Parcelas com `removerAcentos` de `src/lib/calculos.ts`)
 
-### 4.2 Paginação nas listagens
-Implementar paginação com botões "Anterior / Próximo" e contagem de registros em:
-- Clientes
-- Contratos
-- Parcelas
-Usando `.range()` do Supabase para carregar 20 registros por vez.
+### 4.2 Paginacao nas listagens
+**Arquivos**: `src/pages/Contratos.tsx`, `src/pages/Clientes.tsx`, `src/pages/Parcelas.tsx`
+- Adicionar estados `currentPage` e `itemsPerPage` (20 por pagina)
+- Paginar client-side sobre os dados ja filtrados (os dados ja sao carregados integralmente)
+- Renderizar controles de paginacao com botoes "Anterior / Proximo" e indicador "Pagina X de Y" abaixo da listagem
+- Esconder paginacao quando total de itens <= itemsPerPage
 
 ### 4.3 Skeleton de loading em Contratos
-Adicionar skeleton de carregamento enquanto dados são buscados (já existe em Dashboard, Clientes e Parcelas).
+**Arquivo**: `src/pages/Contratos.tsx`
+- Adicionar estado `loading` (true ate `loadContratos` completar)
+- Renderizar `TableSkeleton` (desktop) e `CardListSkeleton` (mobile) do `LoadingSkeletons.tsx` enquanto carrega
+- Mesmo padrao ja usado em Clientes e Parcelas
 
-### 4.4 Confirmação ao fechar formulário
-Alert ao tentar fechar modal de criação de contrato com dados preenchidos.
+### 4.4 Confirmacao ao fechar formulario de contrato
+**Arquivo**: `src/components/contratos/ContratoForm.tsx`
+- Detectar se o formulario tem dados preenchidos (qualquer campo diferente do valor inicial)
+- Ao tentar fechar o Dialog (via `onOpenChange(false)`), se houver dados, exibir `AlertDialog` de confirmacao: "Tem certeza que deseja fechar? Os dados preenchidos serao perdidos."
+- Se confirmar, limpar form e fechar; se cancelar, manter aberto
 
----
+### Detalhes tecnicos
 
-## Sprint 5 — Funcionalidades Novas
+- A busca usa `removerAcentos()` ja existente em `src/lib/calculos.ts`
+- Paginacao e client-side (sem `.range()` do Supabase) pois os volumes de dados por usuario sao pequenos (< 1000)
+- Skeletons reutilizam `TableSkeleton` e `CardListSkeleton` de `src/components/LoadingSkeletons.tsx`
+- O `AlertDialog` de confirmacao usa o componente ja instalado em `src/components/ui/alert-dialog.tsx`
 
-### 5.1 Exportação de dados (CSV/Excel)
-Botão de exportação em cada listagem (Clientes, Contratos, Parcelas) gerando CSV com os dados filtrados.
-
-### 5.2 Tema escuro
-Adicionar toggle de tema no header/perfil. As variáveis CSS `.dark` já existem no `index.css`.
-
-### 5.3 Logs de auditoria para Admin
-Criar tabela `audit_logs` no Supabase registrando ações do admin (ativar/desativar usuário, excluir dados, alterar plano) com timestamp e user_id. Exibir na página Admin.
-
----
-
-## Ordem sugerida
-
-Cada sprint pode ser implementada independentemente. A sugestão é:
-
-1. **Sprint 3** primeiro — facilita manutenção futura de tudo que vem depois
-2. **Sprint 4** — melhora a experiência do usuário imediatamente
-3. **Sprint 5** — adiciona valor com funcionalidades novas
-
-Qual sprint deseja iniciar?
+### Arquivos a editar
+1. `src/pages/Contratos.tsx` — busca, paginacao, skeleton
+2. `src/pages/Clientes.tsx` — paginacao
+3. `src/pages/Parcelas.tsx` — paginacao
+4. `src/components/contratos/ContratoForm.tsx` — confirmacao ao fechar
 
