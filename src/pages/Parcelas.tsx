@@ -171,6 +171,15 @@ export default function Parcelas() {
     return matchesSearch && matchesStatus;
   });
 
+  const {
+    paginatedItems: parcelasPaginadas,
+    currentPage,
+    totalPages,
+    showPagination,
+    goToNextPage,
+    goToPrevPage,
+  } = usePagination(filteredParcelas);
+
   const abrirModalPagamento = (parcela: Parcela) => {
     setParcelaToPay(parcela);
     setIsPagamentoDialogOpen(true);
