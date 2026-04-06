@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { format } from "date-fns";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Plus, FileText, Eye } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { getLocalDateString } from "@/lib/utils";
@@ -110,8 +111,33 @@ export function ContratoForm({
 }: ContratoFormProps) {
   const [formData, setFormData] = useState<ContratoFormData>({ ...defaultFormData, ...initialData });
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isCloseConfirmOpen, setIsCloseConfirmOpen] = useState(false);
   const [previewData, setPreviewData] = useState<any>(null);
   const { toast } = useToast();
+
+  const isFormDirty = useMemo(() => {
+    const base = { ...defaultFormData, ...initialData };
+    return Object.keys(defaultFormData).some(
+      (key) => formData[key as keyof ContratoFormData] !== base[key as keyof ContratoFormData]
+    );
+  }, [formData, initialData]);
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open && isFormDirty) {
+      setIsCloseConfirmOpen(true);
+      return;
+    }
+    if (!open) {
+      setFormData({ ...defaultFormData });
+    }
+    onOpenChange(open);
+  };
+
+  const handleConfirmClose = () => {
+    setIsCloseConfirmOpen(false);
+    setFormData({ ...defaultFormData });
+    onOpenChange(false);
+  };
 
   // Reset form when initialData changes
   if (initialData && formData.clienteId !== initialData.clienteId) {
@@ -269,7 +295,7 @@ export function ContratoForm({
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
         <DialogTrigger asChild>
           <Button size="sm" className="w-full md:w-auto" onClick={(e) => {
             if (!canCreate) {
@@ -452,7 +478,7 @@ export function ContratoForm({
                 <FileText className="h-4 w-4 mr-2" />
                 Criar Contrato
               </Button>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
                 Cancelar
               </Button>
             </div>
@@ -511,6 +537,24 @@ export function ContratoForm({
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Confirmação ao fechar com dados preenchidos */}
+      <AlertDialog open={isCloseConfirmOpen} onOpenChange={setIsCloseConfirmOpen}>
+        <AlertDialogContent className="w-[95vw] sm:max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Descartar alterações?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja fechar? Os dados preenchidos serão perdidos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
+            <AlertDialogCancel className="w-full sm:w-auto">Continuar editando</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmClose} className="w-full sm:w-auto bg-destructive hover:bg-destructive/90">
+              Descartar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

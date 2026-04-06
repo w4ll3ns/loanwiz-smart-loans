@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { z } from "zod";
 import { TableSkeleton } from "@/components/LoadingSkeletons";
+import { PaginationControls } from "@/components/PaginationControls";
+import { usePagination } from "@/hooks/usePagination";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -100,6 +102,15 @@ export default function Clientes() {
     const telefoneNormalized = removerAcentos((cliente.telefone || '').toLowerCase());
     return nomeNormalized.includes(searchNormalized) || telefoneNormalized.includes(searchNormalized);
   });
+
+  const {
+    paginatedItems: clientesPaginados,
+    currentPage,
+    totalPages,
+    showPagination,
+    goToNextPage,
+    goToPrevPage,
+  } = usePagination(filteredClientes);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -342,7 +353,7 @@ export default function Clientes() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredClientes.map((cliente) => (
+                  clientesPaginados.map((cliente) => (
                     <TableRow key={cliente.id}>
                       <TableCell className="font-medium pl-4 md:pl-3">
                         {cliente.nome}
@@ -379,6 +390,14 @@ export default function Clientes() {
               </TableBody>
             </Table>
           </div>
+          {showPagination && (
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPrevPage={goToPrevPage}
+              onNextPage={goToNextPage}
+            />
+          )}
         </CardContent>
       </Card>
 

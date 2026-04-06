@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
+import { usePagination } from "@/hooks/usePagination";
+import { PaginationControls } from "@/components/PaginationControls";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -168,6 +170,15 @@ export default function Parcelas() {
     
     return matchesSearch && matchesStatus;
   });
+
+  const {
+    paginatedItems: parcelasPaginadas,
+    currentPage,
+    totalPages,
+    showPagination,
+    goToNextPage,
+    goToPrevPage,
+  } = usePagination(filteredParcelas);
 
   const abrirModalPagamento = (parcela: Parcela) => {
     setParcelaToPay(parcela);
@@ -369,10 +380,10 @@ export default function Parcelas() {
         <CardContent className="p-0 md:p-6">
           {/* Mobile Cards */}
           <div className="md:hidden space-y-3 p-2 w-full min-w-0 max-w-full">
-            {filteredParcelas.length === 0 ? (
+            {parcelasPaginadas.length === 0 ? (
               <div className="text-center text-muted-foreground py-8">Nenhuma parcela encontrada</div>
             ) : (
-              filteredParcelas.map((parcela) => (
+              parcelasPaginadas.map((parcela) => (
                 <Card key={parcela.id} className="border-l-4 min-w-0 overflow-hidden" style={{
                   borderLeftColor: parcela.status === "pago" ? "hsl(var(--success))" : calcularDiasAtraso(parcela.data_vencimento) > 0 ? "hsl(var(--destructive))" : "hsl(var(--warning))"
                 }}>
@@ -447,10 +458,10 @@ export default function Parcelas() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredParcelas.length === 0 ? (
+                {parcelasPaginadas.length === 0 ? (
                   <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma parcela encontrada</TableCell></TableRow>
                 ) : (
-                  filteredParcelas.map((parcela) => (
+                  parcelasPaginadas.map((parcela) => (
                     <TableRow key={parcela.id}>
                       <TableCell className="font-medium">{parcela.contratos?.clientes?.nome}</TableCell>
                       <TableCell className="text-sm">{parcela.numero_parcela}</TableCell>
@@ -493,6 +504,14 @@ export default function Parcelas() {
               </TableBody>
             </Table>
           </div>
+          {showPagination && (
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPrevPage={goToPrevPage}
+              onNextPage={goToNextPage}
+            />
+          )}
         </CardContent>
       </Card>
 
