@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { z } from "zod";
 import { TableSkeleton } from "@/components/LoadingSkeletons";
+import { PaginationControls } from "@/components/PaginationControls";
+import { usePagination } from "@/hooks/usePagination";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -100,6 +102,15 @@ export default function Clientes() {
     const telefoneNormalized = removerAcentos((cliente.telefone || '').toLowerCase());
     return nomeNormalized.includes(searchNormalized) || telefoneNormalized.includes(searchNormalized);
   });
+
+  const {
+    paginatedItems: clientesPaginados,
+    currentPage,
+    totalPages,
+    showPagination,
+    goToNextPage,
+    goToPrevPage,
+  } = usePagination(filteredClientes);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
