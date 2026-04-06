@@ -111,8 +111,33 @@ export function ContratoForm({
 }: ContratoFormProps) {
   const [formData, setFormData] = useState<ContratoFormData>({ ...defaultFormData, ...initialData });
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isCloseConfirmOpen, setIsCloseConfirmOpen] = useState(false);
   const [previewData, setPreviewData] = useState<any>(null);
   const { toast } = useToast();
+
+  const isFormDirty = useMemo(() => {
+    const base = { ...defaultFormData, ...initialData };
+    return Object.keys(defaultFormData).some(
+      (key) => formData[key as keyof ContratoFormData] !== base[key as keyof ContratoFormData]
+    );
+  }, [formData, initialData]);
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open && isFormDirty) {
+      setIsCloseConfirmOpen(true);
+      return;
+    }
+    if (!open) {
+      setFormData({ ...defaultFormData });
+    }
+    onOpenChange(open);
+  };
+
+  const handleConfirmClose = () => {
+    setIsCloseConfirmOpen(false);
+    setFormData({ ...defaultFormData });
+    onOpenChange(false);
+  };
 
   // Reset form when initialData changes
   if (initialData && formData.clienteId !== initialData.clienteId) {
