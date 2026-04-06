@@ -1,32 +1,43 @@
 
 
-## Corrigir divergência no cálculo de lucro entre Dashboard e Parcelas
+## Adicionar Gráfico de Evolução do Lucro Mensal no Dashboard
 
-### Causa raiz
+### O que será feito
 
-O Dashboard calcula lucro sobre **todas as parcelas com valor_pago > 0**, independente do status. A tela de Parcelas filtra apenas status `"pago"` ou `"parcialmente_pago"`.
+Um gráfico de barras mostrando o lucro mensal (juros recebidos) ao longo dos últimos 6 meses, posicionado entre os cards de resumo e o alerta de parcelas vencidas.
 
-Isso significa que se alguma parcela "pendente" tiver um `valor_pago` residual (ex: reset de pagamento, ajuste manual), o Dashboard conta esse valor como lucro mas Parcelas não.
-
-### Correção
+### Implementação
 
 **Arquivo**: `src/pages/Dashboard.tsx`
 
-Adicionar o mesmo filtro de status usado em Parcelas.tsx antes do reduce do lucro:
+1. **Importar** componentes de chart (`ChartContainer`, `ChartTooltip`, `ChartTooltipContent`) e `BarChart`/`Bar`/`XAxis`/`YAxis` do recharts
+2. **Processar dados mensais** a partir das parcelas já carregadas:
+   - Filtrar parcelas com status `pago` ou `parcialmente_pago`
+   - Agrupar por mês/ano usando `data_pagamento`
+   - Calcular lucro de cada parcela: `valor_pago - (valor_emprestado / numero_parcelas)`
+   - Somar por mês, últimos 6 meses
+3. **Adicionar estado** `lucroMensal` com array `{ mes: string, lucro: number }`
+4. **Renderizar** um `Card` com `ChartContainer` + `BarChart` responsivo, barras verdes, tooltip formatado em R$
 
-```typescript
-const lucro = parcelas
-  ?.filter(p => p.status === "pago" || p.status === "parcialmente_pago")
-  .reduce((sum, p) => {
-    const valorPago = Number(p.valor_pago) || 0;
-    if (valorPago <= 0) return sum;
-    const valorEmprestado = Number(p.contratos?.valor_emprestado) || 0;
-    const numeroParcelas = Number(p.contratos?.numero_parcelas) || 1;
-    const principalParcela = valorEmprestado / numeroParcelas;
-    const lucroParcela = valorPago - principalParcela;
-    return sum + Math.max(lucroParcela, 0);
-  }, 0) || 0;
+### Visual
+
+```text
+┌─────────────────────────────────┐
+│  Evolução do Lucro Mensal       │
+│  ┌───┐                          │
+│  │   │ ┌───┐                    │
+│  │   │ │   │ ┌───┐ ┌───┐       │
+│  │   │ │   │ │   │ │   │ ┌───┐ │
+│  └───┘ └───┘ └───┘ └───┘ └───┘ │
+│  Jan   Fev   Mar   Abr   Mai   │
+└─────────────────────────────────┘
 ```
 
-Nenhuma outra alteração necessária. Isso garante que ambas as telas usem exatamente a mesma lógica.
+### Detalhes técnicos
+
+- Usa os mesmos dados da query existente (sem query adicional)
+- Responsivo: em mobile (390px) o gráfico ocupa 100% da largura com aspect ratio menor
+- Meses sem pagamentos aparecem com barra zerada
+- Labels do eixo X em formato "Jan/25", "Fev/25"
+- Tooltip mostra valor formatado: "R$ 1.234,56"
 
