@@ -113,6 +113,36 @@ export default function Admin() {
   const [loadingReport, setLoadingReport] = useState(false);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loadingAudit, setLoadingAudit] = useState(false);
+
+  const logAuditAction = async (action: string, targetUserId: string | null, details: Record<string, unknown> = {}) => {
+    try {
+      await supabase.rpc('insert_audit_log', {
+        p_action: action,
+        p_target_user_id: targetUserId,
+        p_details: details,
+      });
+    } catch (error) {
+      console.error('Erro ao registrar log de auditoria:', error);
+    }
+  };
+
+  const loadAuditLogs = async () => {
+    setLoadingAudit(true);
+    try {
+      const { data, error } = await supabase
+        .from('audit_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      setAuditLogs((data || []) as AuditLog[]);
+    } catch (error) {
+      console.error('Erro ao carregar logs:', error);
+    } finally {
+      setLoadingAudit(false);
+    }
+  };
+
   useEffect(() => {
     if (!roleLoading && !isAdmin) {
       navigate('/');
