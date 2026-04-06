@@ -1,41 +1,64 @@
 
 
-## Sprint 4 — Usabilidade Avancada
+# Sprint 5 — Funcionalidades Novas
 
-### 4.1 Busca em Contratos
-**Arquivo**: `src/pages/Contratos.tsx`
-- Adicionar estado `searchTerm` e campo `Input` com icone `Search` acima da listagem (no CardHeader, ao lado dos filtros de status)
-- Filtrar `contratosFiltrados` pelo nome do cliente usando busca accent-insensitive (mesmo padrao de Clientes/Parcelas com `removerAcentos` de `src/lib/calculos.ts`)
+## 5.1 Exportação CSV
+**Arquivos**: `src/lib/exportCsv.ts` (novo), `src/pages/Clientes.tsx`, `src/pages/Contratos.tsx`, `src/pages/Parcelas.tsx`
 
-### 4.2 Paginacao nas listagens
-**Arquivos**: `src/pages/Contratos.tsx`, `src/pages/Clientes.tsx`, `src/pages/Parcelas.tsx`
-- Adicionar estados `currentPage` e `itemsPerPage` (20 por pagina)
-- Paginar client-side sobre os dados ja filtrados (os dados ja sao carregados integralmente)
-- Renderizar controles de paginacao com botoes "Anterior / Proximo" e indicador "Pagina X de Y" abaixo da listagem
-- Esconder paginacao quando total de itens <= itemsPerPage
+Criar função utilitária `exportarCsv(filename, headers, rows)` que gera e faz download de um arquivo CSV UTF-8 com BOM (compatível com Excel).
 
-### 4.3 Skeleton de loading em Contratos
-**Arquivo**: `src/pages/Contratos.tsx`
-- Adicionar estado `loading` (true ate `loadContratos` completar)
-- Renderizar `TableSkeleton` (desktop) e `CardListSkeleton` (mobile) do `LoadingSkeletons.tsx` enquanto carrega
-- Mesmo padrao ja usado em Clientes e Parcelas
+Adicionar botão "Exportar CSV" (ícone `Download`) no `CardHeader` de cada listagem, exportando os dados **filtrados** atuais:
+- **Clientes**: Nome, Telefone, Endereço, Observações
+- **Contratos**: Cliente, Valor Emprestado, Valor Total, Parcelas, Status, Data Empréstimo
+- **Parcelas**: Cliente, Nº Parcela, Valor, Vencimento, Status, Valor Pago, Data Pagamento
 
-### 4.4 Confirmacao ao fechar formulario de contrato
-**Arquivo**: `src/components/contratos/ContratoForm.tsx`
-- Detectar se o formulario tem dados preenchidos (qualquer campo diferente do valor inicial)
-- Ao tentar fechar o Dialog (via `onOpenChange(false)`), se houver dados, exibir `AlertDialog` de confirmacao: "Tem certeza que deseja fechar? Os dados preenchidos serao perdidos."
-- Se confirmar, limpar form e fechar; se cancelar, manter aberto
+## 5.2 Tema Escuro
+**Arquivos**: `src/hooks/useTheme.ts` (novo), `src/components/ThemeToggle.tsx` (novo), `src/components/Layout.tsx`, `src/main.tsx`
 
-### Detalhes tecnicos
+- Criar hook `useTheme` que lê/grava preferência em `localStorage` (`theme: light | dark | system`) e aplica classe `dark` no `<html>`
+- Criar componente `ThemeToggle` com ícone Sol/Lua que alterna entre claro e escuro
+- Adicionar `ThemeToggle` no header do Layout (desktop e mobile), ao lado do botão de logout
+- As variáveis CSS `.dark` já estão definidas em `index.css` — nenhuma alteração de CSS necessária
 
-- A busca usa `removerAcentos()` ja existente em `src/lib/calculos.ts`
-- Paginacao e client-side (sem `.range()` do Supabase) pois os volumes de dados por usuario sao pequenos (< 1000)
-- Skeletons reutilizam `TableSkeleton` e `CardListSkeleton` de `src/components/LoadingSkeletons.tsx`
-- O `AlertDialog` de confirmacao usa o componente ja instalado em `src/components/ui/alert-dialog.tsx`
+## 5.3 Logs de Auditoria para Admin
+**Migração SQL**: Criar tabela `audit_logs` e trigger/função para registro automático
 
-### Arquivos a editar
-1. `src/pages/Contratos.tsx` — busca, paginacao, skeleton
-2. `src/pages/Clientes.tsx` — paginacao
-3. `src/pages/Parcelas.tsx` — paginacao
-4. `src/components/contratos/ContratoForm.tsx` — confirmacao ao fechar
+```text
+audit_logs
+├── id (uuid, PK)
+├── user_id (uuid, referência ao admin que executou)
+├── action (text: 'toggle_user', 'delete_user', 'change_plan', etc.)
+├── target_user_id (uuid, opcional)
+├── details (jsonb, dados extras)
+├── created_at (timestamptz)
+```
+
+RLS: apenas admins podem SELECT; INSERT via security definer function.
+
+**Arquivo**: `src/pages/Admin.tsx`
+- Criar função `logAuditAction()` que insere na tabela `audit_logs`
+- Chamar `logAuditAction` nas ações existentes do admin: ativar/desativar usuário, alterar plano, excluir usuário, resetar senha
+- Adicionar aba/seção "Logs de Auditoria" na página Admin com listagem dos últimos 100 logs (data, admin, ação, usuário alvo, detalhes)
+
+---
+
+## Detalhes Técnicos
+
+- CSV usa `Blob` com `text/csv;charset=utf-8` e BOM `\uFEFF` para compatibilidade Excel
+- Tema usa `matchMedia('(prefers-color-scheme: dark)')` para opção "system"
+- A tabela `audit_logs` terá RLS restrita a admins usando `has_role(auth.uid(), 'admin')`
+- Insert nos logs será feito via função `security definer` para garantir que o registro é criado mesmo com RLS restrita
+- Nenhuma edge function necessária — tudo client-side + SQL
+
+## Arquivos a criar/editar
+1. `src/lib/exportCsv.ts` — utilitário de exportação (novo)
+2. `src/pages/Clientes.tsx` — botão exportar
+3. `src/pages/Contratos.tsx` — botão exportar
+4. `src/pages/Parcelas.tsx` — botão exportar
+5. `src/hooks/useTheme.ts` — hook de tema (novo)
+6. `src/components/ThemeToggle.tsx` — toggle de tema (novo)
+7. `src/components/Layout.tsx` — adicionar ThemeToggle
+8. `src/main.tsx` — inicializar tema
+9. `src/pages/Admin.tsx` — logs de auditoria + logAuditAction
+10. **Migração SQL** — tabela `audit_logs`, RLS, função insert
 
