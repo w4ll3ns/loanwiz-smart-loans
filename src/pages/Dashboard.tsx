@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, Legend, ResponsiveContainer } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -11,7 +11,8 @@ import {
   FileText, 
   Calendar,
   AlertTriangle,
-  CheckCircle2
+  CheckCircle2,
+  PieChart as PieChartIcon
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,6 +41,18 @@ interface LucroMensal {
   lucro: number;
 }
 
+interface StatusDistribuicao {
+  name: string;
+  value: number;
+  color: string;
+}
+
+interface CapitalMensal {
+  mes: string;
+  emprestado: number;
+  recebido: number;
+}
+
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats>({
@@ -53,6 +66,8 @@ export default function Dashboard() {
   });
   const [proximosVencimentos, setProximosVencimentos] = useState<ProximoVencimento[]>([]);
   const [lucroMensal, setLucroMensal] = useState<LucroMensal[]>([]);
+  const [statusDistribuicao, setStatusDistribuicao] = useState<StatusDistribuicao[]>([]);
+  const [capitalMensal, setCapitalMensal] = useState<CapitalMensal[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -61,14 +76,12 @@ export default function Dashboard() {
 
   const loadDashboardData = async () => {
     try {
-      // Buscar clientes ativos
       const { data: clientes, error: clientesError } = await supabase
         .from("clientes")
         .select("*");
 
       if (clientesError) throw clientesError;
 
-      // Buscar contratos ativos
       const { data: contratos, error: contratosError } = await supabase
         .from("contratos")
         .select("*")
@@ -76,7 +89,13 @@ export default function Dashboard() {
 
       if (contratosError) throw contratosError;
 
-      // Buscar parcelas
+      // Buscar todos os contratos para o gráfico de capital mensal
+      const { data: todosContratos, error: todosContratosError } = await supabase
+        .from("contratos")
+        .select("*");
+
+      if (todosContratosError) throw todosContratosError;
+
       const { data: parcelas, error: parcelasError } = await supabase
         .from("parcelas")
         .select(`
@@ -84,21 +103,19 @@ export default function Dashboard() {
           contratos!inner(
             clientes!inner(nome),
             valor_emprestado,
-            numero_parcelas
+            numero_parcelas,
+            data_emprestimo
           )
         `)
         .order("data_vencimento", { ascending: true });
 
       if (parcelasError) throw parcelasError;
 
-      // Calcular estatísticas
       const totalEmprestado = contratos?.reduce((sum, c) => sum + Number(c.valor_emprestado), 0) || 0;
       
-      // Calcular total a receber - parcelas pendentes pelo valor original integral e parcialmente pagas também pelo valor original
       const totalPendente = parcelas?.filter(p => p.status === "pendente" || p.status === "parcialmente_pago")
         .reduce((sum, p) => sum + Number(p.valor_original || p.valor), 0) || 0;
       
-      // Calcular total já recebido somando TODOS os valor_pago (independente do status)
       const totalRecebido = parcelas?.reduce((sum, p) => sum + (Number(p.valor_pago) || 0), 0) || 0;
       
       const totalReceber = totalPendente;
@@ -111,7 +128,6 @@ export default function Dashboard() {
         return (p.status === "pendente" || p.status === "parcialmente_pago") && vencimento < hoje;
       }).length || 0;
 
-      // Calcular lucro corretamente: juros recebidos = valor_pago - principal proporcional
       const lucro = parcelas
         ?.filter(p => p.status === "pago" || p.status === "parcialmente_pago")
         .reduce((sum, p) => {
@@ -134,7 +150,7 @@ export default function Dashboard() {
         parcelasVencidas: vencidas,
       });
 
-      // Processar próximos vencimentos
+      // Próximos vencimentos
       const proximos = parcelas
         ?.filter(p => p.status === "pendente" || p.status === "parcialmente_pago")
         .slice(0, 4)
@@ -157,19 +173,17 @@ export default function Dashboard() {
 
       setProximosVencimentos(proximos);
 
-      // Calcular lucro mensal (últimos 6 meses)
+      // Lucro mensal (últimos 6 meses)
       const mesesNomes = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
       const agora = new Date();
       const mesesMap = new Map<string, number>();
       
-      // Inicializar últimos 6 meses com zero
       for (let i = 5; i >= 0; i--) {
         const d = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
         const key = `${mesesNomes[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`;
         mesesMap.set(key, 0);
       }
 
-      // Somar lucro por mês
       parcelas
         ?.filter(p => (p.status === "pago" || p.status === "parcialmente_pago") && p.data_pagamento)
         .forEach(p => {
@@ -186,6 +200,59 @@ export default function Dashboard() {
         });
 
       setLucroMensal(Array.from(mesesMap.entries()).map(([mes, lucroVal]) => ({ mes, lucro: Number(lucroVal.toFixed(2)) })));
+
+      // === NOVO: Distribuição por status ===
+      let pagas = 0, pendentes = 0, atrasadas = 0, parciais = 0;
+      parcelas?.forEach(p => {
+        if (p.status === "pago") { pagas++; }
+        else if (p.status === "parcialmente_pago") { parciais++; }
+        else {
+          const venc = new Date(p.data_vencimento + 'T00:00:00');
+          if (venc < hoje) { atrasadas++; } else { pendentes++; }
+        }
+      });
+      
+      const distData: StatusDistribuicao[] = [];
+      if (pagas > 0) distData.push({ name: "Pagas", value: pagas, color: "hsl(var(--success))" });
+      if (pendentes > 0) distData.push({ name: "Pendentes", value: pendentes, color: "hsl(var(--muted-foreground))" });
+      if (atrasadas > 0) distData.push({ name: "Atrasadas", value: atrasadas, color: "hsl(var(--destructive))" });
+      if (parciais > 0) distData.push({ name: "Parciais", value: parciais, color: "hsl(var(--warning))" });
+      setStatusDistribuicao(distData);
+
+      // === NOVO: Capital emprestado vs recebido por mês ===
+      const capitalMap = new Map<string, { emprestado: number; recebido: number }>();
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
+        const key = `${mesesNomes[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`;
+        capitalMap.set(key, { emprestado: 0, recebido: 0 });
+      }
+
+      todosContratos?.forEach(c => {
+        const dataEmp = new Date(c.data_emprestimo + 'T00:00:00');
+        const key = `${mesesNomes[dataEmp.getMonth()]}/${String(dataEmp.getFullYear()).slice(2)}`;
+        if (capitalMap.has(key)) {
+          const entry = capitalMap.get(key)!;
+          entry.emprestado += Number(c.valor_emprestado);
+        }
+      });
+
+      parcelas
+        ?.filter(p => (p.status === "pago" || p.status === "parcialmente_pago") && p.data_pagamento)
+        .forEach(p => {
+          const dataPag = new Date(p.data_pagamento + 'T00:00:00');
+          const key = `${mesesNomes[dataPag.getMonth()]}/${String(dataPag.getFullYear()).slice(2)}`;
+          if (capitalMap.has(key)) {
+            const entry = capitalMap.get(key)!;
+            entry.recebido += Number(p.valor_pago) || 0;
+          }
+        });
+
+      setCapitalMensal(Array.from(capitalMap.entries()).map(([mes, v]) => ({
+        mes,
+        emprestado: Number(v.emprestado.toFixed(2)),
+        recebido: Number(v.recebido.toFixed(2)),
+      })));
+
     } catch (error: any) {
       toast({
         title: "Não foi possível carregar o dashboard",
@@ -330,6 +397,101 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       )}
+
+      {/* Novos gráficos - Grid responsivo */}
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+        {/* Gráfico de Pizza - Distribuição por Status */}
+        {statusDistribuicao.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                <PieChartIcon className="h-5 w-5" />
+                Distribuição de Parcelas
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="aspect-square max-h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={statusDistribuicao}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={90}
+                      paddingAngle={3}
+                      dataKey="value"
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      labelLine={false}
+                      style={{ fontSize: 11 }}
+                    >
+                      {statusDistribuicao.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <ChartTooltip
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null;
+                        const d = payload[0].payload as StatusDistribuicao;
+                        return (
+                          <div className="rounded-lg border bg-background p-2 shadow-sm">
+                            <div className="flex items-center gap-2">
+                              <div className="h-3 w-3 rounded-full" style={{ backgroundColor: d.color }} />
+                              <span className="text-sm font-medium">{d.name}: {d.value}</span>
+                            </div>
+                          </div>
+                        );
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Gráfico de Barras - Capital Emprestado vs Recebido */}
+        {capitalMensal.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                <DollarSign className="h-5 w-5" />
+                Capital Emprestado vs Recebido
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer
+                config={{
+                  emprestado: {
+                    label: "Emprestado",
+                    color: "hsl(var(--primary))",
+                  },
+                  recebido: {
+                    label: "Recebido",
+                    color: "hsl(var(--success))",
+                  },
+                }}
+                className="aspect-[4/3] w-full"
+              >
+                <BarChart data={capitalMensal} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+                  <XAxis dataKey="mes" tick={{ fontSize: 11 }} className="fill-muted-foreground" />
+                  <YAxis tick={{ fontSize: 10 }} className="fill-muted-foreground" tickFormatter={(v) => `R$${v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}`} />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        formatter={(value) => `R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                      />
+                    }
+                  />
+                  <Bar dataKey="emprestado" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="recebido" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
       {/* Alerta de Parcelas Vencidas */}
       {stats.parcelasVencidas > 0 && (
