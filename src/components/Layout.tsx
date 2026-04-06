@@ -113,6 +113,7 @@ export default function Layout({ children }: LayoutProps) {
               <UserCircle className="h-4 w-4" />
               {user?.email}
             </Link>
+            <NotificacoesVencimento />
             <InstallAppGuide />
             <ThemeToggle />
             <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair">
@@ -135,6 +136,7 @@ export default function Layout({ children }: LayoutProps) {
             )}
           </div>
           <div className="flex items-center gap-1">
+            <NotificacoesVencimento />
             <InstallAppGuide />
             <ThemeToggle />
             <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair">
