@@ -292,6 +292,7 @@ export default function Admin() {
         title: 'Status atualizado',
         description: `Usuário ${!currentStatus ? 'ativado' : 'desativado'} com sucesso.`,
       });
+      await logAuditAction('toggle_user', userId, { ativo: !currentStatus });
     } catch (error) {
       console.error('Erro ao atualizar status:', error);
       toast({
@@ -319,6 +320,8 @@ export default function Admin() {
         title: 'Email enviado',
         description: `Email de redefinição de senha enviado para ${email}.`,
       });
+      const profile = profiles.find(p => p.email === email);
+      if (profile) await logAuditAction('reset_password', profile.id, { email });
     } catch (error: any) {
       console.error('Erro ao redefinir senha:', error);
       toast({
@@ -343,6 +346,8 @@ export default function Admin() {
         title: 'Usuário excluído',
         description: 'O usuário e todos os seus dados foram removidos completamente.',
       });
+
+      await logAuditAction('delete_user', selectedUser.id, { email: selectedUser.email, nome: selectedUser.nome });
 
       setIsDeleteModalOpen(false);
       setSelectedUser(null);
@@ -397,6 +402,7 @@ export default function Admin() {
       );
 
       toast({ title: 'Plano atualizado', description: 'O status do plano foi alterado.' });
+      await logAuditAction('change_plan', selectedUser.id, { plano: selectedPlano });
       setIsPlanoModalOpen(false);
       setSelectedUser(null);
     } catch (error) {
