@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -33,6 +35,11 @@ interface ProximoVencimento {
   status: "vencido" | "vence_hoje" | "proximo";
 }
 
+interface LucroMensal {
+  mes: string;
+  lucro: number;
+}
+
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats>({
@@ -45,6 +52,7 @@ export default function Dashboard() {
     parcelasVencidas: 0,
   });
   const [proximosVencimentos, setProximosVencimentos] = useState<ProximoVencimento[]>([]);
+  const [lucroMensal, setLucroMensal] = useState<LucroMensal[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -148,6 +156,36 @@ export default function Dashboard() {
         }) || [];
 
       setProximosVencimentos(proximos);
+
+      // Calcular lucro mensal (últimos 6 meses)
+      const mesesNomes = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+      const agora = new Date();
+      const mesesMap = new Map<string, number>();
+      
+      // Inicializar últimos 6 meses com zero
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
+        const key = `${mesesNomes[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`;
+        mesesMap.set(key, 0);
+      }
+
+      // Somar lucro por mês
+      parcelas
+        ?.filter(p => (p.status === "pago" || p.status === "parcialmente_pago") && p.data_pagamento)
+        .forEach(p => {
+          const dataPag = new Date(p.data_pagamento + 'T00:00:00');
+          const key = `${mesesNomes[dataPag.getMonth()]}/${String(dataPag.getFullYear()).slice(2)}`;
+          if (mesesMap.has(key)) {
+            const valorPago = Number(p.valor_pago) || 0;
+            const valorEmprestado = Number(p.contratos?.valor_emprestado) || 0;
+            const numeroParcelas = Number(p.contratos?.numero_parcelas) || 1;
+            const principalParcela = valorEmprestado / numeroParcelas;
+            const lucroParcela = Math.max(valorPago - principalParcela, 0);
+            mesesMap.set(key, (mesesMap.get(key) || 0) + lucroParcela);
+          }
+        });
+
+      setLucroMensal(Array.from(mesesMap.entries()).map(([mes, lucroVal]) => ({ mes, lucro: Number(lucroVal.toFixed(2)) })));
     } catch (error: any) {
       toast({
         title: "Não foi possível carregar o dashboard",
@@ -255,6 +293,43 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Gráfico de Evolução do Lucro Mensal */}
+      {lucroMensal.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+              <TrendingUp className="h-5 w-5" />
+              Evolução do Lucro Mensal
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer
+              config={{
+                lucro: {
+                  label: "Lucro",
+                  color: "hsl(var(--success))",
+                },
+              }}
+              className="aspect-[2/1] w-full"
+            >
+              <BarChart data={lucroMensal} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+                <XAxis dataKey="mes" tick={{ fontSize: 12 }} className="fill-muted-foreground" />
+                <YAxis tick={{ fontSize: 11 }} className="fill-muted-foreground" tickFormatter={(v) => `R$${v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}`} />
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      formatter={(value) => `R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                    />
+                  }
+                />
+                <Bar dataKey="lucro" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Alerta de Parcelas Vencidas */}
       {stats.parcelasVencidas > 0 && (
