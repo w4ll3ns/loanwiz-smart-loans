@@ -1,39 +1,32 @@
 
 
-## Problema: Cálculo de Lucro no Dashboard está errado
+## Corrigir divergência no cálculo de lucro entre Dashboard e Parcelas
 
-O Dashboard e a tela de Parcelas usam fórmulas **diferentes** para calcular o lucro:
+### Causa raiz
 
-**Dashboard (ERRADO):**
-```
-lucro = totalRecebido - totalEmprestado
-```
-Simplesmente subtrai o capital total emprestado (contratos ativos) do total recebido (todas as parcelas pagas). Isso ignora que parte do valor recebido é devolução do capital principal.
+O Dashboard calcula lucro sobre **todas as parcelas com valor_pago > 0**, independente do status. A tela de Parcelas filtra apenas status `"pago"` ou `"parcialmente_pago"`.
 
-**Parcelas (CORRETO):**
-```
-Para cada parcela paga:
-  principalParcela = valor_emprestado / numero_parcelas
-  lucro = valor_pago - principalParcela
-```
-Desconta o principal proporcional de cada parcela, contando apenas os juros efetivamente recebidos como lucro.
+Isso significa que se alguma parcela "pendente" tiver um `valor_pago` residual (ex: reset de pagamento, ajuste manual), o Dashboard conta esse valor como lucro mas Parcelas não.
 
-### Exemplo prático
-- Emprestou R$ 10.000 em 10 parcelas de R$ 1.500 (R$ 500 de juros por parcela)
-- 5 parcelas pagas = R$ 7.500 recebido
-- **Dashboard atual**: lucro = 7.500 - 10.000 = **-R$ 2.500** (ERRADO, mostra prejuízo!)
-- **Cálculo correto**: lucro = 5 × R$ 500 = **R$ 2.500** (juros recebidos)
-
-### Plano de correção
+### Correção
 
 **Arquivo**: `src/pages/Dashboard.tsx`
 
-1. Buscar parcelas com dados do contrato (já faz isso via join)
-2. Substituir o cálculo do lucro pela mesma lógica da tela de Parcelas:
-   - Para cada parcela paga/parcialmente paga, calcular `valor_pago - (valor_emprestado / numero_parcelas)`
-   - Somar apenas valores positivos (`Math.max(lucro, 0)`)
-3. Atualizar o label do card de "Recebido - Emprestado" para "Lucro sobre capital" (consistente com Parcelas)
-4. Garantir que a query de parcelas inclui `valor_emprestado` e `numero_parcelas` do contrato no join
+Adicionar o mesmo filtro de status usado em Parcelas.tsx antes do reduce do lucro:
 
-**Nenhuma migração necessária** — apenas correção de lógica no frontend.
+```typescript
+const lucro = parcelas
+  ?.filter(p => p.status === "pago" || p.status === "parcialmente_pago")
+  .reduce((sum, p) => {
+    const valorPago = Number(p.valor_pago) || 0;
+    if (valorPago <= 0) return sum;
+    const valorEmprestado = Number(p.contratos?.valor_emprestado) || 0;
+    const numeroParcelas = Number(p.contratos?.numero_parcelas) || 1;
+    const principalParcela = valorEmprestado / numeroParcelas;
+    const lucroParcela = valorPago - principalParcela;
+    return sum + Math.max(lucroParcela, 0);
+  }, 0) || 0;
+```
+
+Nenhuma outra alteração necessária. Isso garante que ambas as telas usem exatamente a mesma lógica.
 
