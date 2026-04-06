@@ -1,43 +1,77 @@
 
 
-## Adicionar Gráfico de Evolução do Lucro Mensal no Dashboard
+# Próximas Sprints — WS Empréstimos
 
-### O que será feito
+Sprints 1 (Segurança) e 2 (Usabilidade base) já foram concluídas, além do gráfico de lucro mensal e correção do cálculo de lucro no Dashboard. Abaixo estão as próximas sprints pendentes.
 
-Um gráfico de barras mostrando o lucro mensal (juros recebidos) ao longo dos últimos 6 meses, posicionado entre os cards de resumo e o alerta de parcelas vencidas.
+---
 
-### Implementação
+## Sprint 3 — Qualidade de Código (Refatoração)
 
-**Arquivo**: `src/pages/Dashboard.tsx`
+O objetivo é quebrar os dois arquivos monolíticos em componentes menores e extrair lógica compartilhada.
 
-1. **Importar** componentes de chart (`ChartContainer`, `ChartTooltip`, `ChartTooltipContent`) e `BarChart`/`Bar`/`XAxis`/`YAxis` do recharts
-2. **Processar dados mensais** a partir das parcelas já carregadas:
-   - Filtrar parcelas com status `pago` ou `parcialmente_pago`
-   - Agrupar por mês/ano usando `data_pagamento`
-   - Calcular lucro de cada parcela: `valor_pago - (valor_emprestado / numero_parcelas)`
-   - Somar por mês, últimos 6 meses
-3. **Adicionar estado** `lucroMensal` com array `{ mes: string, lucro: number }`
-4. **Renderizar** um `Card` com `ChartContainer` + `BarChart` responsivo, barras verdes, tooltip formatado em R$
+### 3.1 Refatorar `Contratos.tsx` (2284 linhas)
+Extrair em componentes separados:
+- `ContratoForm` — formulário de criação/edição com preview de cálculo
+- `ContratoDetails` — modal/sheet de detalhes do contrato
+- `PagamentoDialog` — dialog de registro de pagamento
+- `ImportComprovante` — upload e parsing de comprovante
+- `RelatorioGenerator` — geração de PDF/imagem do contrato
 
-### Visual
+### 3.2 Refatorar `Parcelas.tsx` (1426 linhas)
+Extrair:
+- `ParcelasList` — listagem com filtros e busca
+- `PagamentoModal` — modal de pagamento de parcela
+- `HistoricoModal` — modal do histórico de pagamentos
+- `EditarDataModal` — modal de edição de data de vencimento
 
-```text
-┌─────────────────────────────────┐
-│  Evolução do Lucro Mensal       │
-│  ┌───┐                          │
-│  │   │ ┌───┐                    │
-│  │   │ │   │ ┌───┐ ┌───┐       │
-│  │   │ │   │ │   │ │   │ ┌───┐ │
-│  └───┘ └───┘ └───┘ └───┘ └───┘ │
-│  Jan   Fev   Mar   Abr   Mai   │
-└─────────────────────────────────┘
-```
+### 3.3 Extrair lógica compartilhada
+- `src/lib/calculos.ts` — funções `calcularJuros`, cálculo de lucro por parcela
+- `src/hooks/usePagamento.ts` — hook de registro de pagamento (usado por Contratos e Parcelas)
+- Tipar corretamente props e estados (remover usos de `any`)
 
-### Detalhes técnicos
+---
 
-- Usa os mesmos dados da query existente (sem query adicional)
-- Responsivo: em mobile (390px) o gráfico ocupa 100% da largura com aspect ratio menor
-- Meses sem pagamentos aparecem com barra zerada
-- Labels do eixo X em formato "Jan/25", "Fev/25"
-- Tooltip mostra valor formatado: "R$ 1.234,56"
+## Sprint 4 — Usabilidade Avançada
+
+### 4.1 Busca em Contratos
+Adicionar campo de busca por nome do cliente, similar ao que já existe em Clientes e Parcelas.
+
+### 4.2 Paginação nas listagens
+Implementar paginação com botões "Anterior / Próximo" e contagem de registros em:
+- Clientes
+- Contratos
+- Parcelas
+Usando `.range()` do Supabase para carregar 20 registros por vez.
+
+### 4.3 Skeleton de loading em Contratos
+Adicionar skeleton de carregamento enquanto dados são buscados (já existe em Dashboard, Clientes e Parcelas).
+
+### 4.4 Confirmação ao fechar formulário
+Alert ao tentar fechar modal de criação de contrato com dados preenchidos.
+
+---
+
+## Sprint 5 — Funcionalidades Novas
+
+### 5.1 Exportação de dados (CSV/Excel)
+Botão de exportação em cada listagem (Clientes, Contratos, Parcelas) gerando CSV com os dados filtrados.
+
+### 5.2 Tema escuro
+Adicionar toggle de tema no header/perfil. As variáveis CSS `.dark` já existem no `index.css`.
+
+### 5.3 Logs de auditoria para Admin
+Criar tabela `audit_logs` no Supabase registrando ações do admin (ativar/desativar usuário, excluir dados, alterar plano) com timestamp e user_id. Exibir na página Admin.
+
+---
+
+## Ordem sugerida
+
+Cada sprint pode ser implementada independentemente. A sugestão é:
+
+1. **Sprint 3** primeiro — facilita manutenção futura de tudo que vem depois
+2. **Sprint 4** — melhora a experiência do usuário imediatamente
+3. **Sprint 5** — adiciona valor com funcionalidades novas
+
+Qual sprint deseja iniciar?
 
