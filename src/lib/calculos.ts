@@ -126,6 +126,9 @@ export function calcularDiasAtraso(dataVencimento: string): number {
  * Formata data no formato dd/MM/yyyy evitando problemas de timezone.
  */
 export function formatDateSafe(dateString: string): string {
-  const { format } = require('date-fns');
-  return format(new Date(dateString + 'T00:00:00'), 'dd/MM/yyyy');
+  const d = new Date(dateString + 'T00:00:00');
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
 }

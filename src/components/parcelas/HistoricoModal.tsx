@@ -28,9 +28,13 @@ import { getLocalDateString } from "@/lib/utils";
 
 interface Parcela {
   id: string;
+  contrato_id: string;
+  numero_parcela: number;
   valor: number;
   valor_original: number;
+  data_vencimento: string;
   status: string;
+  [key: string]: any;
 }
 
 interface HistoricoParcela {
