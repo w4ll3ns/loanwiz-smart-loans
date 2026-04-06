@@ -227,7 +227,7 @@ export default function Dashboard() {
             <div className={`text-lg md:text-2xl font-bold truncate ${stats.lucro >= 0 ? 'text-success' : 'text-destructive'}`}>
               R$ {stats.lucro.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Recebido - Emprestado</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Lucro sobre capital</p>
           </CardContent>
         </Card>
 
