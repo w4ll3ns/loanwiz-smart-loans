@@ -74,7 +74,9 @@ export default function Dashboard() {
         .select(`
           *,
           contratos!inner(
-            clientes!inner(nome)
+            clientes!inner(nome),
+            valor_emprestado,
+            numero_parcelas
           )
         `)
         .order("data_vencimento", { ascending: true });
