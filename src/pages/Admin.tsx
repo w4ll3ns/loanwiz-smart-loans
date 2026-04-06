@@ -16,9 +16,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
-import { Users, FileText, DollarSign, UserCheck, Settings, Search, MoreVertical, Key, Trash2, MessageSquare, CreditCard, Phone, Pencil, BarChart3 } from 'lucide-react';
+import { Users, FileText, DollarSign, UserCheck, Settings, Search, MoreVertical, Key, Trash2, MessageSquare, CreditCard, Phone, Pencil, BarChart3, ScrollText } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+
+interface AuditLog {
+  id: string;
+  user_id: string;
+  action: string;
+  target_user_id: string | null;
+  details: Record<string, unknown>;
+  created_at: string;
+}
 
 interface Profile {
   id: string;
@@ -102,6 +111,37 @@ export default function Admin() {
   const [userClientes, setUserClientes] = useState<UserCliente[]>([]);
   const [userContratos, setUserContratos] = useState<UserContrato[]>([]);
   const [loadingReport, setLoadingReport] = useState(false);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [loadingAudit, setLoadingAudit] = useState(false);
+
+  const logAuditAction = async (action: string, targetUserId: string | null, details: Record<string, unknown> = {}) => {
+    try {
+      await supabase.rpc('insert_audit_log', {
+        p_action: action,
+        p_target_user_id: targetUserId,
+        p_details: details as unknown as undefined,
+      });
+    } catch (error) {
+      console.error('Erro ao registrar log de auditoria:', error);
+    }
+  };
+
+  const loadAuditLogs = async () => {
+    setLoadingAudit(true);
+    try {
+      const { data, error } = await supabase
+        .from('audit_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      setAuditLogs((data || []) as AuditLog[]);
+    } catch (error) {
+      console.error('Erro ao carregar logs:', error);
+    } finally {
+      setLoadingAudit(false);
+    }
+  };
 
   useEffect(() => {
     if (!roleLoading && !isAdmin) {
@@ -252,6 +292,7 @@ export default function Admin() {
         title: 'Status atualizado',
         description: `Usuário ${!currentStatus ? 'ativado' : 'desativado'} com sucesso.`,
       });
+      await logAuditAction('toggle_user', userId, { ativo: !currentStatus });
     } catch (error) {
       console.error('Erro ao atualizar status:', error);
       toast({
@@ -279,6 +320,8 @@ export default function Admin() {
         title: 'Email enviado',
         description: `Email de redefinição de senha enviado para ${email}.`,
       });
+      const profile = profiles.find(p => p.email === email);
+      if (profile) await logAuditAction('reset_password', profile.id, { email });
     } catch (error: any) {
       console.error('Erro ao redefinir senha:', error);
       toast({
@@ -303,6 +346,8 @@ export default function Admin() {
         title: 'Usuário excluído',
         description: 'O usuário e todos os seus dados foram removidos completamente.',
       });
+
+      await logAuditAction('delete_user', selectedUser.id, { email: selectedUser.email, nome: selectedUser.nome });
 
       setIsDeleteModalOpen(false);
       setSelectedUser(null);
@@ -357,6 +402,7 @@ export default function Admin() {
       );
 
       toast({ title: 'Plano atualizado', description: 'O status do plano foi alterado.' });
+      await logAuditAction('change_plan', selectedUser.id, { plano: selectedPlano });
       setIsPlanoModalOpen(false);
       setSelectedUser(null);
     } catch (error) {
@@ -812,6 +858,73 @@ export default function Admin() {
                     Este usuário não possui clientes ou contratos cadastrados.
                   </p>
                 )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Logs de Auditoria */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ScrollText className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-base md:text-lg">Logs de Auditoria</CardTitle>
+              </div>
+              <Button variant="outline" size="sm" onClick={loadAuditLogs} disabled={loadingAudit}>
+                {loadingAudit ? 'Carregando...' : 'Carregar Logs'}
+              </Button>
+            </div>
+            <CardDescription className="text-xs md:text-sm">
+              Últimas 100 ações administrativas registradas
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
+            {auditLogs.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8 px-4">
+                {loadingAudit ? 'Carregando...' : 'Clique em "Carregar Logs" para visualizar'}
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="min-w-[140px] pl-4">Data</TableHead>
+                      <TableHead>Ação</TableHead>
+                      <TableHead className="hidden md:table-cell">Usuário Alvo</TableHead>
+                      <TableHead className="hidden lg:table-cell">Detalhes</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {auditLogs.map((log) => {
+                      const targetProfile = profiles.find(p => p.id === log.target_user_id);
+                      const actionLabels: Record<string, string> = {
+                        toggle_user: 'Ativar/Desativar',
+                        delete_user: 'Excluir Usuário',
+                        change_plan: 'Alterar Plano',
+                        reset_password: 'Redefinir Senha',
+                      };
+                      return (
+                        <TableRow key={log.id}>
+                          <TableCell className="pl-4 text-sm">
+                            {format(new Date(log.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs">
+                              {actionLabels[log.action] || log.action}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell text-sm">
+                            {targetProfile?.nome || targetProfile?.email || log.target_user_id || '-'}
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell text-xs text-muted-foreground max-w-[200px] truncate">
+                            {JSON.stringify(log.details)}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               </div>
             )}
           </CardContent>

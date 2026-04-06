@@ -23,12 +23,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Search, Users } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Users, Download } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { AccessRestrictedModal } from "@/components/AccessRestrictedModal";
+import { exportarCsv } from "@/lib/exportCsv";
 
 // Input validation schema
 const clienteSchema = z.object({
@@ -325,8 +326,17 @@ export default function Clientes() {
 
       {/* Lista de Clientes */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base md:text-lg">Clientes Cadastrados ({filteredClientes.length})</CardTitle>
+          <Button variant="outline" size="sm" onClick={() => {
+            exportarCsv("clientes.csv",
+              ["Nome", "Telefone", "Endereço", "Observações"],
+              filteredClientes.map(c => [c.nome, c.telefone || "", c.endereco || "", c.observacoes || ""])
+            );
+          }}>
+            <Download className="h-4 w-4 mr-1" />
+            <span className="hidden sm:inline">Exportar CSV</span>
+          </Button>
         </CardHeader>
         <CardContent className="p-0 md:p-6">
           <div className="overflow-x-auto">
