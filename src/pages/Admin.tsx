@@ -105,14 +105,9 @@ export default function Admin() {
 
   useEffect(() => {
     if (!roleLoading && !isAdmin) {
-      toast({
-        title: 'Acesso negado',
-        description: 'Você não tem permissão para acessar esta página.',
-        variant: 'destructive',
-      });
       navigate('/');
     }
-  }, [isAdmin, roleLoading, navigate, toast]);
+  }, [isAdmin, roleLoading, navigate]);
 
   useEffect(() => {
     if (isAdmin) {
@@ -298,33 +293,15 @@ export default function Admin() {
     if (!selectedUser) return;
 
     try {
-      // Delete related data first (clientes cascade to contratos and parcelas)
-      const { error: clientesError } = await supabase
-        .from('clientes')
-        .delete()
-        .eq('user_id', selectedUser.id);
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { user_id: selectedUser.id },
+      });
 
-      if (clientesError) throw clientesError;
-
-      // Delete user_roles
-      const { error: rolesError } = await supabase
-        .from('user_roles')
-        .delete()
-        .eq('user_id', selectedUser.id);
-
-      if (rolesError) throw rolesError;
-
-      // Delete profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', selectedUser.id);
-
-      if (profileError) throw profileError;
+      if (error) throw error;
 
       toast({
         title: 'Usuário excluído',
-        description: 'O usuário e todos os seus dados foram removidos.',
+        description: 'O usuário e todos os seus dados foram removidos completamente.',
       });
 
       setIsDeleteModalOpen(false);

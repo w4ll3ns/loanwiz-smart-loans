@@ -1,4 +1,7 @@
 project_id = "goovjmtyhpzyduzkfswx"
 
 [functions.parse-comprovante]
+verify_jwt = true
+
+[functions.delete-user]
 verify_jwt = false
