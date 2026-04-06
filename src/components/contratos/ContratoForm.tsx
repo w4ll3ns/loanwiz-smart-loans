@@ -478,7 +478,7 @@ export function ContratoForm({
                 <FileText className="h-4 w-4 mr-2" />
                 Criar Contrato
               </Button>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
                 Cancelar
               </Button>
             </div>
@@ -537,6 +537,24 @@ export function ContratoForm({
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Confirmação ao fechar com dados preenchidos */}
+      <AlertDialog open={isCloseConfirmOpen} onOpenChange={setIsCloseConfirmOpen}>
+        <AlertDialogContent className="w-[95vw] sm:max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Descartar alterações?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja fechar? Os dados preenchidos serão perdidos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
+            <AlertDialogCancel className="w-full sm:w-auto">Continuar editando</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmClose} className="w-full sm:w-auto bg-destructive hover:bg-destructive/90">
+              Descartar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
