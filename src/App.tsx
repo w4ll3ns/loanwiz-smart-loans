@@ -4,10 +4,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Layout from "./components/Layout";
+import ProtectedRoute from "./components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import Clientes from "./pages/Clientes";
 import Contratos from "./pages/Contratos";
 import Parcelas from "./pages/Parcelas";
+import Perfil from "./pages/Perfil";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import Admin from "./pages/Admin";
@@ -28,7 +30,8 @@ const App = () => (
           <Route path="/clientes" element={<Layout><Clientes /></Layout>} />
           <Route path="/contratos" element={<Layout><Contratos /></Layout>} />
           <Route path="/parcelas" element={<Layout><Parcelas /></Layout>} />
-          <Route path="/admin" element={<Admin />} />
+          <Route path="/perfil" element={<Layout><Perfil /></Layout>} />
+          <Route path="/admin" element={<ProtectedRoute requireAdmin><Admin /></ProtectedRoute>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
