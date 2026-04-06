@@ -119,7 +119,7 @@ export default function Admin() {
       await supabase.rpc('insert_audit_log', {
         p_action: action,
         p_target_user_id: targetUserId,
-        p_details: details,
+        p_details: details as unknown as undefined,
       });
     } catch (error) {
       console.error('Erro ao registrar log de auditoria:', error);
