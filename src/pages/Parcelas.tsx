@@ -17,13 +17,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Search, Check, X, Calendar, AlertTriangle, Trash2, Undo2, FileText, Banknote, TrendingUp } from "lucide-react";
+import { Search, Check, X, Calendar, AlertTriangle, Trash2, Undo2, FileText, Banknote, TrendingUp, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { AccessRestrictedModal } from "@/components/AccessRestrictedModal";
 import { getLocalDateString } from "@/lib/utils";
 import { calcularDiasAtraso, calcularJurosParcela, removerAcentos } from "@/lib/calculos";
+import { exportarCsv } from "@/lib/exportCsv";
 import { PagamentoModal, HistoricoModal, EditarDataModal } from "@/components/parcelas";
 
 interface Parcela {
@@ -373,9 +374,28 @@ export default function Parcelas() {
               </Badge>
             )}
           </div>
-          <Button variant="outline" size="sm" onClick={() => setMostrarTodas(!mostrarTodas)} className="text-xs sm:text-sm w-full sm:w-auto">
-            {mostrarTodas ? "Próximos 7 Dias" : "Ver Todas"}
-          </Button>
+          <div className="flex gap-1 items-center">
+            <Button variant="outline" size="sm" onClick={() => {
+              exportarCsv("parcelas.csv",
+                ["Cliente", "Nº Parcela", "Valor", "Vencimento", "Status", "Valor Pago", "Data Pagamento"],
+                filteredParcelas.map(p => [
+                  p.contratos?.clientes?.nome || "",
+                  p.numero_parcela,
+                  Number(p.valor_original || p.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 }),
+                  formatDate(p.data_vencimento),
+                  p.status,
+                  p.valor_pago ? Number(p.valor_pago).toLocaleString("pt-BR", { minimumFractionDigits: 2 }) : "",
+                  p.data_pagamento ? formatDate(p.data_pagamento) : "",
+                ])
+              );
+            }} className="text-xs">
+              <Download className="h-4 w-4 mr-1" />
+              <span className="hidden sm:inline">CSV</span>
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setMostrarTodas(!mostrarTodas)} className="text-xs sm:text-sm">
+              {mostrarTodas ? "Próximos 7 Dias" : "Ver Todas"}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="p-0 md:p-6">
           {/* Mobile Cards */}

@@ -11,11 +11,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Upload, Search } from "lucide-react";
+import { Upload, Search, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { getLocalDateString } from "@/lib/utils";
 import { removerAcentos } from "@/lib/calculos";
+import { exportarCsv } from "@/lib/exportCsv";
 import { useUserRole } from "@/hooks/useUserRole";
 import { AccessRestrictedModal } from "@/components/AccessRestrictedModal";
 import { ContratoForm, ContratoDetails, ImportComprovante } from "@/components/contratos";
@@ -216,7 +217,23 @@ export default function Contratos() {
             <CardTitle className="text-base md:text-lg">
               {statusFilter === "ativos" ? "Contratos Ativos" : statusFilter === "quitados" ? "Contratos Quitados" : "Todos os Contratos"} ({contratosFiltrados.length})
             </CardTitle>
-            <div className="flex gap-1">
+            <div className="flex gap-1 items-center">
+              <Button variant="outline" size="sm" onClick={() => {
+                exportarCsv("contratos.csv",
+                  ["Cliente", "Valor Emprestado", "Valor Total", "Parcelas", "Status", "Data Empréstimo"],
+                  contratosFiltrados.map(c => [
+                    c.clientes?.nome || "",
+                    Number(c.valor_emprestado).toLocaleString("pt-BR", { minimumFractionDigits: 2 }),
+                    Number(c.valor_total).toLocaleString("pt-BR", { minimumFractionDigits: 2 }),
+                    c.numero_parcelas,
+                    c.status,
+                    c.data_emprestimo,
+                  ])
+                );
+              }}>
+                <Download className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline">CSV</span>
+              </Button>
               <Button size="sm" variant={statusFilter === "ativos" ? "default" : "outline"} onClick={() => setStatusFilter("ativos")} className="text-xs">Ativos</Button>
               <Button size="sm" variant={statusFilter === "quitados" ? "default" : "outline"} onClick={() => setStatusFilter("quitados")} className="text-xs">Quitados</Button>
               <Button size="sm" variant={statusFilter === "todos" ? "default" : "outline"} onClick={() => setStatusFilter("todos")} className="text-xs">Todos</Button>
