@@ -74,7 +74,9 @@ export default function Dashboard() {
         .select(`
           *,
           contratos!inner(
-            clientes!inner(nome)
+            clientes!inner(nome),
+            valor_emprestado,
+            numero_parcelas
           )
         `)
         .order("data_vencimento", { ascending: true });
@@ -101,11 +103,22 @@ export default function Dashboard() {
         return (p.status === "pendente" || p.status === "parcialmente_pago") && vencimento < hoje;
       }).length || 0;
 
+      // Calcular lucro corretamente: juros recebidos = valor_pago - principal proporcional
+      const lucro = parcelas?.reduce((sum, p) => {
+        const valorPago = Number(p.valor_pago) || 0;
+        if (valorPago <= 0) return sum;
+        const valorEmprestado = Number(p.contratos?.valor_emprestado) || 0;
+        const numeroParcelas = Number(p.contratos?.numero_parcelas) || 1;
+        const principalParcela = valorEmprestado / numeroParcelas;
+        const lucroParcela = valorPago - principalParcela;
+        return sum + Math.max(lucroParcela, 0);
+      }, 0) || 0;
+
       setStats({
         totalEmprestado,
         totalReceber,
         totalRecebido,
-        lucro: totalRecebido - totalEmprestado,
+        lucro,
         clientesAtivos: clientes?.length || 0,
         contratosAtivos: contratos?.length || 0,
         parcelasVencidas: vencidas,
@@ -214,7 +227,7 @@ export default function Dashboard() {
             <div className={`text-lg md:text-2xl font-bold truncate ${stats.lucro >= 0 ? 'text-success' : 'text-destructive'}`}>
               R$ {stats.lucro.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Recebido - Emprestado</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Lucro sobre capital</p>
           </CardContent>
         </Card>
 
