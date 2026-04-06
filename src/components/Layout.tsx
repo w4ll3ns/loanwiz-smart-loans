@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { useUserRole } from "@/hooks/useUserRole";
 import { InstallAppGuide } from "@/components/InstallAppGuide";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import type { User } from "@supabase/supabase-js";
 import logo from "@/assets/logo.png";
 
@@ -112,6 +113,7 @@ export default function Layout({ children }: LayoutProps) {
               {user?.email}
             </Link>
             <InstallAppGuide />
+            <ThemeToggle />
             <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair">
               <LogOut className="h-5 w-5" />
             </Button>
@@ -133,6 +135,7 @@ export default function Layout({ children }: LayoutProps) {
           </div>
           <div className="flex items-center gap-1">
             <InstallAppGuide />
+            <ThemeToggle />
             <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair">
               <LogOut className="h-4 w-4" />
             </Button>
