@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useUserRole } from "@/hooks/useUserRole";
 import { InstallAppGuide } from "@/components/InstallAppGuide";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { NotificacoesVencimento } from "@/components/NotificacoesVencimento";
 import type { User } from "@supabase/supabase-js";
 import logo from "@/assets/logo.png";
 
