@@ -627,6 +627,17 @@ export function ContratoDetails({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <HistoricoModal
+        isOpen={historicoModalOpen}
+        onOpenChange={setHistoricoModalOpen}
+        parcela={parcelaHistorico as any}
+        historico={historicoData}
+        onHistoricoUpdated={(p) => {
+          loadHistorico(p as any);
+        }}
+        onParcelasUpdated={() => onParcelasUpdated(contrato.id)}
+      />
     </>
   );
 }
