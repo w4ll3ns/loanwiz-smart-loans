@@ -9,15 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Search, Check, X, Calendar, AlertTriangle, Trash2, Undo2, FileText, Banknote, TrendingUp, Download } from "lucide-react";
+import { Search, Check, X, Calendar, AlertTriangle, Trash2, Undo2, FileText, Banknote, TrendingUp, Download, Calculator } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -26,6 +21,8 @@ import { getLocalDateString } from "@/lib/utils";
 import { calcularDiasAtraso, calcularJurosParcela, removerAcentos } from "@/lib/calculos";
 import { exportarCsv } from "@/lib/exportCsv";
 import { PagamentoModal, HistoricoModal, EditarDataModal } from "@/components/parcelas";
+import { PageHeader } from "@/components/PageHeader";
+import { EmptyState } from "@/components/EmptyState";
 
 interface Parcela {
   id: string;
@@ -256,9 +253,10 @@ export default function Parcelas() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-        <h1 className="text-xl md:text-3xl font-bold truncate">Gestão de Parcelas</h1>
-      </div>
+      <PageHeader
+        title="Parcelas"
+        description="Controle de cobranças e pagamentos"
+      />
 
       {/* Filtro de Período */}
       <Card className="w-full">
@@ -401,7 +399,7 @@ export default function Parcelas() {
           {/* Mobile Cards */}
           <div className="md:hidden space-y-3 p-2 w-full min-w-0 max-w-full">
             {parcelasPaginadas.length === 0 ? (
-              <div className="text-center text-muted-foreground py-8">Nenhuma parcela encontrada</div>
+              <EmptyState icon={Calculator} title="Nenhuma parcela encontrada" description="Ajuste os filtros ou aguarde novos vencimentos." />
             ) : (
               parcelasPaginadas.map((parcela) => (
                 <Card key={parcela.id} className="border-l-4 min-w-0 overflow-hidden" style={{
@@ -479,7 +477,7 @@ export default function Parcelas() {
               </TableHeader>
               <TableBody>
                 {parcelasPaginadas.length === 0 ? (
-                  <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma parcela encontrada</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={7}><EmptyState icon={Calculator} title="Nenhuma parcela encontrada" description="Ajuste os filtros ou busca para ver resultados." /></TableCell></TableRow>
                 ) : (
                   parcelasPaginadas.map((parcela) => (
                     <TableRow key={parcela.id}>
