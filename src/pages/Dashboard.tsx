@@ -76,181 +76,52 @@ export default function Dashboard() {
 
   const loadDashboardData = async () => {
     try {
-      const { data: clientes, error: clientesError } = await supabase
-        .from("clientes")
-        .select("*");
-
-      if (clientesError) throw clientesError;
-
-      const { data: contratos, error: contratosError } = await supabase
-        .from("contratos")
-        .select("*")
-        .eq("status", "ativo");
-
-      if (contratosError) throw contratosError;
-
-      // Buscar todos os contratos para o gráfico de capital mensal
-      const { data: todosContratos, error: todosContratosError } = await supabase
-        .from("contratos")
-        .select("*");
-
-      if (todosContratosError) throw todosContratosError;
-
-      const { data: parcelas, error: parcelasError } = await supabase
-        .from("parcelas")
-        .select(`
-          *,
-          contratos!inner(
-            clientes!inner(nome),
-            valor_emprestado,
-            numero_parcelas,
-            data_emprestimo
-          )
-        `)
-        .order("data_vencimento", { ascending: true });
-
-      if (parcelasError) throw parcelasError;
-
-      const totalEmprestado = contratos?.reduce((sum, c) => sum + Number(c.valor_emprestado), 0) || 0;
-      
-      const totalPendente = parcelas?.filter(p => p.status === "pendente" || p.status === "parcialmente_pago")
-        .reduce((sum, p) => sum + Number(p.valor_original || p.valor), 0) || 0;
-      
-      const totalRecebido = parcelas?.reduce((sum, p) => sum + (Number(p.valor_pago) || 0), 0) || 0;
-      
-      const totalReceber = totalPendente;
-      
-      const hoje = new Date();
-      hoje.setHours(0, 0, 0, 0);
-      
-      const vencidas = parcelas?.filter(p => {
-        const vencimento = new Date(p.data_vencimento + 'T00:00:00');
-        return (p.status === "pendente" || p.status === "parcialmente_pago") && vencimento < hoje;
-      }).length || 0;
-
-      const lucro = parcelas
-        ?.filter(p => p.status === "pago" || p.status === "parcialmente_pago")
-        .reduce((sum, p) => {
-          const valorPago = Number(p.valor_pago) || 0;
-          if (valorPago <= 0) return sum;
-          const valorEmprestado = Number(p.contratos?.valor_emprestado) || 0;
-          const numeroParcelas = Number(p.contratos?.numero_parcelas) || 1;
-          const principalParcela = valorEmprestado / numeroParcelas;
-          const lucroParcela = valorPago - principalParcela;
-          return sum + Math.max(lucroParcela, 0);
-        }, 0) || 0;
+      const { loadDashboardStats } = await import("@/services/dashboard");
+      const data = await loadDashboardStats();
 
       setStats({
-        totalEmprestado,
-        totalReceber,
-        totalRecebido,
-        lucro,
-        clientesAtivos: clientes?.length || 0,
-        contratosAtivos: contratos?.length || 0,
-        parcelasVencidas: vencidas,
+        totalEmprestado: Number(data.total_emprestado) || 0,
+        totalReceber: Number(data.total_receber) || 0,
+        totalRecebido: Number(data.total_recebido) || 0,
+        lucro: Number(data.lucro) || 0,
+        clientesAtivos: Number(data.clientes_ativos) || 0,
+        contratosAtivos: Number(data.contratos_ativos) || 0,
+        parcelasVencidas: Number(data.parcelas_vencidas) || 0,
       });
 
       // Próximos vencimentos
-      const proximos = parcelas
-        ?.filter(p => p.status === "pendente" || p.status === "parcialmente_pago")
-        .slice(0, 4)
-        .map(p => {
-          const vencimento = new Date(p.data_vencimento + 'T00:00:00');
-          const diffTime = vencimento.getTime() - hoje.getTime();
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-          
-          let status: "vencido" | "vence_hoje" | "proximo" = "proximo";
-          if (diffDays < 0) status = "vencido";
-          else if (diffDays === 0) status = "vence_hoje";
-
-          return {
-            cliente: p.contratos?.clientes?.nome || "Cliente",
-            valor: Number(p.valor_original || p.valor),
-            data: new Date(p.data_vencimento + 'T00:00:00').toLocaleDateString("pt-BR"),
-            status,
-          };
-        }) || [];
-
+      const proximos = (data.proximos_vencimentos || []).map((p: any) => ({
+        cliente: p.cliente || "Cliente",
+        valor: Number(p.valor),
+        data: new Date(p.data + 'T00:00:00').toLocaleDateString("pt-BR"),
+        status: p.status as "vencido" | "vence_hoje" | "proximo",
+      }));
       setProximosVencimentos(proximos);
 
-      // Lucro mensal (últimos 6 meses)
-      const mesesNomes = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-      const agora = new Date();
-      const mesesMap = new Map<string, number>();
-      
-      for (let i = 5; i >= 0; i--) {
-        const d = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
-        const key = `${mesesNomes[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`;
-        mesesMap.set(key, 0);
-      }
+      // Lucro mensal
+      setLucroMensal((data.lucro_mensal || []).map((m: any) => ({
+        mes: m.mes,
+        lucro: Number(Number(m.lucro).toFixed(2)),
+      })));
 
-      parcelas
-        ?.filter(p => (p.status === "pago" || p.status === "parcialmente_pago") && p.data_pagamento)
-        .forEach(p => {
-          const dataPag = new Date(p.data_pagamento + 'T00:00:00');
-          const key = `${mesesNomes[dataPag.getMonth()]}/${String(dataPag.getFullYear()).slice(2)}`;
-          if (mesesMap.has(key)) {
-            const valorPago = Number(p.valor_pago) || 0;
-            const valorEmprestado = Number(p.contratos?.valor_emprestado) || 0;
-            const numeroParcelas = Number(p.contratos?.numero_parcelas) || 1;
-            const principalParcela = valorEmprestado / numeroParcelas;
-            const lucroParcela = Math.max(valorPago - principalParcela, 0);
-            mesesMap.set(key, (mesesMap.get(key) || 0) + lucroParcela);
-          }
-        });
+      // Status distribuição
+      const statusColors: Record<string, string> = {
+        "Pagas": "hsl(var(--success))",
+        "Pendentes": "hsl(var(--muted-foreground))",
+        "Atrasadas": "hsl(var(--destructive))",
+        "Parciais": "hsl(var(--warning))",
+      };
+      setStatusDistribuicao((data.status_distribuicao || []).map((s: any) => ({
+        name: s.name,
+        value: Number(s.value),
+        color: statusColors[s.name] || "hsl(var(--muted-foreground))",
+      })));
 
-      setLucroMensal(Array.from(mesesMap.entries()).map(([mes, lucroVal]) => ({ mes, lucro: Number(lucroVal.toFixed(2)) })));
-
-      // === NOVO: Distribuição por status ===
-      let pagas = 0, pendentes = 0, atrasadas = 0, parciais = 0;
-      parcelas?.forEach(p => {
-        if (p.status === "pago") { pagas++; }
-        else if (p.status === "parcialmente_pago") { parciais++; }
-        else {
-          const venc = new Date(p.data_vencimento + 'T00:00:00');
-          if (venc < hoje) { atrasadas++; } else { pendentes++; }
-        }
-      });
-      
-      const distData: StatusDistribuicao[] = [];
-      if (pagas > 0) distData.push({ name: "Pagas", value: pagas, color: "hsl(var(--success))" });
-      if (pendentes > 0) distData.push({ name: "Pendentes", value: pendentes, color: "hsl(var(--muted-foreground))" });
-      if (atrasadas > 0) distData.push({ name: "Atrasadas", value: atrasadas, color: "hsl(var(--destructive))" });
-      if (parciais > 0) distData.push({ name: "Parciais", value: parciais, color: "hsl(var(--warning))" });
-      setStatusDistribuicao(distData);
-
-      // === NOVO: Capital emprestado vs recebido por mês ===
-      const capitalMap = new Map<string, { emprestado: number; recebido: number }>();
-      for (let i = 5; i >= 0; i--) {
-        const d = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
-        const key = `${mesesNomes[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`;
-        capitalMap.set(key, { emprestado: 0, recebido: 0 });
-      }
-
-      todosContratos?.forEach(c => {
-        const dataEmp = new Date(c.data_emprestimo + 'T00:00:00');
-        const key = `${mesesNomes[dataEmp.getMonth()]}/${String(dataEmp.getFullYear()).slice(2)}`;
-        if (capitalMap.has(key)) {
-          const entry = capitalMap.get(key)!;
-          entry.emprestado += Number(c.valor_emprestado);
-        }
-      });
-
-      parcelas
-        ?.filter(p => (p.status === "pago" || p.status === "parcialmente_pago") && p.data_pagamento)
-        .forEach(p => {
-          const dataPag = new Date(p.data_pagamento + 'T00:00:00');
-          const key = `${mesesNomes[dataPag.getMonth()]}/${String(dataPag.getFullYear()).slice(2)}`;
-          if (capitalMap.has(key)) {
-            const entry = capitalMap.get(key)!;
-            entry.recebido += Number(p.valor_pago) || 0;
-          }
-        });
-
-      setCapitalMensal(Array.from(capitalMap.entries()).map(([mes, v]) => ({
-        mes,
-        emprestado: Number(v.emprestado.toFixed(2)),
-        recebido: Number(v.recebido.toFixed(2)),
+      // Capital mensal
+      setCapitalMensal((data.capital_mensal || []).map((c: any) => ({
+        mes: c.mes,
+        emprestado: Number(Number(c.emprestado).toFixed(2)),
+        recebido: Number(Number(c.recebido).toFixed(2)),
       })));
 
     } catch (error: any) {
