@@ -453,29 +453,36 @@ export function ContratoDetails({
                           <span>Valor:</span>
                           <span className="font-medium text-foreground">R$ {Number(parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                         </div>
+                        {Number(parcela.valor_pago || 0) > 0 && (
+                          <div className="flex justify-between">
+                            <span>Valor pago:</span>
+                            <span className="font-medium text-success">R$ {Number(parcela.valor_pago).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                          </div>
+                        )}
                         {parcela.data_pagamento && (
-                          <>
-                            <div className="flex justify-between">
-                              <span>Pago em:</span>
-                              <span className="font-medium text-foreground">{format(new Date(parcela.data_pagamento + 'T00:00:00'), 'dd/MM/yyyy')}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Valor pago:</span>
-                              <span className="font-medium text-foreground">R$ {Number(parcela.valor_pago).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                            </div>
-                          </>
+                          <div className="flex justify-between">
+                            <span>Pago em:</span>
+                            <span className="font-medium text-foreground">{format(new Date(parcela.data_pagamento + 'T00:00:00'), 'dd/MM/yyyy')}</span>
+                          </div>
                         )}
                       </div>
-                      {parcela.status !== 'pago' ? (
-                        <Button size="sm" onClick={() => abrirModalPagamento(parcela)} className="w-full">
-                          Baixar Parcela
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          {parcela.status !== 'pago' ? (
+                            <Button size="sm" onClick={() => abrirModalPagamento(parcela)} className="w-full">
+                              Baixar Parcela
+                            </Button>
+                          ) : (
+                            <Button size="sm" variant="outline" onClick={() => handleDesfazerPagamento(parcela.id)} className="w-full text-warning hover:bg-warning hover:text-warning-foreground">
+                              <Undo2 className="h-4 w-4 mr-2" />
+                              Desfazer
+                            </Button>
+                          )}
+                        </div>
+                        <Button size="sm" variant="ghost" onClick={() => loadHistorico(parcela)} title="Ver Histórico">
+                          <History className="h-4 w-4" />
                         </Button>
-                      ) : (
-                        <Button size="sm" variant="outline" onClick={() => handleDesfazerPagamento(parcela.id)} className="w-full text-warning hover:bg-warning hover:text-warning-foreground">
-                          <Undo2 className="h-4 w-4 mr-2" />
-                          Desfazer Pagamento
-                        </Button>
-                      )}
+                      </div>
                     </Card>
                   ))}
                 </div>
