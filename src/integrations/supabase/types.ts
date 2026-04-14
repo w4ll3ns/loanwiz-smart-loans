@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      api_usage_log: {
+        Row: {
+          created_at: string
+          function_name: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          function_name: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          function_name?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -380,6 +401,15 @@ export type Database = {
         }
         Returns: string
       }
+      check_api_rate_limit: {
+        Args: {
+          p_function_name: string
+          p_max_calls?: number
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      cleanup_api_usage_log: { Args: never; Returns: undefined }
       criar_contrato_com_parcelas: {
         Args: {
           p_cliente_id: string
@@ -434,6 +464,10 @@ export type Database = {
         Returns: undefined
       }
       is_user_active: { Args: { p_user_id: string }; Returns: boolean }
+      log_api_usage: {
+        Args: { p_function_name: string; p_user_id: string }
+        Returns: undefined
+      }
       recalcular_contrato_parcelas: {
         Args: {
           p_contrato_id: string

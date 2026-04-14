@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { format } from "date-fns";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -139,10 +139,17 @@ export function ContratoForm({
     onOpenChange(false);
   };
 
-  // Reset form when initialData changes
-  if (initialData && formData.clienteId !== initialData.clienteId) {
-    setFormData({ ...defaultFormData, ...initialData });
-  }
+  // Reset form when initialData changes (via useEffect, not during render)
+  const prevInitialDataRef = useRef(initialData);
+  useEffect(() => {
+    if (
+      initialData &&
+      prevInitialDataRef.current !== initialData
+    ) {
+      setFormData({ ...defaultFormData, ...initialData });
+    }
+    prevInitialDataRef.current = initialData;
+  }, [initialData]);
 
   const calcularContrato = () => {
     const valor = parseFloat(formData.valorEmprestado);

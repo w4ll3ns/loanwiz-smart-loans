@@ -11,6 +11,31 @@ Sistema SaaS multi-tenant para gestão de empréstimos pessoais. Construído com
 - **Auth**: Supabase Auth (email/password)
 - **Deploy**: Lovable Cloud
 
+## Variáveis de Ambiente
+
+### Frontend (auto-populadas pela plataforma)
+```
+VITE_SUPABASE_URL          — URL do projeto Supabase
+VITE_SUPABASE_PUBLISHABLE_KEY — Chave pública (anon key)
+VITE_SUPABASE_PROJECT_ID   — ID do projeto Supabase
+```
+
+O arquivo `.env` é auto-gerado pela plataforma. **Nunca** versionar `.env.local` ou variantes com secrets reais.
+
+### Edge Functions (disponíveis automaticamente no Supabase)
+```
+SUPABASE_URL               — URL do projeto
+SUPABASE_ANON_KEY          — Chave anon
+SUPABASE_SERVICE_ROLE_KEY  — Chave service_role (privada, nunca expor)
+OPENAI_API_KEY             — API key da OpenAI (configurada nos secrets do Supabase)
+```
+
+### Segurança de Credenciais
+- O `client.ts` usa exclusivamente `import.meta.env.VITE_*`
+- Nenhuma credencial é hardcoded no código
+- `.gitignore` protege `.env.local`, `.env.*.local` contra versionamento acidental
+- Chaves privadas (service_role, OpenAI) ficam apenas nos secrets do Supabase
+
 ## Isolamento Multi-Tenant
 
 Cada usuário vê apenas seus dados. O isolamento é garantido por RLS:
@@ -62,6 +87,34 @@ Administradores usam funções `SECURITY DEFINER` dedicadas (prefixo `admin_*`) 
 | `gerar_parcelas` | SECURITY DEFINER | Geração de parcelas (usado internamente) |
 | `is_user_active` | SECURITY DEFINER | Verifica se usuário está ativo/assinante |
 | `has_role` | SECURITY DEFINER | Verifica role do usuário |
+| `log_api_usage` | SECURITY DEFINER | Registra uso de API para rate limiting |
+| `check_api_rate_limit` | SECURITY DEFINER | Verifica limite de uso (50 chamadas/24h) |
+
+## Edge Functions
+
+### `parse-comprovante`
+Extrai dados de comprovantes PIX via GPT-4o.
+
+**Proteções:**
+- `verify_jwt = true` no config.toml
+- Validação JWT via `getClaims()`
+- Rate limit: 50 chamadas/24h por usuário (via `api_usage_log`)
+- Payload limit: 5MB máximo
+- MIME types aceitos: PNG, JPEG, WebP
+- Timeout: 30s na chamada à OpenAI
+- Validação de saída: nome (string), valor (number > 0), data (YYYY-MM-DD)
+
+### `delete-user`
+Exclusão completa de usuário pelo admin.
+
+**Proteções:**
+- `verify_jwt = true` no config.toml
+- Validação JWT + verificação de role admin
+- Validação de UUID no input
+- Prevenção de auto-exclusão
+- Auditoria registrada ANTES da exclusão
+- Ordem de deleção referencial: historico → parcelas → contratos → clientes → roles → profiles → auth
+- Report de progresso em caso de falha parcial
 
 ## Status
 
@@ -88,27 +141,46 @@ src/
 └── services/            # Camada de acesso a dados (wrappers de RPCs)
 ```
 
-## Ambiente
+## Governança de Migrations
 
-Variáveis obrigatórias no `.env`:
-```
-VITE_SUPABASE_URL=https://xxx.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=eyJ...
-```
+### Tipos de Alteração
 
-**Nunca** hardcode credenciais no código. O `client.ts` usa `import.meta.env`.
+| Tipo | Onde | Exemplo |
+|------|------|---------|
+| **Schema migration** | `supabase/migrations/` | CREATE TABLE, ALTER TABLE, CREATE FUNCTION |
+| **Data fix operacional** | Script avulso ou RPC admin | UPDATE específico de registro, correção pontual |
 
-## Migrations
+### Regras
 
-Todas as migrations são aditivas e reversíveis:
-- Nunca remover colunas sem estratégia de transição
-- Sempre usar `IF NOT EXISTS` para constraints e índices
-- Foreign keys com `ON DELETE CASCADE` para integridade referencial
+1. **Migrations são apenas para schema** — estrutura de tabelas, funções, índices, políticas RLS
+2. **Nunca incluir INSERT/UPDATE/DELETE de dados operacionais** em migrations
+3. **Correções pontuais de dados** devem ser feitas via SQL Editor no dashboard ou via RPCs administrativas
+4. **Toda migration deve ser incremental** — ADD COLUMN, CREATE IF NOT EXISTS, nunca DROP destrutivo
+5. **Usar `IF NOT EXISTS`** para constraints, índices e tabelas quando possível
+6. **Foreign keys com `ON DELETE CASCADE`** quando fizer sentido para integridade referencial
+7. **Sempre testar em ambiente de desenvolvimento** antes de aplicar em produção
+
+### Rollback
+
+- Migrations são aditivas — rollback consiste em nova migration que desfaz a anterior
+- Nunca remover colunas sem período de transição
+- Dados existentes devem ser preservados em qualquer cenário
+
+## Cuidados de Deploy
+
+1. **Migrations rodam automaticamente** ao fazer deploy pela Lovable
+2. **Edge Functions são deployadas automaticamente** — verificar logs após deploy
+3. **Verificar secrets** no dashboard do Supabase antes do deploy (OPENAI_API_KEY, etc.)
+4. **Testar RLS** após alterações em políticas — usar SQL Editor com `SET ROLE`
+5. **Monitorar** edge function logs após alterações
+6. **Nunca** fazer DROP TABLE ou DROP COLUMN sem backup e período de transição
 
 ## Segurança
 
 - RLS ativo em todas as tabelas
 - Funções administrativas protegidas com `has_role(auth.uid(), 'admin')`
 - `is_user_active()` valida assinatura antes de INSERT em tabelas críticas
-- Edge Functions requerem JWT válido
+- Edge Functions requerem JWT válido (`verify_jwt = true`)
+- Rate limiting via `api_usage_log` para funções custosas
 - Credenciais via variáveis de ambiente, nunca hardcoded
+- Auditoria de ações administrativas via `audit_logs`
