@@ -45,19 +45,12 @@ All colors MUST be HSL.
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
@@ -121,4 +114,34 @@ All colors MUST be HSL.
   }
 }
 
+@layer components {
+  /* Page header pattern */
+  .page-header {
+    @apply flex flex-col gap-1 mb-1;
+  }
+  .page-header h1 {
+    @apply text-xl md:text-2xl font-bold tracking-tight;
+  }
+  .page-header p {
+    @apply text-sm text-muted-foreground;
+  }
 
+  /* Stat card with left accent */
+  .stat-card-accent {
+    @apply border-l-4 transition-shadow hover:shadow-md;
+  }
+
+  /* Empty state pattern */
+  .empty-state {
+    @apply flex flex-col items-center justify-center py-12 px-4 text-center;
+  }
+  .empty-state-icon {
+    @apply h-12 w-12 text-muted-foreground/30 mb-4;
+  }
+  .empty-state-title {
+    @apply text-base font-medium text-foreground mb-1;
+  }
+  .empty-state-description {
+    @apply text-sm text-muted-foreground mb-4 max-w-sm;
+  }
+}
