@@ -228,6 +228,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "parcelas_historico_parcela_id_fkey"
+            columns: ["parcela_id"]
+            isOneToOne: false
+            referencedRelation: "parcelas"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "parcelas_pagamentos_parcela_id_fkey"
             columns: ["parcela_id"]
             isOneToOne: false
@@ -373,6 +380,25 @@ export type Database = {
         }
         Returns: string
       }
+      criar_contrato_com_parcelas: {
+        Args: {
+          p_cliente_id: string
+          p_data_emprestimo: string
+          p_numero_parcelas: number
+          p_percentual: number
+          p_periodicidade: string
+          p_permite_domingo?: boolean
+          p_permite_sabado?: boolean
+          p_tipo_juros?: string
+          p_valor_emprestado: number
+        }
+        Returns: string
+      }
+      dashboard_stats: { Args: never; Returns: Json }
+      estornar_pagamento_parcela: {
+        Args: { p_parcela_id: string }
+        Returns: undefined
+      }
       gerar_parcelas:
         | {
             Args: {
@@ -424,6 +450,16 @@ export type Database = {
           p_permite_sabado: boolean
         }
         Returns: undefined
+      }
+      registrar_pagamento_parcela: {
+        Args: {
+          p_data_pagamento: string
+          p_observacao?: string
+          p_parcela_id: string
+          p_tipo: string
+          p_valor: number
+        }
+        Returns: Json
       }
       update_own_profile: {
         Args: { p_email?: string; p_nome?: string; p_telefone?: string }

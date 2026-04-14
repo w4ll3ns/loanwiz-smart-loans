@@ -236,37 +236,18 @@ export function ContratoForm({
     }
 
     try {
-      const { data: contrato, error: contratoError } = await supabase
-        .from("contratos")
-        .insert([{
-          cliente_id: validatedData.clienteId,
-          valor_emprestado: parseFloat(validatedData.valorEmprestado),
-          percentual: parseFloat(validatedData.percentual),
-          periodicidade: validatedData.periodicidade,
-          numero_parcelas: parseInt(validatedData.numeroParcelas),
-          data_emprestimo: validatedData.dataEmprestimo,
-          valor_total: calculo.valorTotal,
-          status: "ativo",
-          tipo_juros: validatedData.tipoJuros,
-          permite_cobranca_sabado: validatedData.permiteCobrancaSabado,
-          permite_cobranca_domingo: validatedData.permiteCobrancaDomingo
-        }])
-        .select()
-        .single();
-
-      if (contratoError) throw contratoError;
-
-      const { error: parcelasError } = await supabase.rpc("gerar_parcelas", {
-        p_contrato_id: contrato.id,
-        p_numero_parcelas: parseInt(validatedData.numeroParcelas),
-        p_valor_parcela: calculo.valorParcela,
-        p_data_inicio: validatedData.dataEmprestimo,
-        p_periodicidade: validatedData.periodicidade,
-        p_permite_sabado: validatedData.permiteCobrancaSabado,
-        p_permite_domingo: validatedData.permiteCobrancaDomingo
+      const { criarContratoComParcelas } = await import("@/services/contratos");
+      await criarContratoComParcelas({
+        clienteId: validatedData.clienteId,
+        valorEmprestado: parseFloat(validatedData.valorEmprestado),
+        percentual: parseFloat(validatedData.percentual),
+        periodicidade: validatedData.periodicidade,
+        numeroParcelas: parseInt(validatedData.numeroParcelas),
+        dataEmprestimo: validatedData.dataEmprestimo,
+        tipoJuros: validatedData.tipoJuros,
+        permiteSabado: validatedData.permiteCobrancaSabado,
+        permiteDomingo: validatedData.permiteCobrancaDomingo,
       });
-
-      if (parcelasError) throw parcelasError;
 
       setFormData({ ...defaultFormData });
       onOpenChange(false);
