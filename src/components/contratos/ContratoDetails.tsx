@@ -98,6 +98,23 @@ export function ContratoDetails({
 
   if (!contrato) return null;
 
+  const loadHistorico = async (parcela: Parcela) => {
+    try {
+      const { data, error } = await supabase
+        .from("parcelas_historico")
+        .select("*")
+        .eq("parcela_id", parcela.id)
+        .order("data_pagamento", { ascending: false });
+
+      if (error) throw error;
+      setParcelaHistorico(parcela as any);
+      setHistoricoData(data || []);
+      setHistoricoModalOpen(true);
+    } catch (error: any) {
+      toast({ title: "Erro ao carregar histórico", description: error.message, variant: "destructive" });
+    }
+  };
+
   const calcularJuros = (parcela: Parcela) => {
     return calcularJurosParcela(
       Number(contrato.valor_emprestado),
