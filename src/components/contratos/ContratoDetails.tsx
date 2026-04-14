@@ -378,6 +378,7 @@ export function ContratoDetails({
                         <TableHead>Parcela</TableHead>
                         <TableHead>Vencimento</TableHead>
                         <TableHead>Valor</TableHead>
+                        <TableHead>Valor Pago</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Pagamento</TableHead>
                         <TableHead>Ação</TableHead>
@@ -389,6 +390,13 @@ export function ContratoDetails({
                           <TableCell className="font-medium">{parcela.numero_parcela}</TableCell>
                           <TableCell>{format(new Date(parcela.data_vencimento + 'T00:00:00'), 'dd/MM/yyyy')}</TableCell>
                           <TableCell>R$ {Number(parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
+                          <TableCell>
+                            {Number(parcela.valor_pago || 0) > 0 ? (
+                              <span className="text-success font-medium">
+                                R$ {Number(parcela.valor_pago).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                              </span>
+                            ) : '-'}
+                          </TableCell>
                           <TableCell>
                             {parcela.status === 'pago' ? (
                               <Badge variant="default" className="bg-success">Pago</Badge>
@@ -402,14 +410,19 @@ export function ContratoDetails({
                             {parcela.data_pagamento ? format(new Date(parcela.data_pagamento + 'T00:00:00'), 'dd/MM/yyyy') : '-'}
                           </TableCell>
                           <TableCell>
-                            {parcela.status !== 'pago' ? (
-                              <Button size="sm" onClick={() => abrirModalPagamento(parcela)}>Baixar</Button>
-                            ) : (
-                              <Button size="sm" variant="outline" onClick={() => handleDesfazerPagamento(parcela.id)} className="text-warning hover:bg-warning hover:text-warning-foreground">
-                                <Undo2 className="h-4 w-4 mr-1" />
-                                Desfazer
+                            <div className="flex gap-1">
+                              {parcela.status !== 'pago' ? (
+                                <Button size="sm" onClick={() => abrirModalPagamento(parcela)}>Baixar</Button>
+                              ) : (
+                                <Button size="sm" variant="outline" onClick={() => handleDesfazerPagamento(parcela.id)} className="text-warning hover:bg-warning hover:text-warning-foreground">
+                                  <Undo2 className="h-4 w-4 mr-1" />
+                                  Desfazer
+                                </Button>
+                              )}
+                              <Button size="sm" variant="ghost" onClick={() => loadHistorico(parcela)} title="Ver Histórico">
+                                <History className="h-4 w-4" />
                               </Button>
-                            )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
