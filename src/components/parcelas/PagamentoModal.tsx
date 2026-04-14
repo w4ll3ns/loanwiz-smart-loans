@@ -63,73 +63,39 @@ export function PagamentoModal({ isOpen, onOpenChange, parcela, onPagamentoConfi
     if (!parcela) return;
 
     try {
-      let valorPagar = 0;
-      let tipoPag = tipoPagamento;
-      const valorOriginal = Number(parcela.valor_original || parcela.valor);
+      const { registrarPagamento } = await import("@/services/parcelas");
+      
+      let tipo: "total" | "juros" | "parcial" = "total";
+      let valor = 0;
 
       if (tipoPagamento === "total") {
-        valorPagar = valorOriginal;
+        tipo = "total";
+        valor = Number(parcela.valor_original || parcela.valor);
       } else if (tipoPagamento === "juros") {
-        valorPagar = calcularJuros(parcela);
-        tipoPag = "juros";
+        tipo = "juros";
+        valor = calcularJuros(parcela);
       } else if (tipoPagamento === "personalizado") {
-        valorPagar = Number(valorPagamento);
-        tipoPag = "parcial";
+        tipo = "parcial";
+        valor = Number(valorPagamento);
       }
 
-      const { error: historicoError } = await supabase
-        .from("parcelas_historico")
-        .insert({
-          parcela_id: parcela.id,
-          valor_pago: valorPagar,
-          tipo_pagamento: tipoPag,
-          data_pagamento: new Date().toISOString(),
-          observacao: observacaoPagamento.trim() || null,
-          tipo_evento: "pagamento",
-        } as any);
-
-      if (historicoError) throw historicoError;
-
-      const novoValorPago = (Number(parcela.valor_pago) || 0) + valorPagar;
-      const novoStatus = tipoPagamento === "total" ? "pago" : "pendente";
-
-      const updateData: any = {
-        valor_pago: novoValorPago,
-        status: novoStatus,
-        data_pagamento: dataPagamento,
-      };
-
-      if (!parcela.valor_original) {
-        updateData.valor_original = parcela.valor;
-      }
-
-      const { error: updateError } = await supabase
-        .from("parcelas")
-        .update(updateData)
-        .eq("id", parcela.id);
-
-      if (updateError) throw updateError;
-
-      toast({
-        title: novoStatus === "pago" ? "Parcela quitada!" : "Pagamento parcial registrado",
-        description: novoStatus === "pago"
-          ? `Parcela quitada com R$ ${valorPagar.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-          : `Valor pago: R$ ${valorPagar.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}. Ainda deve: R$ ${valorOriginal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      const result = await registrarPagamento({
+        parcelaId: parcela.id,
+        tipo,
+        valor,
+        dataPagamento: dataPagamento,
+        observacao: observacaoPagamento.trim() || undefined,
       });
 
-      if (novoStatus === "pago" && parcela.contrato_id) {
-        const { data: todasParcelas, error: parcelasError } = await supabase
-          .from("parcelas")
-          .select("status")
-          .eq("contrato_id", parcela.contrato_id);
+      toast({
+        title: result.novo_status === "pago" ? "Parcela quitada!" : "Pagamento parcial registrado",
+        description: result.novo_status === "pago"
+          ? `Parcela quitada com R$ ${result.valor_pago.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+          : `Valor pago: R$ ${result.valor_pago.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      });
 
-        if (!parcelasError && todasParcelas) {
-          const todasPagas = todasParcelas.every(p => p.status === "pago");
-          if (todasPagas) {
-            await supabase.from("contratos").update({ status: "quitado" }).eq("id", parcela.contrato_id);
-            toast({ title: "Contrato quitado! 🎉", description: "Todas as parcelas foram pagas." });
-          }
-        }
+      if (result.contrato_quitado) {
+        toast({ title: "Contrato quitado! 🎉", description: "Todas as parcelas foram pagas." });
       }
 
       onOpenChange(false);

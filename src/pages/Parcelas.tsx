@@ -188,8 +188,8 @@ export default function Parcelas() {
 
   const handleMarcarPendente = async (parcelaId: string) => {
     try {
-      await supabase.from("parcelas_historico").delete().eq("parcela_id", parcelaId).eq("tipo_evento", "pagamento");
-      await supabase.from("parcelas").update({ status: "pendente", data_pagamento: null, valor_pago: 0 }).eq("id", parcelaId);
+      const { estornarPagamento } = await import("@/services/parcelas");
+      await estornarPagamento(parcelaId);
       toast({ title: "Pagamentos desfeitos", description: "A parcela foi resetada." });
       loadParcelas();
     } catch (error: any) {
