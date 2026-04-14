@@ -477,7 +477,7 @@ export default function Parcelas() {
               </TableHeader>
               <TableBody>
                 {parcelasPaginadas.length === 0 ? (
-                  <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma parcela encontrada</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={7}><EmptyState icon={Calculator} title="Nenhuma parcela encontrada" description="Ajuste os filtros ou busca para ver resultados." /></TableCell></TableRow>
                 ) : (
                   parcelasPaginadas.map((parcela) => (
                     <TableRow key={parcela.id}>
