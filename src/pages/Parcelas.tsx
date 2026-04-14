@@ -253,9 +253,10 @@ export default function Parcelas() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-        <h1 className="text-xl md:text-3xl font-bold truncate">Gestão de Parcelas</h1>
-      </div>
+      <PageHeader
+        title="Parcelas"
+        description="Controle de cobranças e pagamentos"
+      />
 
       {/* Filtro de Período */}
       <Card className="w-full">
