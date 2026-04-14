@@ -9,19 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, Search, Users, Download } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -30,16 +21,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { AccessRestrictedModal } from "@/components/AccessRestrictedModal";
 import { exportarCsv } from "@/lib/exportCsv";
+import { PageHeader } from "@/components/PageHeader";
+import { EmptyState } from "@/components/EmptyState";
 
-// Input validation schema
 const clienteSchema = z.object({
   nome: z.string().trim().min(1, 'Nome é obrigatório').max(100, 'Nome deve ter no máximo 100 caracteres'),
   telefone: z.string().max(20, 'Telefone deve ter no máximo 20 caracteres').optional().or(z.literal('')),
   endereco: z.string().max(200, 'Endereço deve ter no máximo 200 caracteres').optional().or(z.literal('')),
   observacoes: z.string().max(500, 'Observações devem ter no máximo 500 caracteres').optional().or(z.literal(''))
 });
-
-type ValidatedCliente = z.infer<typeof clienteSchema>;
 
 interface Cliente {
   id: string;
@@ -62,20 +52,14 @@ export default function Clientes() {
   const { canCreate, userEmail } = useUserRole();
 
   const [formData, setFormData] = useState({
-    nome: "",
-    telefone: "",
-    endereco: "",
-    observacoes: ""
+    nome: "", telefone: "", endereco: "", observacoes: ""
   });
 
-  // Função para remover acentos (busca normalizada)
   const removerAcentos = (texto: string): string => {
     return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   };
 
-  useEffect(() => {
-    loadClientes();
-  }, []);
+  useEffect(() => { loadClientes(); }, []);
 
   const loadClientes = async () => {
     try {
@@ -106,23 +90,17 @@ export default function Clientes() {
 
   const {
     paginatedItems: clientesPaginados,
-    currentPage,
-    totalPages,
-    showPagination,
-    goToNextPage,
-    goToPrevPage,
+    currentPage, totalPages, showPagination, goToNextPage, goToPrevPage,
   } = usePagination(filteredClientes);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate input
     const validationResult = clienteSchema.safeParse(formData);
     if (!validationResult.success) {
-      const firstError = validationResult.error.errors[0];
       toast({
         title: "Dados inválidos",
-        description: firstError.message,
+        description: validationResult.error.errors[0].message,
         variant: "destructive",
       });
       return;
@@ -132,13 +110,8 @@ export default function Clientes() {
     
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
       if (!user) {
-        toast({
-          title: "Erro de autenticação",
-          description: "Você precisa estar autenticado para realizar esta ação.",
-          variant: "destructive",
-        });
+        toast({ title: "Erro de autenticação", description: "Você precisa estar autenticado.", variant: "destructive" });
         return;
       }
 
@@ -152,13 +125,8 @@ export default function Clientes() {
             observacoes: validatedData.observacoes || null
           })
           .eq("id", editingCliente.id);
-
         if (error) throw error;
-
-        toast({
-          title: "Cliente atualizado",
-          description: "Cliente atualizado com sucesso.",
-        });
+        toast({ title: "Cliente atualizado", description: "Dados salvos com sucesso." });
       } else {
         const { error } = await supabase
           .from("clientes")
@@ -169,13 +137,8 @@ export default function Clientes() {
             observacoes: validatedData.observacoes || null,
             user_id: user.id 
           }]);
-
         if (error) throw error;
-
-        toast({
-          title: "Cliente adicionado",
-          description: "Novo cliente cadastrado com sucesso.",
-        });
+        toast({ title: "Cliente cadastrado", description: `${validatedData.nome} foi adicionado com sucesso.` });
       }
 
       setFormData({ nome: "", telefone: "", endereco: "", observacoes: "" });
@@ -185,7 +148,7 @@ export default function Clientes() {
     } catch (error: any) {
       toast({
         title: "Não foi possível salvar o cliente",
-        description: "Verifique se todos os campos foram preenchidos corretamente e tente novamente.",
+        description: "Verifique os dados preenchidos e tente novamente.",
         variant: "destructive",
       });
     }
@@ -204,37 +167,28 @@ export default function Clientes() {
 
   const handleDelete = async () => {
     if (!clienteToDelete) return;
-
     try {
-      const { error } = await supabase
-        .from("clientes")
-        .delete()
-        .eq("id", clienteToDelete);
-
+      const { error } = await supabase.from("clientes").delete().eq("id", clienteToDelete);
       if (error) throw error;
-
-      toast({
-        title: "Cliente excluído",
-        description: "Cliente removido com sucesso.",
-      });
-      
+      toast({ title: "Cliente excluído", description: "Registro removido com sucesso." });
       setIsDeleteDialogOpen(false);
       setClienteToDelete(null);
       loadClientes();
     } catch (error: any) {
       toast({
-        title: "Não foi possível excluir o cliente",
-        description: "Este cliente pode ter contratos associados. Exclua os contratos primeiro ou verifique sua conexão.",
+        title: "Não foi possível excluir",
+        description: "Este cliente pode ter contratos associados. Exclua os contratos primeiro.",
         variant: "destructive",
       });
     }
   };
 
   return (
-    <div className="space-y-4 md:space-y-6">
-      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-        <h1 className="text-2xl md:text-3xl font-bold">Gestão de Clientes</h1>
-        
+    <div className="space-y-4 md:space-y-5">
+      <PageHeader
+        title="Clientes"
+        description="Cadastro e gestão de clientes"
+      >
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
           setIsDialogOpen(open);
           if (!open) {
@@ -243,102 +197,74 @@ export default function Clientes() {
           }
         }}>
           <DialogTrigger asChild>
-            <Button size="sm" className="w-full md:w-auto" onClick={(e) => {
+            <Button size="sm" onClick={(e) => {
               if (!canCreate && !editingCliente) {
                 e.preventDefault();
                 setIsAccessModalOpen(true);
               }
             }}>
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Cliente
+              <Plus className="h-4 w-4 mr-1.5" />
+              Novo cliente
             </Button>
           </DialogTrigger>
           <DialogContent className="w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{editingCliente ? "Editar Cliente" : "Novo Cliente"}</DialogTitle>
+              <DialogTitle>{editingCliente ? "Editar cliente" : "Novo cliente"}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <Label htmlFor="nome">Nome *</Label>
-                <Input
-                  id="nome"
-                  value={formData.nome}
-                  onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
-                  required
-                />
+                <Input id="nome" value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} required placeholder="Nome completo do cliente" />
               </div>
-              
               <div>
                 <Label htmlFor="telefone">Telefone</Label>
-                <Input
-                  id="telefone"
-                  value={formData.telefone}
-                  onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
-                />
+                <Input id="telefone" value={formData.telefone} onChange={(e) => setFormData({ ...formData, telefone: e.target.value })} placeholder="(00) 00000-0000" />
               </div>
-              
               <div>
                 <Label htmlFor="endereco">Endereço</Label>
-                <Input
-                  id="endereco"
-                  value={formData.endereco}
-                  onChange={(e) => setFormData({ ...formData, endereco: e.target.value })}
-                />
+                <Input id="endereco" value={formData.endereco} onChange={(e) => setFormData({ ...formData, endereco: e.target.value })} placeholder="Endereço do cliente" />
               </div>
-              
               <div>
                 <Label htmlFor="observacoes">Observações</Label>
-                <Textarea
-                  id="observacoes"
-                  value={formData.observacoes}
-                  onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
-                  rows={3}
-                />
+                <Textarea id="observacoes" value={formData.observacoes} onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })} rows={3} placeholder="Anotações sobre o cliente" />
               </div>
-
-              <div className="flex flex-col-reverse sm:flex-row gap-2 pt-4">
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="w-full sm:w-auto">
-                  Cancelar
-                </Button>
-                <Button type="submit" className="w-full sm:w-auto">
-                  {editingCliente ? "Salvar" : "Cadastrar"}
-                </Button>
+              <div className="flex flex-col-reverse sm:flex-row gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="w-full sm:w-auto">Cancelar</Button>
+                <Button type="submit" className="w-full sm:w-auto">{editingCliente ? "Salvar alterações" : "Cadastrar cliente"}</Button>
               </div>
             </form>
           </DialogContent>
         </Dialog>
+      </PageHeader>
+
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Buscar por nome ou telefone..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-9 h-9 text-base md:text-sm"
+        />
       </div>
 
-      {/* Busca */}
+      {/* Client list */}
       <Card>
-        <CardContent className="pt-4 md:pt-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nome ou telefone..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 text-base md:text-sm"
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Lista de Clientes */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base md:text-lg">Clientes Cadastrados ({filteredClientes.length})</CardTitle>
-          <Button variant="outline" size="sm" onClick={() => {
+        <CardHeader className="flex flex-row items-center justify-between pb-3">
+          <CardTitle className="text-sm md:text-base font-semibold">
+            {filteredClientes.length} cliente{filteredClientes.length !== 1 ? 's' : ''}
+          </CardTitle>
+          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => {
             exportarCsv("clientes.csv",
               ["Nome", "Telefone", "Endereço", "Observações"],
               filteredClientes.map(c => [c.nome, c.telefone || "", c.endereco || "", c.observacoes || ""])
             );
           }}>
-            <Download className="h-4 w-4 mr-1" />
-            <span className="hidden sm:inline">Exportar CSV</span>
+            <Download className="h-3 w-3 mr-1" />
+            CSV
           </Button>
         </CardHeader>
-        <CardContent className="p-0 md:p-6">
+        <CardContent className="p-0 md:p-6 md:pt-0">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -350,16 +276,17 @@ export default function Clientes() {
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={3} className="p-0">
-                      <TableSkeleton rows={5} />
-                    </TableCell>
-                  </TableRow>
+                  <TableRow><TableCell colSpan={3} className="p-0"><TableSkeleton rows={5} /></TableCell></TableRow>
                 ) : filteredClientes.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
-                      <Users className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
-                      {searchTerm ? "Nenhum cliente encontrado para esta busca" : "Nenhum cliente cadastrado ainda"}
+                    <TableCell colSpan={3}>
+                      <EmptyState
+                        icon={Users}
+                        title={searchTerm ? "Nenhum cliente encontrado" : "Nenhum cliente cadastrado"}
+                        description={searchTerm ? "Tente buscar com outro nome ou telefone." : "Cadastre seu primeiro cliente para começar a criar contratos."}
+                        actionLabel={!searchTerm ? "Cadastrar cliente" : undefined}
+                        onAction={!searchTerm ? () => setIsDialogOpen(true) : undefined}
+                      />
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -367,30 +294,22 @@ export default function Clientes() {
                     <TableRow key={cliente.id}>
                       <TableCell className="font-medium pl-4 md:pl-3">
                         {cliente.nome}
-                        <div className="md:hidden text-xs text-muted-foreground mt-1">
+                        <div className="md:hidden text-xs text-muted-foreground mt-0.5">
                           {cliente.telefone || "Sem telefone"}
                         </div>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">{cliente.telefone || "-"}</TableCell>
+                      <TableCell className="hidden md:table-cell text-sm">{cliente.telefone || "—"}</TableCell>
                       <TableCell className="text-right pr-4 md:pr-3">
-                        <div className="flex gap-1 md:gap-2 justify-end">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEdit(cliente)}
-                          >
-                            <Pencil className="h-3 w-3 md:h-4 md:w-4" />
+                        <div className="flex gap-1 justify-end">
+                          <Button variant="outline" size="sm" onClick={() => handleEdit(cliente)} className="h-8 w-8 p-0">
+                            <Pencil className="h-3.5 w-3.5" />
                           </Button>
                           <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setClienteToDelete(cliente.id);
-                              setIsDeleteDialogOpen(true);
-                            }}
-                            className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                            variant="outline" size="sm"
+                            onClick={() => { setClienteToDelete(cliente.id); setIsDeleteDialogOpen(true); }}
+                            className="h-8 w-8 p-0 text-destructive hover:bg-destructive hover:text-destructive-foreground"
                           >
-                            <Trash2 className="h-3 w-3 md:h-4 md:w-4" />
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                       </TableCell>
@@ -401,40 +320,29 @@ export default function Clientes() {
             </Table>
           </div>
           {showPagination && (
-            <PaginationControls
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPrevPage={goToPrevPage}
-              onNextPage={goToNextPage}
-            />
+            <PaginationControls currentPage={currentPage} totalPages={totalPages} onPrevPage={goToPrevPage} onNextPage={goToNextPage} />
           )}
         </CardContent>
       </Card>
 
-      {/* Dialog de Confirmação de Exclusão */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent className="w-[95vw] sm:max-w-lg">
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogTitle>Excluir cliente?</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir este cliente? Esta ação não pode ser desfeita.
+              Esta ação não pode ser desfeita. Se houver contratos associados, a exclusão será bloqueada.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
             <AlertDialogCancel className="w-full sm:w-auto">Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Excluir
+              Excluir cliente
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Modal de Acesso Restrito */}
-      <AccessRestrictedModal
-        open={isAccessModalOpen}
-        onOpenChange={setIsAccessModalOpen}
-        userEmail={userEmail}
-      />
+      <AccessRestrictedModal open={isAccessModalOpen} onOpenChange={setIsAccessModalOpen} userEmail={userEmail} />
     </div>
   );
 }

@@ -1,17 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Upload, Search, Download } from "lucide-react";
+import { Upload, Search, Download, FileText, DollarSign, CheckCircle2, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { getLocalDateString } from "@/lib/utils";
@@ -23,6 +18,8 @@ import { ContratoForm, ContratoDetails, ImportComprovante } from "@/components/c
 import { TableSkeleton, CardListSkeleton } from "@/components/LoadingSkeletons";
 import { PaginationControls } from "@/components/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
+import { PageHeader } from "@/components/PageHeader";
+import { EmptyState } from "@/components/EmptyState";
 import type { Contrato, Parcela } from "@/components/contratos";
 import type { ContratoFormData } from "@/components/contratos";
 
@@ -54,6 +51,18 @@ export default function Contratos() {
       : true;
     return matchesStatus && matchesSearch;
   });
+
+  const summaryStats = useMemo(() => {
+    const ativos = contratos.filter(c => c.status === "ativo");
+    const quitados = contratos.filter(c => c.status === "quitado");
+    const valorEmAberto = ativos.reduce((acc, c) => acc + Number(c.valor_total), 0);
+    return {
+      ativos: ativos.length,
+      quitados: quitados.length,
+      total: contratos.length,
+      valorEmAberto,
+    };
+  }, [contratos]);
 
   const {
     paginatedItems: contratosPaginados,
@@ -179,46 +188,84 @@ export default function Contratos() {
   };
 
   return (
-    <div className="space-y-4 md:space-y-6">
-      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-        <h1 className="text-2xl md:text-3xl font-bold">Gestão de Contratos</h1>
-        
-        <div className="flex gap-2 flex-col sm:flex-row">
-          <Button size="sm" variant="outline" className="w-full md:w-auto" onClick={() => {
-            if (!canCreate) {
-              setIsAccessModalOpen(true);
-              return;
-            }
-            setIsImportDialogOpen(true);
-          }}>
-            <Upload className="h-4 w-4 mr-2" />
-            Importar Comprovante
-          </Button>
+    <div className="space-y-4 md:space-y-5">
+      <PageHeader
+        title="Contratos"
+        description="Gerencie os contratos de empréstimo"
+      >
+        <Button size="sm" variant="outline" onClick={() => {
+          if (!canCreate) {
+            setIsAccessModalOpen(true);
+            return;
+          }
+          setIsImportDialogOpen(true);
+        }}>
+          <Upload className="h-4 w-4 mr-1.5" />
+          Importar
+        </Button>
 
-          <ContratoForm
-            clientes={clientes}
-            isOpen={isDialogOpen}
-            onOpenChange={(open) => {
-              setIsDialogOpen(open);
-              if (!open) setInitialFormData(undefined);
-            }}
-            onContratoCreated={loadContratos}
-            canCreate={canCreate}
-            onAccessRestricted={() => setIsAccessModalOpen(true)}
-            initialData={initialFormData}
-          />
+        <ContratoForm
+          clientes={clientes}
+          isOpen={isDialogOpen}
+          onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) setInitialFormData(undefined);
+          }}
+          onContratoCreated={loadContratos}
+          canCreate={canCreate}
+          onAccessRestricted={() => setIsAccessModalOpen(true)}
+          initialData={initialFormData}
+        />
+      </PageHeader>
+
+      {/* Summary cards */}
+      {!loading && contratos.length > 0 && (
+        <div className="grid gap-2 grid-cols-2 lg:grid-cols-4">
+          <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setStatusFilter("ativos")}>
+            <CardContent className="p-3 flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <FileText className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-lg font-bold">{summaryStats.ativos}</p>
+                <p className="text-[11px] text-muted-foreground">Ativos</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setStatusFilter("quitados")}>
+            <CardContent className="p-3 flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-success/10 flex items-center justify-center flex-shrink-0">
+                <CheckCircle2 className="h-4 w-4 text-success" />
+              </div>
+              <div>
+                <p className="text-lg font-bold">{summaryStats.quitados}</p>
+                <p className="text-[11px] text-muted-foreground">Quitados</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="col-span-2">
+            <CardContent className="p-3 flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-warning/10 flex items-center justify-center flex-shrink-0">
+                <DollarSign className="h-4 w-4 text-warning" />
+              </div>
+              <div>
+                <p className="text-lg font-bold truncate">R$ {summaryStats.valorEmAberto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                <p className="text-[11px] text-muted-foreground">Valor total em aberto</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </div>
+      )}
 
-      {/* Lista de Contratos */}
+      {/* Filters & List */}
       <Card>
-        <CardHeader className="flex flex-col gap-3">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <CardTitle className="text-base md:text-lg">
+        <CardHeader className="pb-3 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <CardTitle className="text-sm md:text-base font-semibold">
               {statusFilter === "ativos" ? "Contratos Ativos" : statusFilter === "quitados" ? "Contratos Quitados" : "Todos os Contratos"} ({contratosFiltrados.length})
             </CardTitle>
             <div className="flex gap-1 items-center">
-              <Button variant="outline" size="sm" onClick={() => {
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => {
                 exportarCsv("contratos.csv",
                   ["Cliente", "Valor Emprestado", "Valor Total", "Parcelas", "Status", "Data Empréstimo"],
                   contratosFiltrados.map(c => [
@@ -231,69 +278,74 @@ export default function Contratos() {
                   ])
                 );
               }}>
-                <Download className="h-4 w-4 mr-1" />
-                <span className="hidden sm:inline">CSV</span>
+                <Download className="h-3 w-3 mr-1" />
+                CSV
               </Button>
-              <Button size="sm" variant={statusFilter === "ativos" ? "default" : "outline"} onClick={() => setStatusFilter("ativos")} className="text-xs">Ativos</Button>
-              <Button size="sm" variant={statusFilter === "quitados" ? "default" : "outline"} onClick={() => setStatusFilter("quitados")} className="text-xs">Quitados</Button>
-              <Button size="sm" variant={statusFilter === "todos" ? "default" : "outline"} onClick={() => setStatusFilter("todos")} className="text-xs">Todos</Button>
+              <div className="flex bg-muted rounded-md p-0.5">
+                <Button size="sm" variant={statusFilter === "ativos" ? "default" : "ghost"} onClick={() => setStatusFilter("ativos")} className="h-6 text-[11px] px-2.5 rounded-sm">Ativos</Button>
+                <Button size="sm" variant={statusFilter === "quitados" ? "default" : "ghost"} onClick={() => setStatusFilter("quitados")} className="h-6 text-[11px] px-2.5 rounded-sm">Quitados</Button>
+                <Button size="sm" variant={statusFilter === "todos" ? "default" : "ghost"} onClick={() => setStatusFilter("todos")} className="h-6 text-[11px] px-2.5 rounded-sm">Todos</Button>
+              </div>
             </div>
           </div>
           <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Buscar por nome do cliente..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 text-base md:text-sm"
+              className="pl-9 h-9 text-base md:text-sm"
             />
           </div>
         </CardHeader>
-        <CardContent className="p-0 md:p-6">
+        <CardContent className="p-0 md:p-6 md:pt-0">
           {loading ? (
             <>
-              <div className="md:hidden">
-                <CardListSkeleton count={4} />
-              </div>
-              <div className="hidden md:block">
-                <TableSkeleton rows={5} />
-              </div>
+              <div className="md:hidden"><CardListSkeleton count={4} /></div>
+              <div className="hidden md:block"><TableSkeleton rows={5} /></div>
             </>
           ) : (
             <>
-              {/* Mobile - Cards */}
+              {/* Mobile Cards */}
               <div className="md:hidden space-y-2 p-3">
                 {contratosPaginados.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">
-                    {searchTerm ? "Nenhum contrato encontrado para esta busca" : "Nenhum contrato encontrado"}
-                  </p>
+                  <EmptyState
+                    icon={FileText}
+                    title={searchTerm ? "Nenhum contrato encontrado" : "Nenhum contrato ainda"}
+                    description={searchTerm ? "Tente buscar com outro nome." : "Crie seu primeiro contrato para começar a gerenciar empréstimos."}
+                  />
                 ) : (
                   contratosPaginados.map((contrato) => (
                     <Card
                       key={contrato.id}
-                      className="cursor-pointer hover:bg-muted/50 p-3"
+                      className="cursor-pointer hover:bg-muted/30 transition-colors border-l-4"
+                      style={{
+                        borderLeftColor: contrato.status === "ativo" ? "hsl(var(--primary))" : contrato.status === "quitado" ? "hsl(var(--success))" : "hsl(var(--muted))"
+                      }}
                       onClick={() => handleContratoClick(contrato)}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <p className="font-medium text-sm truncate">{contrato.clientes?.nome}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {contrato.periodicidade} • {Number(contrato.percentual)}% • {contrato.numero_parcelas}x
-                          </p>
+                      <CardContent className="p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium text-sm truncate">{contrato.clientes?.nome}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {contrato.periodicidade} • {Number(contrato.percentual)}% • {contrato.numero_parcelas}x
+                            </p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-sm font-semibold">R$ {Number(contrato.valor_total).toLocaleString('pt-BR')}</p>
+                            <Badge variant={contrato.status === "ativo" ? "default" : "outline"} className="text-[10px] mt-0.5">
+                              {contrato.status === "ativo" ? "Ativo" : contrato.status === "quitado" ? "Quitado" : contrato.status}
+                            </Badge>
+                          </div>
                         </div>
-                        <div className="text-right flex-shrink-0">
-                          <p className="text-sm font-semibold">R$ {Number(contrato.valor_total).toLocaleString('pt-BR')}</p>
-                          <Badge variant={contrato.status === "ativo" ? "default" : contrato.status === "quitado" ? "outline" : "secondary"} className="text-[10px] mt-0.5">
-                            {contrato.status === "ativo" ? "Ativo" : contrato.status === "quitado" ? "Quitado" : contrato.status}
-                          </Badge>
-                        </div>
-                      </div>
+                      </CardContent>
                     </Card>
                   ))
                 )}
               </div>
 
-              {/* Desktop - Table */}
+              {/* Desktop Table */}
               <div className="hidden md:block overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -309,8 +361,12 @@ export default function Contratos() {
                   <TableBody>
                     {contratosPaginados.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                          {searchTerm ? "Nenhum contrato encontrado para esta busca" : "Nenhum contrato encontrado"}
+                        <TableCell colSpan={6}>
+                          <EmptyState
+                            icon={FileText}
+                            title={searchTerm ? "Nenhum contrato encontrado" : "Nenhum contrato ainda"}
+                            description={searchTerm ? "Tente buscar com outro nome." : "Crie seu primeiro contrato para começar a gerenciar empréstimos."}
+                          />
                         </TableCell>
                       </TableRow>
                     ) : (
@@ -324,9 +380,9 @@ export default function Contratos() {
                           <TableCell className="text-sm">R$ {Number(contrato.valor_emprestado).toLocaleString('pt-BR')}</TableCell>
                           <TableCell className="hidden lg:table-cell text-sm">{Number(contrato.percentual)}%</TableCell>
                           <TableCell className="text-sm capitalize">{contrato.periodicidade}</TableCell>
-                          <TableCell className="text-sm">R$ {Number(contrato.valor_total).toLocaleString('pt-BR')}</TableCell>
+                          <TableCell className="text-sm font-medium">R$ {Number(contrato.valor_total).toLocaleString('pt-BR')}</TableCell>
                           <TableCell>
-                            <Badge variant={contrato.status === "ativo" ? "default" : contrato.status === "quitado" ? "outline" : "secondary"} className="text-xs">
+                            <Badge variant={contrato.status === "ativo" ? "default" : "outline"} className="text-xs">
                               {contrato.status === "ativo" ? "Ativo" : contrato.status === "quitado" ? "Quitado" : contrato.status}
                             </Badge>
                           </TableCell>
