@@ -83,6 +83,67 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Target user not found" }), { status: 404, headers });
     }
 
+    // === PRE-DELETION INVENTORY ===
+    const { data: clienteIds } = await supabaseAdmin
+      .from("clientes")
+      .select("id")
+      .eq("user_id", user_id);
+
+    const cIds = clienteIds?.map((c: any) => c.id) || [];
+
+    let contratoCount = 0;
+    let parcelaCount = 0;
+    let historicoCount = 0;
+    let ctIds: string[] = [];
+    let pIds: string[] = [];
+
+    if (cIds.length > 0) {
+      const { data: contratos } = await supabaseAdmin
+        .from("contratos")
+        .select("id")
+        .in("cliente_id", cIds);
+      ctIds = contratos?.map((c: any) => c.id) || [];
+      contratoCount = ctIds.length;
+
+      if (ctIds.length > 0) {
+        const { data: parcelas } = await supabaseAdmin
+          .from("parcelas")
+          .select("id")
+          .in("contrato_id", ctIds);
+        pIds = parcelas?.map((p: any) => p.id) || [];
+        parcelaCount = pIds.length;
+
+        if (pIds.length > 0) {
+          const { count } = await supabaseAdmin
+            .from("parcelas_historico")
+            .select("id", { count: "exact", head: true })
+            .in("parcela_id", pIds.slice(0, 100)); // count sample
+          historicoCount = count || 0;
+        }
+      }
+    }
+
+    const inventory = {
+      clientes: cIds.length,
+      contratos: contratoCount,
+      parcelas: parcelaCount,
+      historico_estimado: historicoCount,
+    };
+
+    // === SOFT-DELETE: mark profile inactive BEFORE deletion ===
+    const { error: deactivateError } = await supabaseAdmin
+      .from("profiles")
+      .update({ ativo: false, updated_at: new Date().toISOString() })
+      .eq("id", user_id);
+
+    if (deactivateError) {
+      console.error("Failed to deactivate profile:", deactivateError);
+      return new Response(
+        JSON.stringify({ error: "Failed to deactivate user before deletion", detail: deactivateError.message }),
+        { status: 500, headers }
+      );
+    }
+
     // Log audit BEFORE deletion (so we have record even if deletion partially fails)
     await supabaseAdmin.from("audit_logs").insert({
       user_id: callerUserId,
@@ -91,49 +152,17 @@ serve(async (req) => {
       details: {
         target_email: targetProfile.email,
         target_nome: targetProfile.nome,
+        inventory,
         timestamp: new Date().toISOString(),
       },
     });
 
-    // Delete in correct referential order:
-    // 1. parcelas_historico (depends on parcelas)
-    // 2. parcelas (depends on contratos)
-    // 3. contratos (depends on clientes)
-    // 4. clientes (depends on user_id)
-    // 5. user_roles
-    // 6. profiles
-    // 7. auth.users
-
+    // === DELETION in correct referential order ===
     const deletionSteps: { name: string; fn: () => Promise<{ error: any }> }[] = [
       {
         name: "parcelas_historico",
         fn: async () => {
-          // Delete historico for parcelas belonging to user's contratos
-          const { data: clienteIds } = await supabaseAdmin
-            .from("clientes")
-            .select("id")
-            .eq("user_id", user_id);
-
-          if (!clienteIds?.length) return { error: null };
-
-          const cIds = clienteIds.map((c: any) => c.id);
-          const { data: contratoIds } = await supabaseAdmin
-            .from("contratos")
-            .select("id")
-            .in("cliente_id", cIds);
-
-          if (!contratoIds?.length) return { error: null };
-
-          const ctIds = contratoIds.map((c: any) => c.id);
-          const { data: parcelaIds } = await supabaseAdmin
-            .from("parcelas")
-            .select("id")
-            .in("contrato_id", ctIds);
-
-          if (!parcelaIds?.length) return { error: null };
-
-          const pIds = parcelaIds.map((p: any) => p.id);
-          // Delete in batches of 100
+          if (!pIds.length) return { error: null };
           for (let i = 0; i < pIds.length; i += 100) {
             const batch = pIds.slice(i, i + 100);
             const { error } = await supabaseAdmin
@@ -148,18 +177,7 @@ serve(async (req) => {
       {
         name: "parcelas",
         fn: async () => {
-          const { data: clienteIds } = await supabaseAdmin
-            .from("clientes")
-            .select("id")
-            .eq("user_id", user_id);
-          if (!clienteIds?.length) return { error: null };
-          const cIds = clienteIds.map((c: any) => c.id);
-          const { data: contratoIds } = await supabaseAdmin
-            .from("contratos")
-            .select("id")
-            .in("cliente_id", cIds);
-          if (!contratoIds?.length) return { error: null };
-          const ctIds = contratoIds.map((c: any) => c.id);
+          if (!ctIds.length) return { error: null };
           for (let i = 0; i < ctIds.length; i += 100) {
             const batch = ctIds.slice(i, i + 100);
             const { error } = await supabaseAdmin.from("parcelas").delete().in("contrato_id", batch);
@@ -171,12 +189,7 @@ serve(async (req) => {
       {
         name: "contratos",
         fn: async () => {
-          const { data: clienteIds } = await supabaseAdmin
-            .from("clientes")
-            .select("id")
-            .eq("user_id", user_id);
-          if (!clienteIds?.length) return { error: null };
-          const cIds = clienteIds.map((c: any) => c.id);
+          if (!cIds.length) return { error: null };
           for (let i = 0; i < cIds.length; i += 100) {
             const batch = cIds.slice(i, i + 100);
             const { error } = await supabaseAdmin.from("contratos").delete().in("cliente_id", batch);
@@ -199,7 +212,7 @@ serve(async (req) => {
       },
     ];
 
-    const completedSteps: string[] = [];
+    const completedSteps: Record<string, number> = {};
     for (const step of deletionSteps) {
       const result = await step.fn();
       if (result.error) {
@@ -210,11 +223,21 @@ serve(async (req) => {
             completed_steps: completedSteps,
             failed_step: step.name,
             detail: result.error.message,
+            note: "User was deactivated (ativo=false) before deletion started. Remaining data may need manual cleanup.",
           }),
           { status: 500, headers }
         );
       }
-      completedSteps.push(step.name);
+      // Record what was deleted per step
+      const counts: Record<string, number> = {
+        parcelas_historico: inventory.historico_estimado,
+        parcelas: inventory.parcelas,
+        contratos: inventory.contratos,
+        clientes: inventory.clientes,
+        user_roles: 1,
+        profiles: 1,
+      };
+      completedSteps[step.name] = counts[step.name] || 0;
     }
 
     // Final step: delete auth user
@@ -231,8 +254,10 @@ serve(async (req) => {
       );
     }
 
+    completedSteps["auth.users"] = 1;
+
     return new Response(
-      JSON.stringify({ success: true, completed_steps: [...completedSteps, "auth.users"] }),
+      JSON.stringify({ success: true, completed_steps: completedSteps, inventory }),
       { headers }
     );
   } catch (error) {

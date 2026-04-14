@@ -184,3 +184,43 @@ src/
 - Rate limiting via `api_usage_log` para funções custosas
 - Credenciais via variáveis de ambiente, nunca hardcoded
 - Auditoria de ações administrativas via `audit_logs`
+
+## Fluxo de Autenticação
+
+1. Usuário se cadastra com email/password via Supabase Auth
+2. Trigger `handle_new_user()` dispara automaticamente:
+   - Cria registro em `profiles` com `ativo = true`, `status_plano = 'teste'`, `data_expiracao_teste = CURRENT_DATE + 7 days`
+   - Cria registro em `user_roles` com `role = 'user'`
+3. Admin pode ativar/desativar usuários via painel `/admin` (altera `ativo`, `status_plano`, `data_expiracao_teste`)
+4. `is_user_active()` é verificada em todas as políticas de INSERT (clientes, contratos, parcelas)
+5. Usuários inativos ou com teste expirado não conseguem criar novos registros
+
+## Desenvolvimento Local
+
+```bash
+# 1. Clone o repositório
+git clone <repo-url> && cd loanwiz
+
+# 2. Instale dependências
+npm install
+
+# 3. Configure variáveis de ambiente
+cp .env.example .env
+# Preencha com as credenciais do seu projeto Supabase
+
+# 4. Inicie o servidor de desenvolvimento
+npm run dev
+```
+
+**Requisitos**: Node.js 18+, npm 9+
+
+**Variáveis obrigatórias**: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PROJECT_ID`
+
+## Proteção de Dados em Produção
+
+1. **Nunca executar** `DROP TABLE`, `TRUNCATE` ou `DELETE` sem cláusula WHERE em produção
+2. **Migrations são aditivas** — nunca remover colunas sem período de transição
+3. **Backups**: Supabase mantém backups automáticos; verificar periodicidade no dashboard
+4. **Soft-delete**: A edge function `delete-user` marca `ativo = false` antes de iniciar deleção, garantindo que falhas parciais não deixem usuários órfãos funcionais
+5. **Auditoria**: Toda exclusão de usuário é registrada em `audit_logs` com inventário de registros afetados
+6. **Testes de RLS**: Após alterações em políticas, testar com `SET ROLE` no SQL Editor
