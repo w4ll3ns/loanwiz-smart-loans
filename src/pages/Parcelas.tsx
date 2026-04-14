@@ -9,15 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Search, Check, X, Calendar, AlertTriangle, Trash2, Undo2, FileText, Banknote, TrendingUp, Download } from "lucide-react";
+import { Search, Check, X, Calendar, AlertTriangle, Trash2, Undo2, FileText, Banknote, TrendingUp, Download, Calculator } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -26,6 +21,8 @@ import { getLocalDateString } from "@/lib/utils";
 import { calcularDiasAtraso, calcularJurosParcela, removerAcentos } from "@/lib/calculos";
 import { exportarCsv } from "@/lib/exportCsv";
 import { PagamentoModal, HistoricoModal, EditarDataModal } from "@/components/parcelas";
+import { PageHeader } from "@/components/PageHeader";
+import { EmptyState } from "@/components/EmptyState";
 
 interface Parcela {
   id: string;
