@@ -12,11 +12,16 @@ import {
   Calendar,
   AlertTriangle,
   CheckCircle2,
-  PieChart as PieChartIcon
+  PieChart as PieChartIcon,
+  ArrowRight,
+  Clock,
+  Plus
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { DashboardSkeleton } from "@/components/LoadingSkeletons";
+import { PageHeader } from "@/components/PageHeader";
+import { EmptyState } from "@/components/EmptyState";
 
 interface DashboardStats {
   totalEmprestado: number;
@@ -88,7 +93,6 @@ export default function Dashboard() {
         parcelasVencidas: Number(data.parcelas_vencidas) || 0,
       });
 
-      // Próximos vencimentos
       const proximos = (data.proximos_vencimentos || []).map((p: any) => ({
         cliente: p.cliente || "Cliente",
         valor: Number(p.valor),
@@ -97,13 +101,11 @@ export default function Dashboard() {
       }));
       setProximosVencimentos(proximos);
 
-      // Lucro mensal
       setLucroMensal((data.lucro_mensal || []).map((m: any) => ({
         mes: m.mes,
         lucro: Number(Number(m.lucro).toFixed(2)),
       })));
 
-      // Status distribuição
       const statusColors: Record<string, string> = {
         "Pagas": "hsl(var(--success))",
         "Pendentes": "hsl(var(--muted-foreground))",
@@ -116,7 +118,6 @@ export default function Dashboard() {
         color: statusColors[s.name] || "hsl(var(--muted-foreground))",
       })));
 
-      // Capital mensal
       setCapitalMensal((data.capital_mensal || []).map((c: any) => ({
         mes: c.mes,
         emprestado: Number(Number(c.emprestado).toFixed(2)),
@@ -136,123 +137,231 @@ export default function Dashboard() {
 
   if (loading) return <DashboardSkeleton />;
 
+  const vencidosHoje = proximosVencimentos.filter(p => p.status === "vence_hoje");
+  const vencidos = proximosVencimentos.filter(p => p.status === "vencido");
+  const proximos = proximosVencimentos.filter(p => p.status === "proximo");
+  const hasUrgentItems = stats.parcelasVencidas > 0 || vencidosHoje.length > 0;
+
   return (
-    <div className="space-y-4 md:space-y-6">
-      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-        <h1 className="text-2xl md:text-3xl font-bold">Dashboard</h1>
-        <div className="flex gap-2">
-          <Button asChild size="sm" className="flex-1 md:flex-none">
-            <Link to="/clientes">Novo Cliente</Link>
-          </Button>
-          <Button asChild variant="outline" size="sm" className="flex-1 md:flex-none">
-            <Link to="/contratos">Novo Contrato</Link>
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-5 md:space-y-6">
+      <PageHeader
+        title="Dashboard"
+        description="Visão geral e ações pendentes"
+      >
+        <Button asChild size="sm">
+          <Link to="/contratos">
+            <Plus className="h-4 w-4 mr-1.5" />
+            Criar contrato
+          </Link>
+        </Button>
+        <Button asChild variant="outline" size="sm">
+          <Link to="/clientes">
+            <Users className="h-4 w-4 mr-1.5" />
+            Novo cliente
+          </Link>
+        </Button>
+      </PageHeader>
 
-      {/* Cards de Resumo */}
-      <div className="grid gap-3 md:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs md:text-sm font-medium">Total Emprestado</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+      {/* Ações de Hoje - Only shown when there are urgent items */}
+      {hasUrgentItems && (
+        <Card className="border-destructive/30 bg-destructive/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-4 w-4" />
+              Ações pendentes
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-lg md:text-2xl font-bold truncate">
+            <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+              {stats.parcelasVencidas > 0 && (
+                <Link to="/parcelas" className="flex items-center gap-3 p-3 rounded-lg border border-destructive/20 bg-card hover:bg-muted/50 transition-colors group">
+                  <div className="h-9 w-9 rounded-full bg-destructive/10 flex items-center justify-center flex-shrink-0">
+                    <AlertTriangle className="h-4 w-4 text-destructive" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">{stats.parcelasVencidas} parcela{stats.parcelasVencidas > 1 ? 's' : ''} vencida{stats.parcelasVencidas > 1 ? 's' : ''}</p>
+                    <p className="text-xs text-muted-foreground">Precisam de atenção imediata</p>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
+                </Link>
+              )}
+              {vencidosHoje.length > 0 && (
+                <Link to="/parcelas" className="flex items-center gap-3 p-3 rounded-lg border border-warning/20 bg-card hover:bg-muted/50 transition-colors group">
+                  <div className="h-9 w-9 rounded-full bg-warning/10 flex items-center justify-center flex-shrink-0">
+                    <Clock className="h-4 w-4 text-warning" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">{vencidosHoje.length} vencimento{vencidosHoje.length > 1 ? 's' : ''} hoje</p>
+                    <p className="text-xs text-muted-foreground">R$ {vencidosHoje.reduce((a, v) => a + v.valor, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
+                </Link>
+              )}
+              {stats.contratosAtivos > 0 && (
+                <Link to="/contratos" className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors group">
+                  <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <FileText className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">{stats.contratosAtivos} contrato{stats.contratosAtivos > 1 ? 's' : ''} ativo{stats.contratosAtivos > 1 ? 's' : ''}</p>
+                    <p className="text-xs text-muted-foreground">Em andamento</p>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
+                </Link>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* KPIs */}
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        <Card className="stat-card-accent border-l-primary">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-muted-foreground">Capital em Circulação</span>
+              <DollarSign className="h-4 w-4 text-primary" />
+            </div>
+            <p className="text-lg md:text-2xl font-bold tracking-tight truncate">
               R$ {stats.totalEmprestado.toLocaleString('pt-BR')}
-            </div>
-            <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Capital em circulação</p>
+            </p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs md:text-sm font-medium">A Receber (Pendente)</CardTitle>
-            <Calendar className="h-4 w-4 text-warning" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-lg md:text-2xl font-bold text-warning truncate">
+        <Card className="stat-card-accent border-l-warning">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-muted-foreground">A Receber</span>
+              <Calendar className="h-4 w-4 text-warning" />
+            </div>
+            <p className="text-lg md:text-2xl font-bold tracking-tight text-warning truncate">
               R$ {stats.totalReceber.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-            </div>
-            <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
-              Valor a quitar
             </p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs md:text-sm font-medium">Total Recebido</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-success" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-lg md:text-2xl font-bold text-success truncate">
+        <Card className="stat-card-accent border-l-success">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-muted-foreground">Total Recebido</span>
+              <CheckCircle2 className="h-4 w-4 text-success" />
+            </div>
+            <p className="text-lg md:text-2xl font-bold tracking-tight text-success truncate">
               R$ {stats.totalRecebido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-            </div>
-            <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
-              Inclui parciais e quitações
             </p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs md:text-sm font-medium">Lucro</CardTitle>
-            <TrendingUp className={`h-4 w-4 ${stats.lucro >= 0 ? 'text-success' : 'text-destructive'}`} />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-lg md:text-2xl font-bold truncate ${stats.lucro >= 0 ? 'text-success' : 'text-destructive'}`}>
-              R$ {stats.lucro.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+        <Card className={`stat-card-accent ${stats.lucro >= 0 ? 'border-l-success' : 'border-l-destructive'}`}>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-muted-foreground">Lucro</span>
+              <TrendingUp className={`h-4 w-4 ${stats.lucro >= 0 ? 'text-success' : 'text-destructive'}`} />
             </div>
-            <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Lucro sobre capital</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs md:text-sm font-medium">Clientes Ativos</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl md:text-2xl font-bold">{stats.clientesAtivos}</div>
-            <p className="text-[10px] sm:text-xs text-muted-foreground">Cadastros ativos</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs md:text-sm font-medium">Contratos Ativos</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl md:text-2xl font-bold">{stats.contratosAtivos}</div>
-            <p className="text-[10px] sm:text-xs text-muted-foreground">Em andamento</p>
+            <p className={`text-lg md:text-2xl font-bold tracking-tight truncate ${stats.lucro >= 0 ? 'text-success' : 'text-destructive'}`}>
+              R$ {stats.lucro.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Gráfico de Evolução do Lucro Mensal */}
+      {/* Quick stats row */}
+      <div className="grid gap-3 grid-cols-2">
+        <Link to="/clientes">
+          <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                <Users className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{stats.clientesAtivos}</p>
+                <p className="text-xs text-muted-foreground">Clientes ativos</p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link to="/contratos">
+          <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                <FileText className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{stats.contratosAtivos}</p>
+                <p className="text-xs text-muted-foreground">Contratos ativos</p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
+
+      {/* Próximos Vencimentos */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm md:text-base font-semibold flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              Próximos vencimentos
+            </CardTitle>
+            <Button asChild variant="ghost" size="sm" className="text-xs">
+              <Link to="/parcelas">Ver todas <ArrowRight className="h-3 w-3 ml-1" /></Link>
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="space-y-2">
+            {proximosVencimentos.length === 0 ? (
+              <EmptyState
+                icon={Calendar}
+                title="Nenhum vencimento próximo"
+                description="Quando houver parcelas vencendo, elas aparecerão aqui."
+              />
+            ) : (
+              proximosVencimentos.map((parcela, index) => (
+                <Link to="/parcelas" key={index} className="flex items-center justify-between p-2.5 rounded-lg border hover:bg-muted/50 transition-colors group">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">{parcela.cliente}</p>
+                    <p className="text-xs text-muted-foreground">
+                      R$ {parcela.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-xs text-muted-foreground">{parcela.data}</span>
+                    <Badge 
+                      variant={parcela.status === "vencido" ? "destructive" : parcela.status === "vence_hoje" ? "destructive" : "secondary"}
+                      className="text-[10px]"
+                    >
+                      {parcela.status === "vencido" ? "Vencido" :
+                       parcela.status === "vence_hoje" ? "Hoje" :
+                       "Próximo"}
+                    </Badge>
+                  </div>
+                </Link>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Charts */}
       {lucroMensal.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-              <TrendingUp className="h-5 w-5" />
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm md:text-base font-semibold flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
               Evolução do Lucro Mensal
             </CardTitle>
           </CardHeader>
           <CardContent>
             <ChartContainer
               config={{
-                lucro: {
-                  label: "Lucro",
-                  color: "hsl(var(--success))",
-                },
+                lucro: { label: "Lucro", color: "hsl(var(--success))" },
               }}
-              className="aspect-[2/1] w-full"
+              className="aspect-[2.5/1] w-full"
             >
               <BarChart data={lucroMensal} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-                <XAxis dataKey="mes" tick={{ fontSize: 12 }} className="fill-muted-foreground" />
+                <XAxis dataKey="mes" tick={{ fontSize: 11 }} className="fill-muted-foreground" />
                 <YAxis tick={{ fontSize: 11 }} className="fill-muted-foreground" tickFormatter={(v) => `R$${v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}`} />
                 <ChartTooltip
                   content={
@@ -268,19 +377,17 @@ export default function Dashboard() {
         </Card>
       )}
 
-      {/* Novos gráficos - Grid responsivo */}
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-        {/* Gráfico de Pizza - Distribuição por Status */}
         {statusDistribuicao.length > 0 && (
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-                <PieChartIcon className="h-5 w-5" />
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm md:text-base font-semibold flex items-center gap-2">
+                <PieChartIcon className="h-4 w-4 text-muted-foreground" />
                 Distribuição de Parcelas
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="aspect-square max-h-[300px] w-full">
+              <div className="aspect-square max-h-[260px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -288,7 +395,7 @@ export default function Dashboard() {
                       cx="50%"
                       cy="50%"
                       innerRadius={50}
-                      outerRadius={90}
+                      outerRadius={85}
                       paddingAngle={3}
                       dataKey="value"
                       label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
@@ -320,26 +427,19 @@ export default function Dashboard() {
           </Card>
         )}
 
-        {/* Gráfico de Barras - Capital Emprestado vs Recebido */}
         {capitalMensal.length > 0 && (
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-                <DollarSign className="h-5 w-5" />
-                Capital Emprestado vs Recebido
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm md:text-base font-semibold flex items-center gap-2">
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                Emprestado vs Recebido
               </CardTitle>
             </CardHeader>
             <CardContent>
               <ChartContainer
                 config={{
-                  emprestado: {
-                    label: "Emprestado",
-                    color: "hsl(var(--primary))",
-                  },
-                  recebido: {
-                    label: "Recebido",
-                    color: "hsl(var(--success))",
-                  },
+                  emprestado: { label: "Emprestado", color: "hsl(var(--primary))" },
+                  recebido: { label: "Recebido", color: "hsl(var(--success))" },
                 }}
                 className="aspect-[4/3] w-full"
               >
@@ -362,69 +462,6 @@ export default function Dashboard() {
           </Card>
         )}
       </div>
-
-      {/* Alerta de Parcelas Vencidas */}
-      {stats.parcelasVencidas > 0 && (
-        <Card className="border-destructive">
-          <CardHeader className="flex flex-row items-center gap-2 pb-3">
-            <AlertTriangle className="h-5 w-5 text-destructive" />
-            <CardTitle className="text-sm md:text-base text-destructive">Atenção!</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm">
-              Você tem <strong>{stats.parcelasVencidas} parcelas vencidas</strong> que precisam de atenção.
-            </p>
-            <Button asChild variant="destructive" size="sm" className="mt-2">
-              <Link to="/parcelas">Ver Parcelas Vencidas</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Próximos Vencimentos */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-            <Calendar className="h-5 w-5" />
-            Próximos Vencimentos
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {proximosVencimentos.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                Nenhum vencimento próximo
-              </p>
-            ) : (
-              proximosVencimentos.map((parcela, index) => (
-                <div key={index} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 gap-2 rounded-lg border">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm md:text-base truncate">{parcela.cliente}</p>
-                    <p className="text-xs sm:text-sm text-muted-foreground">
-                      R$ {parcela.valor.toLocaleString('pt-BR')}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-between sm:justify-end">
-                    <span className="text-xs md:text-sm text-muted-foreground">{parcela.data}</span>
-                    <Badge 
-                      variant={
-                        parcela.status === "vencido" ? "destructive" : 
-                        parcela.status === "vence_hoje" ? "destructive" : 
-                        "secondary"
-                      }
-                      className="text-xs"
-                    >
-                      {parcela.status === "vencido" ? "Vencido" :
-                       parcela.status === "vence_hoje" ? "Hoje" :
-                       "Próximo"}
-                    </Badge>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

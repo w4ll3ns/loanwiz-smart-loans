@@ -97,49 +97,49 @@ export default function Layout({ children }: LayoutProps) {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header - Desktop only */}
-      <header className="hidden md:block sticky top-0 z-50 w-full border-b bg-card shadow-sm">
-        <div className="container mx-auto flex h-16 items-center gap-4 px-4">
-          <div className="flex items-center gap-3">
-            <img src={logo} alt="WS Empréstimos" className="h-10 w-10" />
-            <span className="text-lg font-semibold">WS Empréstimos</span>
+      <header className="hidden md:block sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 shadow-sm">
+        <div className="container mx-auto flex h-14 items-center gap-4 px-4">
+          <div className="flex items-center gap-2.5">
+            <img src={logo} alt="WS Empréstimos" className="h-8 w-8" />
+            <span className="text-base font-semibold tracking-tight">WS Empréstimos</span>
           </div>
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-2">
             {isAdmin && (
-              <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">
+              <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
                 Admin
               </span>
             )}
-            <Link to="/perfil" className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+            <Link to="/perfil" className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-muted">
               <UserCircle className="h-4 w-4" />
-              {user?.email}
+              <span className="max-w-[160px] truncate">{user?.email}</span>
             </Link>
             <NotificacoesVencimento />
             <InstallAppGuide />
             <ThemeToggle />
-            <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair">
-              <LogOut className="h-5 w-5" />
+            <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair" className="h-8 w-8">
+              <LogOut className="h-4 w-4" />
             </Button>
           </div>
         </div>
       </header>
 
       {/* Mobile Header */}
-      <header className="md:hidden sticky top-0 z-50 w-full border-b bg-card shadow-sm">
-        <div className="flex h-14 items-center justify-between px-4">
+      <header className="md:hidden sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 shadow-sm">
+        <div className="flex h-12 items-center justify-between px-3">
           <div className="flex items-center gap-2">
-            <img src={logo} alt="WS Empréstimos" className="h-8 w-8" />
-            <span className="text-base font-semibold">WS Empréstimos</span>
+            <img src={logo} alt="WS Empréstimos" className="h-7 w-7" />
+            <span className="text-sm font-semibold tracking-tight">WS Empréstimos</span>
             {isAdmin && (
-              <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
+              <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">
                 Admin
               </span>
             )}
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
             <NotificacoesVencimento />
             <InstallAppGuide />
             <ThemeToggle />
-            <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair">
+            <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair" className="h-8 w-8">
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
@@ -148,9 +148,9 @@ export default function Layout({ children }: LayoutProps) {
 
       <div className="flex flex-1">
         {/* Sidebar - Desktop */}
-        <aside className="hidden w-64 border-r bg-card md:block">
-          <div className="flex h-full flex-col p-4">
-            <nav className="flex flex-col gap-2">
+        <aside className="hidden w-56 border-r bg-card md:block">
+          <div className="flex h-full flex-col py-3 px-3">
+            <nav className="flex flex-col gap-0.5">
               {navigation.map((item) => {
                 const isActive = location.pathname === item.href;
                 return (
@@ -158,13 +158,13 @@ export default function Layout({ children }: LayoutProps) {
                     key={item.name}
                     to={item.href}
                     className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                      "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-all",
                       isActive
-                        ? "bg-primary text-primary-foreground"
+                        ? "bg-primary text-primary-foreground shadow-sm"
                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     )}
                   >
-                    <item.icon className="h-4 w-4" />
+                    <item.icon className="h-4 w-4 flex-shrink-0" />
                     {item.name}
                   </Link>
                 );
@@ -180,8 +180,8 @@ export default function Layout({ children }: LayoutProps) {
       </div>
 
       {/* Bottom Navigation - Mobile only */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t bg-card shadow-lg">
-        <div className="flex items-center justify-around h-16">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
+        <div className="flex items-center justify-around h-14">
           {navigation.map((item) => {
             const isActive = location.pathname === item.href;
             return (
@@ -189,14 +189,17 @@ export default function Layout({ children }: LayoutProps) {
                 key={item.name}
                 to={item.href}
                 className={cn(
-                  "flex flex-col items-center justify-center gap-1 flex-1 h-full transition-colors",
+                  "flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors relative",
                   isActive
                     ? "text-primary"
                     : "text-muted-foreground"
                 )}
               >
-                <item.icon className={cn("h-5 w-5", isActive && "fill-primary")} />
-                <span className="text-xs font-medium">{item.name}</span>
+                {isActive && (
+                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-b-full bg-primary" />
+                )}
+                <item.icon className={cn("h-5 w-5", isActive && "fill-primary/20")} />
+                <span className="text-[10px] font-medium">{item.name}</span>
               </Link>
             );
           })}
