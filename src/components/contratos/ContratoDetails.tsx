@@ -24,12 +24,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Download, Pencil, RefreshCw, Trash2, Undo2 } from "lucide-react";
+import { Download, History, Pencil, RefreshCw, Trash2, Undo2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { getLocalDateString } from "@/lib/utils";
 import { calcularJurosParcela, calcularValorTotal, getLabelTipoJuros, TipoJuros } from "@/lib/calculos";
 import { RelatorioGenerator } from "./RelatorioGenerator";
+import { HistoricoModal } from "@/components/parcelas/HistoricoModal";
 
 export interface Contrato {
   id: string;
@@ -90,9 +91,29 @@ export function ContratoDetails({
     percentual: ""
   });
   const [isEditLoading, setIsEditLoading] = useState(false);
+  const [historicoModalOpen, setHistoricoModalOpen] = useState(false);
+  const [parcelaHistorico, setParcelaHistorico] = useState<Parcela | null>(null);
+  const [historicoData, setHistoricoData] = useState<any[]>([]);
   const { toast } = useToast();
 
   if (!contrato) return null;
+
+  const loadHistorico = async (parcela: Parcela) => {
+    try {
+      const { data, error } = await supabase
+        .from("parcelas_historico")
+        .select("*")
+        .eq("parcela_id", parcela.id)
+        .order("data_pagamento", { ascending: false });
+
+      if (error) throw error;
+      setParcelaHistorico(parcela as any);
+      setHistoricoData(data || []);
+      setHistoricoModalOpen(true);
+    } catch (error: any) {
+      toast({ title: "Erro ao carregar histórico", description: error.message, variant: "destructive" });
+    }
+  };
 
   const calcularJuros = (parcela: Parcela) => {
     return calcularJurosParcela(
@@ -357,6 +378,7 @@ export function ContratoDetails({
                         <TableHead>Parcela</TableHead>
                         <TableHead>Vencimento</TableHead>
                         <TableHead>Valor</TableHead>
+                        <TableHead>Valor Pago</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Pagamento</TableHead>
                         <TableHead>Ação</TableHead>
@@ -368,6 +390,13 @@ export function ContratoDetails({
                           <TableCell className="font-medium">{parcela.numero_parcela}</TableCell>
                           <TableCell>{format(new Date(parcela.data_vencimento + 'T00:00:00'), 'dd/MM/yyyy')}</TableCell>
                           <TableCell>R$ {Number(parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
+                          <TableCell>
+                            {Number(parcela.valor_pago || 0) > 0 ? (
+                              <span className="text-success font-medium">
+                                R$ {Number(parcela.valor_pago).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                              </span>
+                            ) : '-'}
+                          </TableCell>
                           <TableCell>
                             {parcela.status === 'pago' ? (
                               <Badge variant="default" className="bg-success">Pago</Badge>
@@ -381,14 +410,19 @@ export function ContratoDetails({
                             {parcela.data_pagamento ? format(new Date(parcela.data_pagamento + 'T00:00:00'), 'dd/MM/yyyy') : '-'}
                           </TableCell>
                           <TableCell>
-                            {parcela.status !== 'pago' ? (
-                              <Button size="sm" onClick={() => abrirModalPagamento(parcela)}>Baixar</Button>
-                            ) : (
-                              <Button size="sm" variant="outline" onClick={() => handleDesfazerPagamento(parcela.id)} className="text-warning hover:bg-warning hover:text-warning-foreground">
-                                <Undo2 className="h-4 w-4 mr-1" />
-                                Desfazer
+                            <div className="flex gap-1">
+                              {parcela.status !== 'pago' ? (
+                                <Button size="sm" onClick={() => abrirModalPagamento(parcela)}>Baixar</Button>
+                              ) : (
+                                <Button size="sm" variant="outline" onClick={() => handleDesfazerPagamento(parcela.id)} className="text-warning hover:bg-warning hover:text-warning-foreground">
+                                  <Undo2 className="h-4 w-4 mr-1" />
+                                  Desfazer
+                                </Button>
+                              )}
+                              <Button size="sm" variant="ghost" onClick={() => loadHistorico(parcela)} title="Ver Histórico">
+                                <History className="h-4 w-4" />
                               </Button>
-                            )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -419,29 +453,36 @@ export function ContratoDetails({
                           <span>Valor:</span>
                           <span className="font-medium text-foreground">R$ {Number(parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                         </div>
+                        {Number(parcela.valor_pago || 0) > 0 && (
+                          <div className="flex justify-between">
+                            <span>Valor pago:</span>
+                            <span className="font-medium text-success">R$ {Number(parcela.valor_pago).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                          </div>
+                        )}
                         {parcela.data_pagamento && (
-                          <>
-                            <div className="flex justify-between">
-                              <span>Pago em:</span>
-                              <span className="font-medium text-foreground">{format(new Date(parcela.data_pagamento + 'T00:00:00'), 'dd/MM/yyyy')}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Valor pago:</span>
-                              <span className="font-medium text-foreground">R$ {Number(parcela.valor_pago).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                            </div>
-                          </>
+                          <div className="flex justify-between">
+                            <span>Pago em:</span>
+                            <span className="font-medium text-foreground">{format(new Date(parcela.data_pagamento + 'T00:00:00'), 'dd/MM/yyyy')}</span>
+                          </div>
                         )}
                       </div>
-                      {parcela.status !== 'pago' ? (
-                        <Button size="sm" onClick={() => abrirModalPagamento(parcela)} className="w-full">
-                          Baixar Parcela
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          {parcela.status !== 'pago' ? (
+                            <Button size="sm" onClick={() => abrirModalPagamento(parcela)} className="w-full">
+                              Baixar Parcela
+                            </Button>
+                          ) : (
+                            <Button size="sm" variant="outline" onClick={() => handleDesfazerPagamento(parcela.id)} className="w-full text-warning hover:bg-warning hover:text-warning-foreground">
+                              <Undo2 className="h-4 w-4 mr-2" />
+                              Desfazer
+                            </Button>
+                          )}
+                        </div>
+                        <Button size="sm" variant="ghost" onClick={() => loadHistorico(parcela)} title="Ver Histórico">
+                          <History className="h-4 w-4" />
                         </Button>
-                      ) : (
-                        <Button size="sm" variant="outline" onClick={() => handleDesfazerPagamento(parcela.id)} className="w-full text-warning hover:bg-warning hover:text-warning-foreground">
-                          <Undo2 className="h-4 w-4 mr-2" />
-                          Desfazer Pagamento
-                        </Button>
-                      )}
+                      </div>
                     </Card>
                   ))}
                 </div>
@@ -586,6 +627,17 @@ export function ContratoDetails({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <HistoricoModal
+        isOpen={historicoModalOpen}
+        onOpenChange={setHistoricoModalOpen}
+        parcela={parcelaHistorico as any}
+        historico={historicoData}
+        onHistoricoUpdated={(p) => {
+          loadHistorico(p as any);
+        }}
+        onParcelasUpdated={() => onParcelasUpdated(contrato.id)}
+      />
     </>
   );
 }
