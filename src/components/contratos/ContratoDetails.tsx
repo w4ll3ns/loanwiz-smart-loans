@@ -91,6 +91,9 @@ export function ContratoDetails({
     percentual: ""
   });
   const [isEditLoading, setIsEditLoading] = useState(false);
+  const [historicoModalOpen, setHistoricoModalOpen] = useState(false);
+  const [parcelaHistorico, setParcelaHistorico] = useState<Parcela | null>(null);
+  const [historicoData, setHistoricoData] = useState<any[]>([]);
   const { toast } = useToast();
 
   if (!contrato) return null;
