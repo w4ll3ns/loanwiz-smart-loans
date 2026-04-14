@@ -1,117 +1,95 @@
 
 
-# Rodada 2 — Correções Estruturais Pendentes
+# Rodada Final — 4 Pontos Pendentes
 
-## Análise: O Que Já Está Feito vs Pendente
+## Análise do Estado Atual
 
-A Rodada 1 entregou as RPCs transacionais e o service layer. O frontend já usa as RPCs corretamente. O `client.ts` já usa `import.meta.env`. Portanto, o foco desta rodada é nos pontos que ficaram incompletos.
+| Ponto | Status | Ação Necessária |
+|-------|--------|-----------------|
+| `.gitignore` / `.env` | Incompleto | Adicionar proteções para `.env*` |
+| `delete-user` | Funcional mas melhorável | Adicionar soft-delete pre-marking + contagem de registros na auditoria |
+| `parse-comprovante` | Já endurecida | Nenhuma — já tem rate limit, payload limit, MIME, timeout, validação de saída |
+| Documentação | Boa mas incompleta | Adicionar seções de auth flow e dev setup |
 
-## Bloco 1 — Segurança de Ambiente
+## Bloco 1 — `.gitignore` + `.env.example`
 
-### 1.1 `.gitignore`
-Adicionar `.env`, `.env.*`, `.env.local` ao `.gitignore`. O `.env` já existe no repositório (é auto-populado pela plataforma), mas o `.gitignore` precisa proteger contra versionamento acidental de `.env.local` ou variantes com secrets reais.
-
-**Arquivo**: `.gitignore` — adicionar linhas de proteção.
-
-## Bloco 2 — Corrigir Estado Inseguro no ContratoForm
-
-### Problema
-Linha 143 do `ContratoForm.tsx` faz `setState` durante render:
+**`.gitignore`**: Adicionar ao final:
 ```
-if (initialData && formData.clienteId !== initialData.clienteId) {
-  setFormData({ ...defaultFormData, ...initialData });
-}
+# Environment files
+.env
+.env.local
+.env.development
+.env.production
+.env.*.local
 ```
-Isso causa re-renders imprevisíveis e pode corromper o estado do formulário.
 
-### Correção
-Substituir por um `useEffect` com dependência em `initialData`, ou melhor, usar uma `key` no componente pai para forçar remontagem quando `initialData` muda. Na prática, mover a lógica para `useEffect` com guard correto.
+**`.env.example`** (novo arquivo): Template seguro sem valores reais:
+```
+VITE_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=your-anon-key
+VITE_SUPABASE_PROJECT_ID=your-project-id
+```
 
-**Arquivo**: `src/components/contratos/ContratoForm.tsx`
+Nota: O `.env` atual é auto-populado pela plataforma Lovable e contém apenas chaves públicas (anon key). Não há exposição de service_role ou secrets. A proteção no `.gitignore` previne versionamento acidental de variantes locais com secrets reais.
 
-## Bloco 3 — Endurecer Edge Function `delete-user`
+## Bloco 2 — Endurecer `delete-user`
 
-### Problemas Atuais
-1. `verify_jwt = false` no config.toml — qualquer request chega à função
-2. Deleções sequenciais sem proteção contra falha parcial
-3. Sem registro de auditoria
-4. Deleta `clientes` mas não deleta `contratos`, `parcelas`, `parcelas_historico` explicitamente (depende de cascatas que podem não existir em todas as tabelas)
+A função já está bem estruturada. Melhorias cirúrgicas:
 
-### Correções
-1. Mudar `verify_jwt = true` no `config.toml`
-2. Adicionar registro de auditoria via `insert_audit_log` antes da exclusão
-3. Adicionar validação de UUID no `user_id`
-4. Melhorar ordem de deleção: deletar na ordem correta (historico → parcelas → contratos → clientes → roles → profiles → auth)
-5. Se qualquer etapa intermediária falhar, retornar erro claro com contexto do que foi e não foi deletado
-6. Usar Zod para validação de input
+1. **Pre-deletion inventory**: Antes de deletar, contar registros que serão afetados e incluir na auditoria
+2. **Soft-delete marking**: Marcar profile como `ativo = false` ANTES de iniciar deleção — se falhar no meio, usuário fica inativo (não órfão funcional)
+3. **Melhor log de auditoria**: Incluir contagem de registros deletados por step nos `details`
 
-**Arquivos**: `supabase/functions/delete-user/index.ts`, `supabase/config.toml`
+**Arquivo**: `supabase/functions/delete-user/index.ts`
 
-## Bloco 4 — Endurecer Edge Function `parse-comprovante`
+Sem necessidade de migração. Sem alteração de schema.
 
-### Correções
-1. **Payload size limit**: rejeitar `image_base64` > 5MB (base64)
-2. **Rate limit simples**: consultar `parcelas_historico` ou criar contador em memória (dado que é edge function stateless, usar uma tabela `api_usage` ou simplesmente um check no banco — consultar quantas chamadas o usuário fez nas últimas 24h)
-3. **MIME type validation**: aceitar apenas `image/png`, `image/jpeg`, `image/webp`
-4. **Timeout no fetch**: usar `AbortController` com 30s timeout na chamada à OpenAI
-5. **Validação da saída**: verificar que `nome_cliente` é string, `valor` é number > 0, `data` é formato YYYY-MM-DD
+## Bloco 3 — `parse-comprovante`
 
-**Arquivo**: `supabase/functions/parse-comprovante/index.ts`
+Já implementa todos os 8 pontos solicitados:
+1. Rate limit ✓ (`check_api_rate_limit`, 50/24h)
+2. Quota/logging ✓ (`log_api_usage`)
+3. Timeout ✓ (30s `AbortController`)
+4. Validação de entrada ✓ (MIME, 5MB, base64)
+5. Validação de saída ✓ (nome string, valor > 0, data YYYY-MM-DD)
+6. Tratamento de erro ✓ (cada cenário retorna status HTTP adequado)
+7. Proteção contra abuso ✓ (rate limit + payload limit)
+8. Auth ✓ (`getClaims` + `verify_jwt = true`)
 
-**Migração SQL**: criar tabela `api_usage_log` para tracking de consumo (incremental, sem afetar dados existentes).
+**Nenhuma alteração necessária.** Documentar estado atual no checklist.
 
-## Bloco 5 — Documentação Técnica Atualizada
+## Bloco 4 — Documentação Expandida
 
-Atualizar `docs/ARCHITECTURE.md` com:
-- Seção de variáveis de ambiente necessárias
-- Seção de governança de migrations (schema vs data fix)
-- Seção de cuidados de deploy
-- Seção de Edge Functions com suas proteções
+Adicionar a `docs/ARCHITECTURE.md`:
+
+1. **Fluxo de Autenticação**: email/password, handle_new_user trigger, profiles + user_roles
+2. **Desenvolvimento Local**: instruções de setup com `npm install`, `.env.example`, e `npm run dev`
+3. **Cuidados com dados existentes**: seção explícita sobre proteção de dados em produção
 
 **Arquivo**: `docs/ARCHITECTURE.md`
 
-## Bloco 6 — Migração SQL (rate limit table)
-
-Criar tabela `api_usage_log`:
-```sql
-CREATE TABLE IF NOT EXISTS api_usage_log (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
-  function_name text NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX idx_api_usage_user_function ON api_usage_log(user_id, function_name, created_at);
-ALTER TABLE api_usage_log ENABLE ROW LEVEL SECURITY;
--- Apenas inserção via SECURITY DEFINER, sem acesso direto
-```
-
----
-
-## Resumo de Arquivos Impactados
+## Arquivos Impactados
 
 | Arquivo | Ação |
 |---------|------|
-| `.gitignore` | Adicionar proteções para `.env*` |
-| `src/components/contratos/ContratoForm.tsx` | Corrigir setState durante render |
-| `supabase/functions/delete-user/index.ts` | Auditoria, ordem de deleção, validação |
-| `supabase/functions/parse-comprovante/index.ts` | Rate limit, payload limit, timeout, validação |
-| `supabase/config.toml` | `verify_jwt = true` para delete-user |
-| `docs/ARCHITECTURE.md` | Expandir com env vars, deploy, migrations |
-| Migração SQL (nova) | Tabela `api_usage_log` |
+| `.gitignore` | Adicionar proteções `.env*` |
+| `.env.example` | Criar (novo) |
+| `supabase/functions/delete-user/index.ts` | Soft-delete marking + inventory audit |
+| `docs/ARCHITECTURE.md` | Expandir com auth flow e dev setup |
 
-## Riscos e Mitigações
+## Riscos
 
-- **delete-user com verify_jwt=true**: A chamada do frontend já envia o token via `supabase.functions.invoke()`, então a mudança é compatível.
-- **ContratoForm useEffect**: Comportamento idêntico ao atual, apenas estruturalmente correto.
-- **api_usage_log**: Tabela nova, sem impacto em dados existentes.
-- **Nenhum dado existente é alterado ou deletado.**
+- **Zero risco para dados existentes** — nenhuma migração, nenhuma alteração de schema
+- **`delete-user`**: Adicionar `ativo = false` antes da deleção é seguro — o campo já existe e já é usado para controle de acesso
+- **`.gitignore`**: Não remove o `.env` do repo (isso requer `git rm --cached`), apenas previne futuras adições
 
 ## Checklist de Entrega
 
 - [ ] `.gitignore` protege `.env*`
-- [ ] ContratoForm sem setState durante render
-- [ ] delete-user com verify_jwt, auditoria e ordem correta
-- [ ] parse-comprovante com rate limit, payload limit e timeout
-- [ ] Documentação expandida
-- [ ] Migration limpa e incremental
+- [ ] `.env.example` criado sem valores reais
+- [ ] `delete-user` com soft-delete pre-marking e inventory audit
+- [ ] `parse-comprovante` confirmada como já endurecida (sem alteração)
+- [ ] Documentação expandida com auth flow e dev setup
+- [ ] Nenhuma alteração destrutiva
+- [ ] Nenhuma migração necessária
 
