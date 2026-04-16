@@ -4,3 +4,4 @@ export { ContratoDetails } from './ContratoDetails';
 export type { Contrato, Parcela } from './ContratoDetails';
 export { ImportComprovante } from './ImportComprovante';
 export { RelatorioGenerator } from './RelatorioGenerator';
+export { RelatorioAtrasados } from './RelatorioAtrasados';

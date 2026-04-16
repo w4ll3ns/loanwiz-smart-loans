@@ -14,7 +14,7 @@ import { removerAcentos, calcularDiasAtraso } from "@/lib/calculos";
 import { exportarCsv } from "@/lib/exportCsv";
 import { useUserRole } from "@/hooks/useUserRole";
 import { AccessRestrictedModal } from "@/components/AccessRestrictedModal";
-import { ContratoForm, ContratoDetails, ImportComprovante } from "@/components/contratos";
+import { ContratoForm, ContratoDetails, ImportComprovante, RelatorioAtrasados } from "@/components/contratos";
 import { TableSkeleton, CardListSkeleton } from "@/components/LoadingSkeletons";
 import { PaginationControls } from "@/components/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
@@ -203,6 +203,8 @@ export default function Contratos() {
         title="Contratos"
         description="Gerencie todos os empréstimos em um só lugar"
       >
+        <RelatorioAtrasados />
+
         <Button size="sm" variant="outline" onClick={() => {
           if (!canCreate) {
             setIsAccessModalOpen(true);
