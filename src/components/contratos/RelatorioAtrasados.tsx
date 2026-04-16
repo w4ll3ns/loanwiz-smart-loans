@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
@@ -11,28 +13,86 @@ import { supabase } from "@/integrations/supabase/client";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
-interface ContratoAtrasado {
+interface ContratoData {
   contratoId: string;
   clienteNome: string;
   parcPagas: number;
   parcAtrasadas: number;
   valorAtrasado: number;
+  parcPendentes: number;
+  valorPendente: number;
   totalParcelas: number;
 }
 
 const escapeHtml = (text: string): string =>
   text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
+function getReportTitle(showPagas: boolean, showAtrasadas: boolean, showPendentes: boolean): string {
+  if (showAtrasadas && showPendentes) return "RELATÓRIO DE CONTRATOS EM ABERTO";
+  if (showAtrasadas && !showPendentes) return "RELATÓRIO DE CONTRATOS ATRASADOS";
+  if (showPendentes && !showAtrasadas) return "RELATÓRIO DE CONTRATOS PENDENTES";
+  if (showPagas && !showAtrasadas && !showPendentes) return "RELATÓRIO DE PARCELAS PAGAS";
+  return "RELATÓRIO GERAL DE CONTRATOS";
+}
+
+function buildDynamicColumns(showPagas: boolean, showAtrasadas: boolean, showPendentes: boolean) {
+  const cols: { key: string; header: string; align: string; color?: string }[] = [];
+  cols.push({ key: "cliente", header: "Cliente", align: "left" });
+  if (showPagas) cols.push({ key: "pagas", header: "Pagas", align: "center", color: "#22c55e" });
+  if (showAtrasadas) cols.push({ key: "atrasadas", header: "Atrasadas", align: "center", color: "#ef4444" });
+  if (showPendentes) cols.push({ key: "pendentes", header: "Pendentes", align: "center", color: "#f59e0b" });
+  if (showAtrasadas) cols.push({ key: "valorAtrasado", header: "Valor Atrasado", align: "right" });
+  if (showPendentes) cols.push({ key: "valorPendente", header: "Valor Pendente", align: "right" });
+  return cols;
+}
+
+function getCellValue(d: ContratoData, key: string): string {
+  switch (key) {
+    case "cliente": return d.clienteNome;
+    case "pagas": return d.parcPagas.toString();
+    case "atrasadas": return d.parcAtrasadas.toString();
+    case "pendentes": return d.parcPendentes.toString();
+    case "valorAtrasado": return `R$ ${d.valorAtrasado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+    case "valorPendente": return `R$ ${d.valorPendente.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+    default: return "";
+  }
+}
+
+function getTotalValue(data: ContratoData[], key: string): string {
+  switch (key) {
+    case "pagas": return data.reduce((s, d) => s + d.parcPagas, 0).toString();
+    case "atrasadas": return data.reduce((s, d) => s + d.parcAtrasadas, 0).toString();
+    case "pendentes": return data.reduce((s, d) => s + d.parcPendentes, 0).toString();
+    case "valorAtrasado": return `R$ ${data.reduce((s, d) => s + d.valorAtrasado, 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+    case "valorPendente": return `R$ ${data.reduce((s, d) => s + d.valorPendente, 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+    default: return "";
+  }
+}
+
 export function RelatorioAtrasados() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [dados, setDados] = useState<ContratoAtrasado[]>([]);
+  const [dados, setDados] = useState<ContratoData[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [showPagas, setShowPagas] = useState(false);
+  const [showAtrasadas, setShowAtrasadas] = useState(true);
+  const [showPendentes, setShowPendentes] = useState(false);
   const { toast } = useToast();
 
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
+
+  const activeCount = [showPagas, showAtrasadas, showPendentes].filter(Boolean).length;
+
+  const filteredDados = useMemo(() => {
+    return dados.filter((d) => {
+      if (showAtrasadas && d.parcAtrasadas > 0) return true;
+      if (showPendentes && d.parcPendentes > 0) return true;
+      if (showPagas && !showAtrasadas && !showPendentes && d.parcPagas > 0) return true;
+      return false;
+    });
+  }, [dados, showPagas, showAtrasadas, showPendentes]);
 
   const loadDados = async () => {
     setLoading(true);
@@ -47,7 +107,7 @@ export function RelatorioAtrasados() {
 
       if (error) throw error;
 
-      const map = new Map<string, ContratoAtrasado>();
+      const map = new Map<string, ContratoData>();
 
       (data || []).forEach((p: any) => {
         const cId = p.contratos.id;
@@ -59,6 +119,8 @@ export function RelatorioAtrasados() {
             parcPagas: 0,
             parcAtrasadas: 0,
             valorAtrasado: 0,
+            parcPendentes: 0,
+            valorPendente: 0,
             totalParcelas: p.contratos.numero_parcelas,
           });
         }
@@ -70,14 +132,16 @@ export function RelatorioAtrasados() {
           if (venc < hoje) {
             entry.parcAtrasadas++;
             entry.valorAtrasado += Number(p.valor_original || p.valor);
+          } else {
+            entry.parcPendentes++;
+            entry.valorPendente += Number(p.valor_original || p.valor);
           }
         }
       });
 
-      const result = Array.from(map.values()).filter((c) => c.parcAtrasadas > 0);
+      const result = Array.from(map.values());
       result.sort((a, b) => a.clienteNome.localeCompare(b.clienteNome));
       setDados(result);
-      setSelected(new Set(result.map((r) => r.contratoId)));
     } catch {
       toast({ title: "Erro ao carregar dados", variant: "destructive" });
     } finally {
@@ -89,11 +153,16 @@ export function RelatorioAtrasados() {
     if (open) loadDados();
   }, [open]);
 
+  // Reset selection when filters change
+  useEffect(() => {
+    setSelected(new Set(filteredDados.map((r) => r.contratoId)));
+  }, [filteredDados]);
+
   const toggleAll = () => {
-    if (selected.size === dados.length) {
+    if (selected.size === filteredDados.length) {
       setSelected(new Set());
     } else {
-      setSelected(new Set(dados.map((d) => d.contratoId)));
+      setSelected(new Set(filteredDados.map((d) => d.contratoId)));
     }
   };
 
@@ -104,50 +173,56 @@ export function RelatorioAtrasados() {
     setSelected(next);
   };
 
-  const selectedDados = dados.filter((d) => selected.has(d.contratoId));
+  const selectedDados = filteredDados.filter((d) => selected.has(d.contratoId));
+  const columns = buildDynamicColumns(showPagas, showAtrasadas, showPendentes);
+  const title = getReportTitle(showPagas, showAtrasadas, showPendentes);
+
+  const buildSummaryCards = (data: ContratoData[]) => {
+    const cards: { label: string; value: string; color: string }[] = [];
+    cards.push({ label: "Clientes", value: data.length.toString(), color: "#333" });
+    if (showPagas) cards.push({ label: "Parcelas Pagas", value: data.reduce((s, d) => s + d.parcPagas, 0).toString(), color: "#22c55e" });
+    if (showAtrasadas) {
+      cards.push({ label: "Parcelas Atrasadas", value: data.reduce((s, d) => s + d.parcAtrasadas, 0).toString(), color: "#ef4444" });
+      cards.push({ label: "Valor Atrasado", value: `R$ ${data.reduce((s, d) => s + d.valorAtrasado, 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, color: "#ef4444" });
+    }
+    if (showPendentes) {
+      cards.push({ label: "Parcelas Pendentes", value: data.reduce((s, d) => s + d.parcPendentes, 0).toString(), color: "#f59e0b" });
+      cards.push({ label: "Valor Pendente", value: `R$ ${data.reduce((s, d) => s + d.valorPendente, 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, color: "#f59e0b" });
+    }
+    return cards;
+  };
 
   const buildHtml = () => {
-    const totalClientes = selectedDados.length;
-    const totalAtrasadas = selectedDados.reduce((s, d) => s + d.parcAtrasadas, 0);
-    const totalValor = selectedDados.reduce((s, d) => s + d.valorAtrasado, 0);
-
+    const cards = buildSummaryCards(selectedDados);
     return `
       <div style="text-align:center;margin-bottom:20px;border-bottom:3px solid #333;padding-bottom:15px;">
-        <h1 style="color:#1a1a1a;font-size:24px;margin:0 0 5px;font-weight:bold;">RELATÓRIO DE CONTRATOS ATRASADOS</h1>
+        <h1 style="color:#1a1a1a;font-size:24px;margin:0 0 5px;font-weight:bold;">${escapeHtml(title)}</h1>
         <p style="color:#666;font-size:12px;margin:0;">Gerado em ${format(new Date(), "dd/MM/yyyy HH:mm")}</p>
       </div>
-      <div style="background:#fef2f2;padding:15px;border-radius:8px;margin-bottom:15px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;text-align:center;">
-        <div><div style="font-size:11px;color:#666;">Clientes</div><div style="font-size:18px;font-weight:bold;color:#333;">${totalClientes}</div></div>
-        <div><div style="font-size:11px;color:#666;">Parcelas Atrasadas</div><div style="font-size:18px;font-weight:bold;color:#ef4444;">${totalAtrasadas}</div></div>
-        <div><div style="font-size:11px;color:#666;">Valor Atrasado</div><div style="font-size:18px;font-weight:bold;color:#ef4444;">R$ ${totalValor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div></div>
+      <div style="background:#fef2f2;padding:15px;border-radius:8px;margin-bottom:15px;display:grid;grid-template-columns:repeat(${cards.length},1fr);gap:10px;text-align:center;">
+        ${cards.map((c) => `<div><div style="font-size:11px;color:#666;">${c.label}</div><div style="font-size:18px;font-weight:bold;color:${c.color};">${c.value}</div></div>`).join("")}
       </div>
       <table style="width:100%;border-collapse:collapse;font-size:12px;">
         <thead>
           <tr style="background:#333;color:white;">
-            <th style="padding:10px;text-align:left;">Cliente</th>
-            <th style="padding:10px;text-align:center;">Pagas</th>
-            <th style="padding:10px;text-align:center;">Atrasadas</th>
-            <th style="padding:10px;text-align:right;">Valor Atrasado</th>
+            ${columns.map((c) => `<th style="padding:10px;text-align:${c.align};">${c.header}</th>`).join("")}
           </tr>
         </thead>
         <tbody>
-          ${selectedDados
-            .map(
-              (d, i) => `<tr style="background:${i % 2 === 0 ? "#f9f9f9" : "#ffffff"};border-bottom:1px solid #ddd;">
-              <td style="padding:8px;">${escapeHtml(d.clienteNome)}</td>
-              <td style="padding:8px;text-align:center;color:#22c55e;font-weight:bold;">${d.parcPagas}</td>
-              <td style="padding:8px;text-align:center;color:#ef4444;font-weight:bold;">${d.parcAtrasadas}</td>
-              <td style="padding:8px;text-align:right;font-weight:bold;">R$ ${d.valorAtrasado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
-            </tr>`
-            )
-            .join("")}
+          ${selectedDados.map((d, i) => `<tr style="background:${i % 2 === 0 ? "#f9f9f9" : "#ffffff"};border-bottom:1px solid #ddd;">
+            ${columns.map((c) => {
+              const val = c.key === "cliente" ? escapeHtml(getCellValue(d, c.key)) : getCellValue(d, c.key);
+              const color = c.color ? `color:${c.color};font-weight:bold;` : "";
+              return `<td style="padding:8px;text-align:${c.align};${color}">${val}</td>`;
+            }).join("")}
+          </tr>`).join("")}
         </tbody>
         <tfoot>
           <tr style="background:#333;color:white;font-weight:bold;">
-            <td style="padding:10px;">TOTAL (${totalClientes} clientes)</td>
-            <td style="padding:10px;text-align:center;">${selectedDados.reduce((s, d) => s + d.parcPagas, 0)}</td>
-            <td style="padding:10px;text-align:center;">${totalAtrasadas}</td>
-            <td style="padding:10px;text-align:right;">R$ ${totalValor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
+            ${columns.map((c) => {
+              const val = c.key === "cliente" ? `TOTAL (${selectedDados.length} clientes)` : getTotalValue(selectedDados, c.key);
+              return `<td style="padding:10px;text-align:${c.align};">${val}</td>`;
+            }).join("")}
           </tr>
         </tfoot>
       </table>
@@ -166,7 +241,7 @@ export function RelatorioAtrasados() {
       const canvas = await html2canvas(tempDiv, { scale: 2, backgroundColor: "#ffffff", logging: false });
       document.body.removeChild(tempDiv);
 
-      const fileName = `atrasados-${format(new Date(), "dd-MM-yyyy")}.png`;
+      const fileName = `relatorio-${format(new Date(), "dd-MM-yyyy")}.png`;
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
       canvas.toBlob(async (blob) => {
@@ -175,7 +250,7 @@ export function RelatorioAtrasados() {
           const file = new File([blob], fileName, { type: "image/png" });
           if (navigator.canShare({ files: [file] })) {
             try {
-              await navigator.share({ files: [file], title: "Relatório Atrasados" });
+              await navigator.share({ files: [file], title: title });
               toast({ title: "Imagem pronta!", description: "Escolha 'Salvar Imagem' para adicionar à galeria." });
               return;
             } catch (err: any) {
@@ -208,14 +283,10 @@ export function RelatorioAtrasados() {
       const m = 15;
       let y = 20;
 
-      const totalClientes = selectedDados.length;
-      const totalAtrasadas = selectedDados.reduce((s, d) => s + d.parcAtrasadas, 0);
-      const totalValor = selectedDados.reduce((s, d) => s + d.valorAtrasado, 0);
-
       // Header
-      pdf.setFontSize(18);
+      pdf.setFontSize(16);
       pdf.setFont("helvetica", "bold");
-      pdf.text("RELATÓRIO DE CONTRATOS ATRASADOS", pw / 2, y, { align: "center" });
+      pdf.text(title, pw / 2, y, { align: "center" });
       y += 6;
       pdf.setFontSize(9);
       pdf.setFont("helvetica", "normal");
@@ -227,43 +298,46 @@ export function RelatorioAtrasados() {
       pdf.line(m, y, pw - m, y);
       y += 10;
 
-      // Summary
+      // Summary cards
+      const cards = buildSummaryCards(selectedDados);
       pdf.setFillColor(254, 242, 242);
       pdf.roundedRect(m, y - 4, pw - 2 * m, 18, 3, 3, "F");
-      const colW = (pw - 2 * m) / 3;
-      const labels = ["Clientes", "Parcelas Atrasadas", "Valor Atrasado"];
-      const values = [
-        totalClientes.toString(),
-        totalAtrasadas.toString(),
-        `R$ ${totalValor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
-      ];
-      labels.forEach((l, i) => {
+      const colW = (pw - 2 * m) / cards.length;
+      cards.forEach((c, i) => {
         const x = m + colW * i + colW / 2;
         pdf.setFontSize(7);
         pdf.setTextColor(120, 120, 120);
-        pdf.text(l, x, y + 2, { align: "center" });
+        pdf.text(c.label, x, y + 2, { align: "center" });
         pdf.setFontSize(12);
         pdf.setFont("helvetica", "bold");
-        pdf.setTextColor(i > 0 ? 239 : 50, i > 0 ? 68 : 50, i > 0 ? 68 : 50);
-        pdf.text(values[i], x, y + 10, { align: "center" });
+        const rgb = hexToRgb(c.color);
+        pdf.setTextColor(rgb.r, rgb.g, rgb.b);
+        pdf.text(c.value, x, y + 10, { align: "center" });
       });
       pdf.setTextColor(0, 0, 0);
       pdf.setFont("helvetica", "normal");
       y += 22;
 
+      // Dynamic column widths
+      const totalW = pw - 2 * m;
+      const numDataCols = columns.length - 1; // minus cliente
+      const clienteW = Math.min(70, totalW - numDataCols * 28);
+      const dataCW = (totalW - clienteW) / numDataCols;
+      const colWidths = columns.map((c) => c.key === "cliente" ? clienteW : dataCW);
+
       // Table header
-      const cols = [70, 25, 30, 45];
-      const hdrs = ["Cliente", "Pagas", "Atrasadas", "Valor Atrasado"];
       const drawHeader = () => {
         pdf.setFillColor(50, 50, 50);
-        pdf.rect(m, y - 4, pw - 2 * m, 7, "F");
+        pdf.rect(m, y - 4, totalW, 7, "F");
         pdf.setTextColor(255, 255, 255);
         pdf.setFontSize(8);
         pdf.setFont("helvetica", "bold");
         let xP = m + 2;
-        hdrs.forEach((h, i) => {
-          pdf.text(h, i === 3 ? xP + cols[i] - 2 : xP, y, i === 3 ? { align: "right" } : undefined);
-          xP += cols[i];
+        columns.forEach((c, i) => {
+          const align = c.align === "right" ? "right" : undefined;
+          const xPos = c.align === "right" ? xP + colWidths[i] - 2 : xP;
+          pdf.text(c.header, xPos, y, align ? { align } : undefined);
+          xP += colWidths[i];
         });
         pdf.setTextColor(0, 0, 0);
         y += 6;
@@ -288,46 +362,47 @@ export function RelatorioAtrasados() {
 
         if (idx % 2 === 0) {
           pdf.setFillColor(248, 248, 248);
-          pdf.rect(m, y - 3.5, pw - 2 * m, 5.5, "F");
+          pdf.rect(m, y - 3.5, totalW, 5.5, "F");
         }
 
         let xP = m + 2;
-        // Cliente
-        pdf.text(d.clienteNome.substring(0, 40), xP, y);
-        xP += cols[0];
-        // Pagas
-        pdf.setTextColor(34, 197, 94);
-        pdf.text(d.parcPagas.toString(), xP + 8, y);
-        xP += cols[1];
-        // Atrasadas
-        pdf.setTextColor(239, 68, 68);
-        pdf.setFont("helvetica", "bold");
-        pdf.text(d.parcAtrasadas.toString(), xP + 12, y);
-        pdf.setFont("helvetica", "normal");
-        xP += cols[2];
-        // Valor
-        pdf.text(`R$ ${d.valorAtrasado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, xP + cols[3] - 2, y, { align: "right" });
-        pdf.setTextColor(0, 0, 0);
+        columns.forEach((c, i) => {
+          const val = getCellValue(d, c.key);
+          if (c.color) {
+            const rgb = hexToRgb(c.color);
+            pdf.setTextColor(rgb.r, rgb.g, rgb.b);
+            pdf.setFont("helvetica", "bold");
+          }
+          const displayVal = c.key === "cliente" ? val.substring(0, 40) : val;
+          const align = c.align === "right" ? "right" : undefined;
+          const xPos = c.align === "right" ? xP + colWidths[i] - 2 : c.align === "center" ? xP + colWidths[i] / 2 : xP;
+          pdf.text(displayVal, xPos, y, align ? { align } : c.align === "center" ? { align: "center" } : undefined);
+          if (c.color) {
+            pdf.setTextColor(0, 0, 0);
+            pdf.setFont("helvetica", "normal");
+          }
+          xP += colWidths[i];
+        });
         y += 5.5;
       });
 
       // Footer totals
       pdf.setFillColor(50, 50, 50);
-      pdf.rect(m, y - 3.5, pw - 2 * m, 7, "F");
+      pdf.rect(m, y - 3.5, totalW, 7, "F");
       pdf.setTextColor(255, 255, 255);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(8);
       let xP = m + 2;
-      pdf.text(`TOTAL (${totalClientes} clientes)`, xP, y);
-      xP += cols[0];
-      pdf.text(selectedDados.reduce((s, d) => s + d.parcPagas, 0).toString(), xP + 8, y);
-      xP += cols[1];
-      pdf.text(totalAtrasadas.toString(), xP + 12, y);
-      xP += cols[2];
-      pdf.text(`R$ ${totalValor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, xP + cols[3] - 2, y, { align: "right" });
+      columns.forEach((c, i) => {
+        const val = c.key === "cliente" ? `TOTAL (${selectedDados.length} clientes)` : getTotalValue(selectedDados, c.key);
+        const align = c.align === "right" ? "right" : undefined;
+        const xPos = c.align === "right" ? xP + colWidths[i] - 2 : c.align === "center" ? xP + colWidths[i] / 2 : xP;
+        pdf.text(val, xPos, y, align ? { align } : c.align === "center" ? { align: "center" } : undefined);
+        xP += colWidths[i];
+      });
       pdf.setTextColor(0, 0, 0);
 
-      pdf.save(`atrasados-${format(new Date(), "dd-MM-yyyy")}.pdf`);
+      pdf.save(`relatorio-${format(new Date(), "dd-MM-yyyy")}.pdf`);
       toast({ title: "PDF gerado!", description: "O relatório foi baixado." });
     } catch {
       toast({ title: "Erro ao gerar PDF", variant: "destructive" });
@@ -346,24 +421,55 @@ export function RelatorioAtrasados() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Relatório de Atrasados</DialogTitle>
-            <DialogDescription>Selecione os contratos para incluir no relatório</DialogDescription>
+            <DialogTitle>Gerar Relatório</DialogTitle>
+            <DialogDescription>Configure as colunas e selecione os contratos</DialogDescription>
           </DialogHeader>
           <DialogBody>
+            {/* Visibility flags */}
+            <div className="flex flex-wrap gap-4 pb-3 border-b mb-3">
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="show-pagas"
+                  checked={showPagas}
+                  onCheckedChange={(v) => { if (!v && activeCount <= 1) return; setShowPagas(v); }}
+                  disabled={showPagas && activeCount <= 1}
+                />
+                <Label htmlFor="show-pagas" className="text-xs cursor-pointer">Pagas</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="show-atrasadas"
+                  checked={showAtrasadas}
+                  onCheckedChange={(v) => { if (!v && activeCount <= 1) return; setShowAtrasadas(v); }}
+                  disabled={showAtrasadas && activeCount <= 1}
+                />
+                <Label htmlFor="show-atrasadas" className="text-xs cursor-pointer">Atrasadas</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="show-pendentes"
+                  checked={showPendentes}
+                  onCheckedChange={(v) => { if (!v && activeCount <= 1) return; setShowPendentes(v); }}
+                  disabled={showPendentes && activeCount <= 1}
+                />
+                <Label htmlFor="show-pendentes" className="text-xs cursor-pointer">Pendentes</Label>
+              </div>
+            </div>
+
             {loading ? (
               <p className="text-sm text-muted-foreground text-center py-8">Carregando...</p>
-            ) : dados.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">Nenhum contrato com parcelas atrasadas.</p>
+            ) : filteredDados.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">Nenhum contrato encontrado para os filtros selecionados.</p>
             ) : (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">{selected.size} de {dados.length} selecionados</span>
+                  <span className="text-xs text-muted-foreground">{selected.size} de {filteredDados.length} selecionados</span>
                   <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={toggleAll}>
-                    {selected.size === dados.length ? "Desmarcar Todos" : "Selecionar Todos"}
+                    {selected.size === filteredDados.length ? "Desmarcar Todos" : "Selecionar Todos"}
                   </Button>
                 </div>
                 <div className="space-y-1">
-                  {dados.map((d) => (
+                  {filteredDados.map((d) => (
                     <label
                       key={d.contratoId}
                       className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
@@ -375,11 +481,10 @@ export function RelatorioAtrasados() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{d.clienteNome}</p>
                         <p className="text-xs text-muted-foreground">
-                          <span className="text-success">{d.parcPagas} pagas</span>
-                          {" · "}
-                          <span className="text-destructive font-medium">{d.parcAtrasadas} atrasadas</span>
-                          {" · "}
-                          R$ {d.valorAtrasado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                          {showPagas && <><span className="text-success">{d.parcPagas} pagas</span>{" · "}</>}
+                          {showAtrasadas && <><span className="text-destructive font-medium">{d.parcAtrasadas} atrasadas</span>{" · "}</>}
+                          {showPendentes && <><span className="text-warning font-medium">{d.parcPendentes} pendentes</span>{" · "}</>}
+                          R$ {(d.valorAtrasado + d.valorPendente).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                         </p>
                       </div>
                     </label>
@@ -413,4 +518,11 @@ export function RelatorioAtrasados() {
       </Dialog>
     </>
   );
+}
+
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result
+    ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) }
+    : { r: 0, g: 0, b: 0 };
 }
