@@ -12,7 +12,12 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Search, Check, X, Calendar, AlertTriangle, Trash2, Undo2, FileText, Banknote, TrendingUp, Download, Calculator } from "lucide-react";
+import { Search, Check, X, CalendarIcon, AlertTriangle, Trash2, Undo2, FileText, Banknote, TrendingUp, Download, Calculator } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ptBR } from "date-fns/locale/pt-BR";
+import { parse } from "date-fns";
+import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -264,12 +269,32 @@ export default function Parcelas() {
         <CardContent className="py-3 px-3 md:px-4 overflow-x-hidden">
           <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-end min-w-0">
             <div className="flex-1 min-w-0">
-              <Label htmlFor="data-inicio" className="text-xs mb-1 block text-muted-foreground">Período inicial</Label>
-              <Input id="data-inicio" type="date" value={dataInicioDashboard} onChange={(e) => setDataInicioDashboard(e.target.value)} className="w-full max-w-full h-8 text-base md:text-xs appearance-none [&::-webkit-date-and-time-value]:text-left" />
+              <Label className="text-xs mb-1 block text-muted-foreground">Período inicial</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-full h-8 justify-start text-left font-normal text-base md:text-xs", !dataInicioDashboard && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-2 h-3.5 w-3.5 flex-shrink-0" />
+                    {dataInicioDashboard ? format(parse(dataInicioDashboard, "yyyy-MM-dd", new Date()), "dd/MM/yyyy") : "Selecionar"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" locale={ptBR} selected={dataInicioDashboard ? parse(dataInicioDashboard, "yyyy-MM-dd", new Date()) : undefined} onSelect={(date) => setDataInicioDashboard(date ? format(date, "yyyy-MM-dd") : "")} initialFocus className="p-3 pointer-events-auto" />
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="flex-1 min-w-0">
-              <Label htmlFor="data-fim" className="text-xs mb-1 block text-muted-foreground">Período final</Label>
-              <Input id="data-fim" type="date" value={dataFimDashboard} onChange={(e) => setDataFimDashboard(e.target.value)} className="w-full max-w-full h-8 text-base md:text-xs appearance-none [&::-webkit-date-and-time-value]:text-left" />
+              <Label className="text-xs mb-1 block text-muted-foreground">Período final</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-full h-8 justify-start text-left font-normal text-base md:text-xs", !dataFimDashboard && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-2 h-3.5 w-3.5 flex-shrink-0" />
+                    {dataFimDashboard ? format(parse(dataFimDashboard, "yyyy-MM-dd", new Date()), "dd/MM/yyyy") : "Selecionar"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" locale={ptBR} selected={dataFimDashboard ? parse(dataFimDashboard, "yyyy-MM-dd", new Date()) : undefined} onSelect={(date) => setDataFimDashboard(date ? format(date, "yyyy-MM-dd") : "")} initialFocus className="p-3 pointer-events-auto" />
+                </PopoverContent>
+              </Popover>
             </div>
             {(dataInicioDashboard || dataFimDashboard) && (
               <Button variant="ghost" size="sm" onClick={() => { setDataInicioDashboard(""); setDataFimDashboard(""); }} className="h-8 text-xs px-3 text-muted-foreground">
@@ -297,7 +322,7 @@ export default function Parcelas() {
         <div className="metric-card cursor-default">
           <div className="flex items-center justify-between mb-1">
             <span className="metric-card-label">A Receber</span>
-            <Calendar className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+            <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
           </div>
           <p className="metric-card-value">R$ {totalPendente.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
           <p className="text-[10px] text-muted-foreground">{dashboardParcelas.filter(p => p.status !== "pago").length} pendentes</p>
@@ -436,7 +461,7 @@ export default function Parcelas() {
                     <div className="flex flex-col gap-1.5 pt-1.5 border-t">
                       <div className="flex gap-1.5">
                         <Button variant="outline" size="sm" onClick={() => { setParcelaToEditData(parcela); setIsEditarDataDialogOpen(true); }} className="flex-1 h-9 text-xs px-2">
-                          <Calendar className="h-3.5 w-3.5 mr-1" />Data
+                          <CalendarIcon className="h-3.5 w-3.5 mr-1" />Data
                         </Button>
                         <Button variant="outline" size="sm" onClick={() => loadHistorico(parcela)} className="flex-1 h-9 text-xs px-2">
                           <FileText className="h-3.5 w-3.5 mr-1" />Histórico
@@ -499,7 +524,7 @@ export default function Parcelas() {
                       <TableCell className="text-right">
                         <div className="flex gap-1 justify-end">
                           <Button variant="outline" size="sm" onClick={() => { setParcelaToEditData(parcela); setIsEditarDataDialogOpen(true); }} title="Editar data" className="h-8 w-8 p-0">
-                            <Calendar className="h-3.5 w-3.5" />
+                            <CalendarIcon className="h-3.5 w-3.5" />
                           </Button>
                           <Button variant="outline" size="sm" onClick={() => loadHistorico(parcela)} title="Histórico" className="h-8 w-8 p-0">
                             <FileText className="h-3.5 w-3.5" />
