@@ -443,13 +443,16 @@ export default function Contratos() {
         contrato={selectedContrato}
         parcelas={parcelas}
         onContratoUpdated={handleContratoUpdated}
+        onParcelasUpdated={loadParcelas}
         onRenovar={handleRenovarContrato}
       />
 
       <ImportComprovante
         isOpen={isImportDialogOpen}
         onOpenChange={setIsImportDialogOpen}
+        clientes={clientes}
         onImportComplete={handleImportComplete}
+        onClientesUpdated={loadClientes}
       />
 
       <AccessRestrictedModal open={isAccessModalOpen} onOpenChange={setIsAccessModalOpen} userEmail={userEmail} />
