@@ -1,39 +1,23 @@
 
 
-# Relatório de Contratos Atrasados com Seleção
+# Fix: Relatório Atrasados ignoring partial payment business rule
 
-## O que será feito
-Criar um componente de relatório de contratos atrasados com uma etapa de seleção: o usuário abre um dialog/sheet, vê a lista de contratos ativos com parcelas atrasadas, pode marcar/desmarcar quais incluir no relatório, e então gerar como PDF ou imagem PNG.
+## Problem
+The overdue report calculates `valorAtrasado` as `valor_original - valor_pago`, showing R$ 5,000 for Adriane. But per the partial payment business rule, partial/interest-only payments do NOT reduce the remaining balance. The full `valor_original` (R$ 5,500) should be shown as owed.
 
-## Detalhes técnicos
+## Solution
+In `src/components/contratos/RelatorioAtrasados.tsx`, line 72, change the calculation to use the full `valor_original` (or `valor`) without subtracting `valor_pago`:
 
-### Novo componente: `src/components/contratos/RelatorioAtrasados.tsx`
+```
+// Before (wrong):
+entry.valorAtrasado += Number(p.valor_original || p.valor) - Number(p.valor_pago || 0);
 
-1. **Botão trigger** — "Relatório Atrasados" com ícone `AlertTriangle`, renderizado no header da página de Contratos
-2. **Dialog/Sheet de seleção** — ao clicar, abre um modal que:
-   - Busca parcelas de todos os contratos ativos via Supabase (`parcelas` com join em `contratos` e `clientes`)
-   - Agrupa por contrato/cliente, calculando: parcelas pagas, parcelas atrasadas (pendente + vencimento < hoje), valor atrasado
-   - Filtra apenas contratos que têm ao menos 1 parcela atrasada
-   - Exibe lista com checkboxes (usando `Checkbox` do shadcn) — cada linha mostra: nome do cliente, X pagas, Y atrasadas, R$ valor atrasado
-   - Botão "Selecionar Todos" / "Desmarcar Todos"
-   - Todos pré-selecionados por padrão
-3. **Geração do relatório** — dois botões no rodapé do modal: "Baixar Imagem" e "Baixar PDF"
-   - Gera HTML offscreen (mesmo padrão do `RelatorioGenerator`) com tabela dos contratos selecionados
-   - Título: "RELATÓRIO DE CONTRATOS ATRASADOS", data de geração
-   - Colunas: Cliente | Pagas | Atrasadas | Valor Atrasado
-   - Totalizador no rodapé (total clientes, total parcelas atrasadas, valor total)
-   - `html2canvas` → PNG, `jsPDF` → PDF
-   - Web Share API para iOS (conforme padrão existente)
-   - `escapeHtml` nos nomes de clientes
+// After (correct):
+entry.valorAtrasado += Number(p.valor_original || p.valor);
+```
 
-### `src/pages/Contratos.tsx`
-- Importar e adicionar `<RelatorioAtrasados />` no `<PageHeader>`, ao lado do botão "Importar"
-- Não precisa passar props — o componente busca os dados diretamente do Supabase
+This aligns with the established rule: "Restante a Quitar always reflects the original installment value for pending installments."
 
-### Arquivos
-- **Criar**: `src/components/contratos/RelatorioAtrasados.tsx`
-- **Editar**: `src/pages/Contratos.tsx` (adicionar botão no header)
-- **Editar**: `src/components/contratos/index.ts` (export)
-
-Sem mudanças no banco de dados.
+## File
+- `src/components/contratos/RelatorioAtrasados.tsx` — single line change on line 72
 
