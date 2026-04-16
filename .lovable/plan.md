@@ -1,21 +1,23 @@
 
 
-# Fix: Filter buttons overflowing on mobile
+# Fix: Date fields overflowing on iPhone (Parcelas page)
 
 ## Problem
-On the contracts page (mobile 390px), the row containing "Contratos Ativos (14)", CSV button, and the Ativos/Quitados/Todos filter toggle group are all on a single line with `flex items-center justify-between`, causing horizontal overflow past the screen edge.
+On real iPhones, the native `<input type="date">` renders wider than in the Lovable preview simulator. The date inputs in the "Período" card overflow past the screen edge because iOS Safari's native date picker UI adds extra chrome that doesn't fit within the current container.
+
+## Root Cause
+Lines 263-280 in `src/pages/Parcelas.tsx`: The date inputs use `w-full` inside `flex-1 min-w-0` containers, but the parent Card lacks `overflow-hidden`, and on iOS the native date input appearance can push beyond bounds.
 
 ## Solution
-Stack the title row and filters vertically on mobile. Move the filter toggle group to its own row below the title+CSV line on small screens.
+Apply these fixes to `src/pages/Parcelas.tsx` (lines ~263-280):
 
-### Changes in `src/pages/Contratos.tsx` (lines 310-346)
+1. Add `overflow-hidden` to the Card wrapping the date filters
+2. Add `min-w-0` to the flex row container to prevent flex children from overflowing
+3. Add `max-w-full` and `appearance-none` styling to date inputs for iOS compatibility
+4. Ensure the container uses `overflow-x-hidden` as a safety net
 
-Restructure the layout:
-- **Line 1**: Title ("Contratos Ativos (14)") + CSV button — `flex justify-between`
-- **Line 2**: Filter toggle group — full width, `overflow-x-auto` with `flex-shrink-0` buttons
-
-This ensures the filters never exceed the screen width on mobile while remaining inline on desktop via `md:flex-row`.
+Changes are limited to the period filter Card (~5 lines adjusted). No logic or business rule changes.
 
 ## File
-- `src/pages/Contratos.tsx` — lines ~310-346 only
+- `src/pages/Parcelas.tsx` — lines 263-280 only
 
