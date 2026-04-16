@@ -228,8 +228,8 @@ export default function Parcelas() {
     if (parcela.status === "pago") return <Badge variant="default" className="bg-success text-[10px]">Pago</Badge>;
     if (parcela.status === "parcialmente_pago") {
       const diasAtraso = calcularDiasAtraso(parcela.data_vencimento);
-      if (diasAtraso > 0) return <Badge className="bg-amber-500 text-white text-[10px]">Parcial ({diasAtraso}d)</Badge>;
-      return <Badge className="bg-amber-500 text-white text-[10px]">Parcial</Badge>;
+      if (diasAtraso > 0) return <Badge className="bg-warning text-warning-foreground text-[10px]">Parcial ({diasAtraso}d)</Badge>;
+      return <Badge className="bg-warning text-warning-foreground text-[10px]">Parcial</Badge>;
     }
     const diasAtraso = calcularDiasAtraso(parcela.data_vencimento);
     if (diasAtraso > 0) return <Badge variant="destructive" className="text-[10px]">Atrasado ({diasAtraso}d)</Badge>;
