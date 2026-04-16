@@ -127,7 +127,7 @@ export default function Dashboard() {
     } catch (error: any) {
       toast({
         title: "Não foi possível carregar o dashboard",
-        description: "Verifique sua conexão com a internet e recarregue a página.",
+        description: "Verifique sua conexão e recarregue a página.",
         variant: "destructive",
       });
     } finally {
@@ -145,8 +145,8 @@ export default function Dashboard() {
   return (
     <div className="space-y-5 md:space-y-6">
       <PageHeader
-        title="Dashboard"
-        description="Visão geral e ações pendentes"
+        title="Visão geral"
+        description="Acompanhe seus empréstimos e ações pendentes"
       >
         <Button asChild size="sm">
           <Link to="/contratos">
@@ -154,15 +154,9 @@ export default function Dashboard() {
             Criar contrato
           </Link>
         </Button>
-        <Button asChild variant="outline" size="sm">
-          <Link to="/clientes">
-            <Users className="h-4 w-4 mr-1.5" />
-            Novo cliente
-          </Link>
-        </Button>
       </PageHeader>
 
-      {/* Ações de Hoje - Only shown when there are urgent items */}
+      {/* Ações pendentes */}
       {hasUrgentItems && (
         <Card className="border-destructive/30 bg-destructive/5">
           <CardHeader className="pb-2">
@@ -180,7 +174,7 @@ export default function Dashboard() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium">{stats.parcelasVencidas} parcela{stats.parcelasVencidas > 1 ? 's' : ''} vencida{stats.parcelasVencidas > 1 ? 's' : ''}</p>
-                    <p className="text-xs text-muted-foreground">Precisam de atenção imediata</p>
+                    <p className="text-xs text-muted-foreground">Precisam de atenção</p>
                   </div>
                   <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
                 </Link>
@@ -222,8 +216,8 @@ export default function Dashboard() {
               <span className="text-xs font-medium text-muted-foreground">Capital em Circulação</span>
               <DollarSign className="h-4 w-4 text-primary" />
             </div>
-            <p className="text-lg md:text-2xl font-bold tracking-tight truncate">
-              R$ {stats.totalEmprestado.toLocaleString('pt-BR')}
+            <p className="text-lg md:text-2xl font-bold tracking-tight tabular-nums truncate">
+              R$ {stats.totalEmprestado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </p>
           </CardContent>
         </Card>
@@ -234,7 +228,7 @@ export default function Dashboard() {
               <span className="text-xs font-medium text-muted-foreground">A Receber</span>
               <Calendar className="h-4 w-4 text-warning" />
             </div>
-            <p className="text-lg md:text-2xl font-bold tracking-tight text-warning truncate">
+            <p className="text-lg md:text-2xl font-bold tracking-tight text-warning tabular-nums truncate">
               R$ {stats.totalReceber.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </p>
           </CardContent>
@@ -246,7 +240,7 @@ export default function Dashboard() {
               <span className="text-xs font-medium text-muted-foreground">Total Recebido</span>
               <CheckCircle2 className="h-4 w-4 text-success" />
             </div>
-            <p className="text-lg md:text-2xl font-bold tracking-tight text-success truncate">
+            <p className="text-lg md:text-2xl font-bold tracking-tight text-success tabular-nums truncate">
               R$ {stats.totalRecebido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </p>
           </CardContent>
@@ -258,7 +252,7 @@ export default function Dashboard() {
               <span className="text-xs font-medium text-muted-foreground">Lucro</span>
               <TrendingUp className={`h-4 w-4 ${stats.lucro >= 0 ? 'text-success' : 'text-destructive'}`} />
             </div>
-            <p className={`text-lg md:text-2xl font-bold tracking-tight truncate ${stats.lucro >= 0 ? 'text-success' : 'text-destructive'}`}>
+            <p className={`text-lg md:text-2xl font-bold tracking-tight tabular-nums truncate ${stats.lucro >= 0 ? 'text-success' : 'text-destructive'}`}>
               R$ {stats.lucro.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </p>
           </CardContent>
@@ -274,7 +268,7 @@ export default function Dashboard() {
                 <Users className="h-5 w-5 text-muted-foreground" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{stats.clientesAtivos}</p>
+                <p className="text-2xl font-bold tabular-nums">{stats.clientesAtivos}</p>
                 <p className="text-xs text-muted-foreground">Clientes ativos</p>
               </div>
             </CardContent>
@@ -287,7 +281,7 @@ export default function Dashboard() {
                 <FileText className="h-5 w-5 text-muted-foreground" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{stats.contratosAtivos}</p>
+                <p className="text-2xl font-bold tabular-nums">{stats.contratosAtivos}</p>
                 <p className="text-xs text-muted-foreground">Contratos ativos</p>
               </div>
             </CardContent>
@@ -321,7 +315,7 @@ export default function Dashboard() {
                 <Link to="/parcelas" key={index} className="flex items-center justify-between p-2.5 rounded-lg border hover:bg-muted/50 transition-colors group">
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">{parcela.cliente}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground tabular-nums">
                       R$ {parcela.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </p>
                   </div>
@@ -412,10 +406,7 @@ export default function Dashboard() {
                         const d = payload[0].payload as StatusDistribuicao;
                         return (
                           <div className="rounded-lg border bg-background p-2 shadow-sm">
-                            <div className="flex items-center gap-2">
-                              <div className="h-3 w-3 rounded-full" style={{ backgroundColor: d.color }} />
-                              <span className="text-sm font-medium">{d.name}: {d.value}</span>
-                            </div>
+                            <p className="text-sm font-medium">{d.name}: {d.value}</p>
                           </div>
                         );
                       }}
@@ -432,7 +423,7 @@ export default function Dashboard() {
             <CardHeader className="pb-3">
               <CardTitle className="text-sm md:text-base font-semibold flex items-center gap-2">
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
-                Emprestado vs Recebido
+                Fluxo de Capital Mensal
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -441,12 +432,12 @@ export default function Dashboard() {
                   emprestado: { label: "Emprestado", color: "hsl(var(--primary))" },
                   recebido: { label: "Recebido", color: "hsl(var(--success))" },
                 }}
-                className="aspect-[4/3] w-full"
+                className="aspect-[2/1] w-full"
               >
                 <BarChart data={capitalMensal} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
                   <XAxis dataKey="mes" tick={{ fontSize: 11 }} className="fill-muted-foreground" />
-                  <YAxis tick={{ fontSize: 10 }} className="fill-muted-foreground" tickFormatter={(v) => `R$${v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}`} />
+                  <YAxis tick={{ fontSize: 11 }} className="fill-muted-foreground" tickFormatter={(v) => `R$${v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}`} />
                   <ChartTooltip
                     content={
                       <ChartTooltipContent

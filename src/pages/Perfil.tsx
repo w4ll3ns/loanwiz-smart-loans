@@ -10,6 +10,7 @@ import { User, Phone, Mail, Save, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { PageHeader } from '@/components/PageHeader';
 
 export default function Perfil() {
   const { profile, isLoading, userEmail } = useUserRole();
@@ -64,28 +65,28 @@ export default function Perfil() {
   }[statusPlano] || 'bg-muted text-muted-foreground border-border';
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto">
-      <h1 className="text-2xl md:text-3xl font-bold">Meu Perfil</h1>
+    <div className="space-y-5 max-w-2xl mx-auto">
+      <PageHeader title="Meu Perfil" description="Gerencie suas informações pessoais" />
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
+          <CardTitle className="flex items-center gap-2 text-base">
+            <User className="h-4 w-4" />
             Dados Pessoais
           </CardTitle>
-          <CardDescription>Edite suas informações de perfil</CardDescription>
+          <CardDescription>Atualize seu nome e telefone de contato</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email" className="flex items-center gap-1">
+            <Label htmlFor="email" className="flex items-center gap-1.5 text-xs">
               <Mail className="h-3.5 w-3.5" /> Email
             </Label>
             <Input id="email" value={userEmail || ''} disabled className="bg-muted" />
-            <p className="text-xs text-muted-foreground">O email não pode ser alterado.</p>
+            <p className="text-[11px] text-muted-foreground">O email não pode ser alterado.</p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="nome" className="flex items-center gap-1">
+            <Label htmlFor="nome" className="flex items-center gap-1.5 text-xs">
               <User className="h-3.5 w-3.5" /> Nome
             </Label>
             <Input
@@ -97,7 +98,7 @@ export default function Perfil() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="telefone" className="flex items-center gap-1">
+            <Label htmlFor="telefone" className="flex items-center gap-1.5 text-xs">
               <Phone className="h-3.5 w-3.5" /> Telefone
             </Label>
             <Input
@@ -110,14 +111,14 @@ export default function Perfil() {
 
           <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
             {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-            Salvar Alterações
+            Salvar alterações
           </Button>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Informações do Plano</CardTitle>
+          <CardTitle className="text-base">Informações do Plano</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex items-center justify-between">
@@ -139,7 +140,7 @@ export default function Perfil() {
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Membro desde</span>
             <span className="text-sm font-medium">
-              {profile?.created_at ? format(new Date(profile.created_at), "dd/MM/yyyy", { locale: ptBR }) : '-'}
+              {profile?.created_at ? format(new Date(profile.created_at), "dd/MM/yyyy", { locale: ptBR }) : '—'}
             </span>
           </div>
         </CardContent>
