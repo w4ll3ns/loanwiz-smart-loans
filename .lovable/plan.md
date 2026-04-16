@@ -1,32 +1,39 @@
 
 
-# Add "Observações" field to contracts
+# Relatório de Contratos Atrasados com Seleção
 
-## What changes
+## O que será feito
+Criar um componente de relatório de contratos atrasados com uma etapa de seleção: o usuário abre um dialog/sheet, vê a lista de contratos ativos com parcelas atrasadas, pode marcar/desmarcar quais incluir no relatório, e então gerar como PDF ou imagem PNG.
 
-Add an optional notes/observations field (`observacoes`) to the contracts table and integrate it into the creation form and details view, allowing users to annotate contracts at creation time or edit them later.
+## Detalhes técnicos
 
-## Technical details
+### Novo componente: `src/components/contratos/RelatorioAtrasados.tsx`
 
-### 1. Database migration
-- Add column `observacoes TEXT NULL` to the `contratos` table. No RLS changes needed (existing policies cover all columns).
+1. **Botão trigger** — "Relatório Atrasados" com ícone `AlertTriangle`, renderizado no header da página de Contratos
+2. **Dialog/Sheet de seleção** — ao clicar, abre um modal que:
+   - Busca parcelas de todos os contratos ativos via Supabase (`parcelas` com join em `contratos` e `clientes`)
+   - Agrupa por contrato/cliente, calculando: parcelas pagas, parcelas atrasadas (pendente + vencimento < hoje), valor atrasado
+   - Filtra apenas contratos que têm ao menos 1 parcela atrasada
+   - Exibe lista com checkboxes (usando `Checkbox` do shadcn) — cada linha mostra: nome do cliente, X pagas, Y atrasadas, R$ valor atrasado
+   - Botão "Selecionar Todos" / "Desmarcar Todos"
+   - Todos pré-selecionados por padrão
+3. **Geração do relatório** — dois botões no rodapé do modal: "Baixar Imagem" e "Baixar PDF"
+   - Gera HTML offscreen (mesmo padrão do `RelatorioGenerator`) com tabela dos contratos selecionados
+   - Título: "RELATÓRIO DE CONTRATOS ATRASADOS", data de geração
+   - Colunas: Cliente | Pagas | Atrasadas | Valor Atrasado
+   - Totalizador no rodapé (total clientes, total parcelas atrasadas, valor total)
+   - `html2canvas` → PNG, `jsPDF` → PDF
+   - Web Share API para iOS (conforme padrão existente)
+   - `escapeHtml` nos nomes de clientes
 
-### 2. `src/components/contratos/ContratoForm.tsx`
-- Add `observacoes: string` to `ContratoFormData` interface and `defaultFormData`
-- Add a `<Textarea>` field after the "Regras de Cobrança" section, labeled "Observações (opcional)"
-- Pass `observacoes` through to the contract creation flow — since `criarContratoComParcelas` is an RPC that doesn't accept observacoes, we'll update the contract immediately after creation with a simple `.update()` call
+### `src/pages/Contratos.tsx`
+- Importar e adicionar `<RelatorioAtrasados />` no `<PageHeader>`, ao lado do botão "Importar"
+- Não precisa passar props — o componente busca os dados diretamente do Supabase
 
-### 3. `src/services/contratos.ts`
-- Add `observacoes?: string` to `CriarContratoParams`
-- After the RPC call returns the contract ID, if `observacoes` is provided, do a `supabase.from('contratos').update({ observacoes }).eq('id', contratoId)`
+### Arquivos
+- **Criar**: `src/components/contratos/RelatorioAtrasados.tsx`
+- **Editar**: `src/pages/Contratos.tsx` (adicionar botão no header)
+- **Editar**: `src/components/contratos/index.ts` (export)
 
-### 4. `src/components/contratos/ContratoDetails.tsx`
-- Add `observacoes?: string` to the `Contrato` interface
-- Display the observations below the contract summary cards (before the actions row), with an inline edit capability — a small edit icon that toggles a textarea, with save/cancel
-- The save calls `supabase.from('contratos').update({ observacoes }).eq('id', contrato.id)` then triggers `onContratoUpdated()`
-
-### 5. `src/pages/Contratos.tsx`
-- Ensure `loadContratos` query already uses `select("*, clientes(nome)")` which returns all columns — the new `observacoes` column will be included automatically
-
-No business logic, RLS, or RPC changes needed beyond the column addition.
+Sem mudanças no banco de dados.
 
