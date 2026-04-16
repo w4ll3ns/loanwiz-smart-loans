@@ -56,11 +56,13 @@ export default function Contratos() {
     const ativos = contratos.filter(c => c.status === "ativo");
     const quitados = contratos.filter(c => c.status === "quitado");
     const valorEmAberto = ativos.reduce((acc, c) => acc + Number(c.valor_total), 0);
+    const totalEmprestado = ativos.reduce((acc, c) => acc + Number(c.valor_emprestado), 0);
     return {
       ativos: ativos.length,
       quitados: quitados.length,
       total: contratos.length,
       valorEmAberto,
+      totalEmprestado,
     };
   }, [contratos]);
 
@@ -199,7 +201,7 @@ export default function Contratos() {
     <div className="space-y-4 md:space-y-5">
       <PageHeader
         title="Contratos"
-        description="Gerencie empréstimos e acompanhe pagamentos"
+        description="Central de empréstimos — crie, acompanhe e gerencie"
       >
         <Button size="sm" variant="outline" onClick={() => {
           if (!canCreate) {
@@ -228,50 +230,51 @@ export default function Contratos() {
 
       {/* Summary metrics */}
       {!loading && contratos.length > 0 && (
-        <div className="grid gap-2 md:gap-3 grid-cols-3">
+        <div className="grid gap-2 md:gap-3 grid-cols-2 md:grid-cols-4">
           <div
-            className={`metric-card ${statusFilter === "ativos" ? "ring-2 ring-primary shadow-md" : ""}`}
+            className={`metric-card border-l-4 border-l-primary ${statusFilter === "ativos" ? "ring-2 ring-primary shadow-md" : ""}`}
             onClick={() => setStatusFilter("ativos")}
           >
-            <div className="flex items-center gap-2.5">
-              <div className="metric-card-icon bg-primary/10">
-                <FileText className="h-4 w-4 text-primary" />
-              </div>
-              <div className="min-w-0">
-                <p className="metric-card-value">{summaryStats.ativos}</p>
-                <p className="metric-card-label">Ativos</p>
-              </div>
+            <div className="flex items-center justify-between mb-1">
+              <span className="metric-card-label">Ativos</span>
+              <FileText className="h-3.5 w-3.5 text-primary flex-shrink-0" />
             </div>
+            <p className="metric-card-value text-primary">{summaryStats.ativos}</p>
+            <p className="text-[10px] text-muted-foreground">contrato{summaryStats.ativos !== 1 ? 's' : ''}</p>
           </div>
           <div
-            className={`metric-card ${statusFilter === "quitados" ? "ring-2 ring-success shadow-md" : ""}`}
+            className={`metric-card border-l-4 border-l-success ${statusFilter === "quitados" ? "ring-2 ring-success shadow-md" : ""}`}
             onClick={() => setStatusFilter("quitados")}
           >
-            <div className="flex items-center gap-2.5">
-              <div className="metric-card-icon bg-success/10">
-                <CheckCircle2 className="h-4 w-4 text-success" />
-              </div>
-              <div className="min-w-0">
-                <p className="metric-card-value">{summaryStats.quitados}</p>
-                <p className="metric-card-label">Quitados</p>
-              </div>
+            <div className="flex items-center justify-between mb-1">
+              <span className="metric-card-label">Quitados</span>
+              <CheckCircle2 className="h-3.5 w-3.5 text-success flex-shrink-0" />
             </div>
+            <p className="metric-card-value text-success">{summaryStats.quitados}</p>
+            <p className="text-[10px] text-muted-foreground">finalizado{summaryStats.quitados !== 1 ? 's' : ''}</p>
           </div>
           <div
             className={`metric-card ${statusFilter === "todos" ? "ring-2 ring-ring shadow-md" : ""}`}
             onClick={() => setStatusFilter("todos")}
           >
-            <div className="flex items-center gap-2.5">
-              <div className="metric-card-icon bg-warning/10">
-                <DollarSign className="h-4 w-4 text-warning" />
-              </div>
-              <div className="min-w-0">
-                <p className="metric-card-value text-base md:text-lg">
-                  R$ {summaryStats.valorEmAberto.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                </p>
-                <p className="metric-card-label">Em aberto</p>
-              </div>
+            <div className="flex items-center justify-between mb-1">
+              <span className="metric-card-label">Capital Emprestado</span>
+              <DollarSign className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
             </div>
+            <p className="metric-card-value">
+              R$ {summaryStats.totalEmprestado.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+            </p>
+            <p className="text-[10px] text-muted-foreground">em contratos ativos</p>
+          </div>
+          <div className="metric-card cursor-default border-l-4 border-l-warning">
+            <div className="flex items-center justify-between mb-1">
+              <span className="metric-card-label">Total a Receber</span>
+              <Clock className="h-3.5 w-3.5 text-warning flex-shrink-0" />
+            </div>
+            <p className="metric-card-value text-warning">
+              R$ {summaryStats.valorEmAberto.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+            </p>
+            <p className="text-[10px] text-muted-foreground">valor total dos ativos</p>
           </div>
         </div>
       )}
