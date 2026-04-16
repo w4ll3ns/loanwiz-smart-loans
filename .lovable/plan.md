@@ -1,23 +1,23 @@
 
 
-# Fix: Date fields overflowing on iPhone (Parcelas page)
+# Fix: Replace native date inputs with custom DatePicker on Parcelas
 
 ## Problem
-On real iPhones, the native `<input type="date">` renders wider than in the Lovable preview simulator. The date inputs in the "Período" card overflow past the screen edge because iOS Safari's native date picker UI adds extra chrome that doesn't fit within the current container.
-
-## Root Cause
-Lines 263-280 in `src/pages/Parcelas.tsx`: The date inputs use `w-full` inside `flex-1 min-w-0` containers, but the parent Card lacks `overflow-hidden`, and on iOS the native date input appearance can push beyond bounds.
+Native `<input type="date">` on iOS Safari ignores `appearance-none` and renders its own UI chrome (spinner, calendar icon) that pushes the input beyond the container width. CSS-only fixes cannot fully control iOS Safari's native date input rendering — this is a known platform limitation.
 
 ## Solution
-Apply these fixes to `src/pages/Parcelas.tsx` (lines ~263-280):
+Replace the two native `<input type="date">` fields in the Período card with Shadcn's Popover + Calendar (DatePicker) pattern. This renders identically on all platforms since it's a fully custom UI — no native browser chrome involved.
 
-1. Add `overflow-hidden` to the Card wrapping the date filters
-2. Add `min-w-0` to the flex row container to prevent flex children from overflowing
-3. Add `max-w-full` and `appearance-none` styling to date inputs for iOS compatibility
-4. Ensure the container uses `overflow-x-hidden` as a safety net
+### Changes
 
-Changes are limited to the period filter Card (~5 lines adjusted). No logic or business rule changes.
+**`src/pages/Parcelas.tsx`** (lines 262-281):
+- Replace `<Input type="date">` for "Período inicial" and "Período final" with `<Popover>` + `<PopoverTrigger>` (Button) + `<PopoverContent>` + `<Calendar mode="single">`
+- Convert `dataInicioDashboard`/`dataFimDashboard` (currently ISO strings `YYYY-MM-DD`) to/from `Date` objects for the Calendar component
+- Display formatted date (`dd/MM/yyyy`) in the trigger button, or placeholder text when empty
+- Add `pointer-events-auto` to Calendar className per Shadcn requirements
+- Keep the "Limpar" button as-is
 
-## File
-- `src/pages/Parcelas.tsx` — lines 263-280 only
+**Imports to add**: `format, parse` from `date-fns`, `ptBR` from `date-fns/locale/pt-BR`, `Calendar`, `Popover/PopoverContent/PopoverTrigger`, `CalendarIcon` from lucide-react.
+
+No logic, business rules, or database changes. Only the date input rendering method changes.
 
