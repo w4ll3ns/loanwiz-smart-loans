@@ -12,7 +12,12 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Search, Check, X, Calendar, AlertTriangle, Trash2, Undo2, FileText, Banknote, TrendingUp, Download, Calculator } from "lucide-react";
+import { Search, Check, X, CalendarIcon, AlertTriangle, Trash2, Undo2, FileText, Banknote, TrendingUp, Download, Calculator } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ptBR } from "date-fns/locale/pt-BR";
+import { parse } from "date-fns";
+import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
