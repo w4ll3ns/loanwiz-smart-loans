@@ -117,10 +117,10 @@ All colors MUST be HSL.
 @layer components {
   /* Page header pattern */
   .page-header {
-    @apply flex flex-col gap-1 mb-1;
+    @apply flex flex-col gap-0.5 mb-0;
   }
   .page-header h1 {
-    @apply text-xl md:text-2xl font-bold tracking-tight;
+    @apply text-xl md:text-2xl font-bold tracking-tight text-foreground;
   }
   .page-header p {
     @apply text-sm text-muted-foreground;
@@ -128,7 +128,21 @@ All colors MUST be HSL.
 
   /* Stat card with left accent */
   .stat-card-accent {
-    @apply border-l-4 transition-shadow hover:shadow-md;
+    @apply border-l-4 transition-all hover:shadow-md;
+  }
+
+  /* Summary metric card — compact & clickable */
+  .metric-card {
+    @apply rounded-lg border bg-card p-3 md:p-4 transition-all hover:shadow-md cursor-pointer;
+  }
+  .metric-card-value {
+    @apply text-lg md:text-2xl font-bold tracking-tight truncate;
+  }
+  .metric-card-label {
+    @apply text-[11px] md:text-xs font-medium text-muted-foreground truncate;
+  }
+  .metric-card-icon {
+    @apply h-8 w-8 md:h-9 md:w-9 rounded-lg flex items-center justify-center flex-shrink-0;
   }
 
   /* Empty state pattern */
@@ -143,5 +157,21 @@ All colors MUST be HSL.
   }
   .empty-state-description {
     @apply text-sm text-muted-foreground mb-4 max-w-sm;
+  }
+
+  /* Filter toggle group */
+  .filter-toggle-group {
+    @apply flex bg-muted rounded-lg p-0.5;
+  }
+  .filter-toggle-item {
+    @apply h-7 text-[11px] md:text-xs px-2.5 md:px-3 rounded-md font-medium transition-all;
+  }
+  .filter-toggle-item-active {
+    @apply bg-background text-foreground shadow-sm;
+  }
+
+  /* Section divider */
+  .section-label {
+    @apply text-xs font-semibold uppercase tracking-wider text-muted-foreground;
   }
 }
