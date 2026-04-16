@@ -4,6 +4,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -67,6 +68,7 @@ export interface ContratoFormData {
   tipoJuros: TipoJuros;
   permiteCobrancaSabado: boolean;
   permiteCobrancaDomingo: boolean;
+  observacoes: string;
 }
 
 const defaultFormData: ContratoFormData = {
@@ -78,7 +80,8 @@ const defaultFormData: ContratoFormData = {
   dataEmprestimo: "",
   tipoJuros: "simples",
   permiteCobrancaSabado: true,
-  permiteCobrancaDomingo: false
+  permiteCobrancaDomingo: false,
+  observacoes: ""
 };
 
 interface ContratoFormProps {
@@ -205,6 +208,7 @@ export function ContratoForm({
         tipoJuros: validatedData.tipoJuros,
         permiteSabado: validatedData.permiteCobrancaSabado,
         permiteDomingo: validatedData.permiteCobrancaDomingo,
+        observacoes: formData.observacoes || undefined,
       });
       setFormData({ ...defaultFormData });
       onOpenChange(false);
@@ -318,6 +322,16 @@ export function ContratoForm({
                 <p className="text-xs text-muted-foreground">
                   Parcelas em dias não permitidos serão movidas para o próximo dia útil.
                 </p>
+              </div>
+
+              <SectionLabel>Observações</SectionLabel>
+              <div>
+                <Textarea
+                  value={formData.observacoes}
+                  onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
+                  placeholder="Observações sobre o contrato (opcional)"
+                  className="min-h-[60px] text-sm"
+                />
               </div>
 
               {calculo && (

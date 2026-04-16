@@ -10,6 +10,7 @@ export interface CriarContratoParams {
   tipoJuros: string;
   permiteSabado: boolean;
   permiteDomingo: boolean;
+  observacoes?: string;
 }
 
 export async function criarContratoComParcelas(params: CriarContratoParams): Promise<string> {
@@ -26,7 +27,18 @@ export async function criarContratoComParcelas(params: CriarContratoParams): Pro
   });
 
   if (error) throw error;
-  return data as string;
+  const contratoId = data as string;
+
+  // Update observacoes after creation (RPC doesn't support it)
+  if (params.observacoes) {
+    const { error: updateError } = await supabase
+      .from("contratos")
+      .update({ observacoes: params.observacoes })
+      .eq("id", contratoId);
+    if (updateError) throw updateError;
+  }
+
+  return contratoId;
 }
 
 export async function loadContratos() {
