@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogBody, DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -234,192 +234,190 @@ export function ContratoForm({
             Criar contrato
           </Button>
         </DialogTrigger>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full p-4 sm:p-6">
+        <DialogContent className="max-w-2xl w-[95vw] sm:w-full flex flex-col">
           <DialogHeader>
-            <DialogTitle className="text-lg">Novo contrato de empréstimo</DialogTitle>
+            <DialogTitle>Novo contrato de empréstimo</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-3">
-            {/* Section: Client & Date */}
-            <SectionLabel>Cliente e Data</SectionLabel>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <DialogBody>
+            <form id="contrato-form" onSubmit={handleSubmit} className="space-y-3">
+              <SectionLabel>Cliente e Data</SectionLabel>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="cliente" className="text-xs">Cliente</Label>
+                  <Select value={formData.clienteId} onValueChange={(value) => setFormData({ ...formData, clienteId: value })}>
+                    <SelectTrigger><SelectValue placeholder="Selecione o cliente" /></SelectTrigger>
+                    <SelectContent>
+                      {clientes.map((cliente) => (
+                        <SelectItem key={cliente.id} value={cliente.id}>{cliente.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="dataEmprestimo" className="text-xs">Data do empréstimo</Label>
+                  <Input id="dataEmprestimo" type="date" value={formData.dataEmprestimo} onChange={(e) => setFormData({ ...formData, dataEmprestimo: e.target.value })} required />
+                </div>
+              </div>
+
+              <SectionLabel>Condições do Empréstimo</SectionLabel>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="valor" className="text-xs">Valor emprestado (R$)</Label>
+                  <Input id="valor" type="number" step="0.01" value={formData.valorEmprestado} onChange={(e) => setFormData({ ...formData, valorEmprestado: e.target.value })} required placeholder="0,00" />
+                </div>
+                <div>
+                  <Label htmlFor="percentual" className="text-xs">Percentual (%)</Label>
+                  <Input id="percentual" type="number" step="0.1" value={formData.percentual} onChange={(e) => setFormData({ ...formData, percentual: e.target.value })} required placeholder="0,0" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="parcelas" className="text-xs">Nº de parcelas</Label>
+                  <Input id="parcelas" type="number" value={formData.numeroParcelas} onChange={(e) => setFormData({ ...formData, numeroParcelas: e.target.value })} required placeholder="1" />
+                </div>
+                <div>
+                  <Label htmlFor="periodicidade" className="text-xs">Periodicidade</Label>
+                  <Select value={formData.periodicidade} onValueChange={(value: any) => setFormData({ ...formData, periodicidade: value })}>
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="diario">Diário</SelectItem>
+                      <SelectItem value="semanal">Semanal</SelectItem>
+                      <SelectItem value="quinzenal">Quinzenal</SelectItem>
+                      <SelectItem value="mensal">Mensal</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <SectionLabel>Tipo de Juros</SectionLabel>
               <div>
-                <Label htmlFor="cliente" className="text-xs">Cliente</Label>
-                <Select value={formData.clienteId} onValueChange={(value) => setFormData({ ...formData, clienteId: value })}>
-                  <SelectTrigger><SelectValue placeholder="Selecione o cliente" /></SelectTrigger>
+                <Select value={formData.tipoJuros} onValueChange={(value: any) => setFormData({ ...formData, tipoJuros: value })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {clientes.map((cliente) => (
-                      <SelectItem key={cliente.id} value={cliente.id}>{cliente.nome}</SelectItem>
-                    ))}
+                    <SelectItem value="simples">Juros Fixo</SelectItem>
+                    <SelectItem value="parcela">Juros por Parcela</SelectItem>
+                    <SelectItem value="composto">Juros Composto</SelectItem>
                   </SelectContent>
                 </Select>
+                {formData.tipoJuros && (
+                  <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{explicacaoJuros}</p>
+                )}
               </div>
-              <div>
-                <Label htmlFor="dataEmprestimo" className="text-xs">Data do empréstimo</Label>
-                <Input id="dataEmprestimo" type="date" value={formData.dataEmprestimo} onChange={(e) => setFormData({ ...formData, dataEmprestimo: e.target.value })} required />
-              </div>
-            </div>
 
-            {/* Section: Loan terms */}
-            <SectionLabel>Condições do Empréstimo</SectionLabel>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="valor" className="text-xs">Valor emprestado (R$)</Label>
-                <Input id="valor" type="number" step="0.01" value={formData.valorEmprestado} onChange={(e) => setFormData({ ...formData, valorEmprestado: e.target.value })} required placeholder="0,00" />
+              <SectionLabel>Regras de Cobrança</SectionLabel>
+              <div className="space-y-2.5">
+                <div className="flex items-center space-x-2">
+                  <Checkbox id="sabado" checked={formData.permiteCobrancaSabado} onCheckedChange={(checked) => setFormData({ ...formData, permiteCobrancaSabado: checked as boolean })} />
+                  <label htmlFor="sabado" className="text-sm leading-none">Permitir cobrança aos sábados</label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox id="domingo" checked={formData.permiteCobrancaDomingo} onCheckedChange={(checked) => setFormData({ ...formData, permiteCobrancaDomingo: checked as boolean })} />
+                  <label htmlFor="domingo" className="text-sm leading-none">Permitir cobrança aos domingos</label>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Parcelas em dias não permitidos serão movidas para o próximo dia útil.
+                </p>
               </div>
-              <div>
-                <Label htmlFor="percentual" className="text-xs">Percentual (%)</Label>
-                <Input id="percentual" type="number" step="0.1" value={formData.percentual} onChange={(e) => setFormData({ ...formData, percentual: e.target.value })} required placeholder="0,0" />
-              </div>
-            </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="parcelas" className="text-xs">Nº de parcelas</Label>
-                <Input id="parcelas" type="number" value={formData.numeroParcelas} onChange={(e) => setFormData({ ...formData, numeroParcelas: e.target.value })} required placeholder="1" />
-              </div>
-              <div>
-                <Label htmlFor="periodicidade" className="text-xs">Periodicidade</Label>
-                <Select value={formData.periodicidade} onValueChange={(value: any) => setFormData({ ...formData, periodicidade: value })}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="diario">Diário</SelectItem>
-                    <SelectItem value="semanal">Semanal</SelectItem>
-                    <SelectItem value="quinzenal">Quinzenal</SelectItem>
-                    <SelectItem value="mensal">Mensal</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Section: Interest */}
-            <SectionLabel>Tipo de Juros</SectionLabel>
-            <div>
-              <Select value={formData.tipoJuros} onValueChange={(value: any) => setFormData({ ...formData, tipoJuros: value })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="simples">Juros Fixo</SelectItem>
-                  <SelectItem value="parcela">Juros por Parcela</SelectItem>
-                  <SelectItem value="composto">Juros Composto</SelectItem>
-                </SelectContent>
-              </Select>
-              {formData.tipoJuros && (
-                <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{explicacaoJuros}</p>
+              {calculo && (
+                <>
+                  <SectionLabel>Resumo da Operação</SectionLabel>
+                  <Card className="border-primary/20 bg-primary/5">
+                    <CardContent className="p-3">
+                      <div className="grid grid-cols-3 gap-3 text-center">
+                        <div>
+                          <div className="flex items-center justify-center gap-1 mb-1">
+                            <DollarSign className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Total</span>
+                          </div>
+                          <p className="text-sm md:text-base font-bold">R$ {calculo.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-center gap-1 mb-1">
+                            <Calculator className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Parcela</span>
+                          </div>
+                          <p className="text-sm md:text-base font-bold">R$ {calculo.valorParcela.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-center gap-1 mb-1">
+                            <TrendingUp className="h-3 w-3 text-success" />
+                            <span className="text-[10px] uppercase tracking-wider text-success font-medium">Lucro</span>
+                          </div>
+                          <p className="text-sm md:text-base font-bold text-success">R$ {calculo.lucro.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </>
               )}
-            </div>
-
-            {/* Section: Collection rules */}
-            <SectionLabel>Regras de Cobrança</SectionLabel>
-            <div className="space-y-2.5">
-              <div className="flex items-center space-x-2">
-                <Checkbox id="sabado" checked={formData.permiteCobrancaSabado} onCheckedChange={(checked) => setFormData({ ...formData, permiteCobrancaSabado: checked as boolean })} />
-                <label htmlFor="sabado" className="text-sm leading-none">Permitir cobrança aos sábados</label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox id="domingo" checked={formData.permiteCobrancaDomingo} onCheckedChange={(checked) => setFormData({ ...formData, permiteCobrancaDomingo: checked as boolean })} />
-                <label htmlFor="domingo" className="text-sm leading-none">Permitir cobrança aos domingos</label>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Parcelas em dias não permitidos serão movidas para o próximo dia útil.
-              </p>
-            </div>
-
-            {/* Live summary */}
-            {calculo && (
-              <>
-                <SectionLabel>Resumo da Operação</SectionLabel>
-                <Card className="border-primary/20 bg-primary/5">
-                  <CardContent className="p-3">
-                    <div className="grid grid-cols-3 gap-3 text-center">
-                      <div>
-                        <div className="flex items-center justify-center gap-1 mb-1">
-                          <DollarSign className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Total</span>
-                        </div>
-                        <p className="text-sm md:text-base font-bold">R$ {calculo.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                      </div>
-                      <div>
-                        <div className="flex items-center justify-center gap-1 mb-1">
-                          <Calculator className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Parcela</span>
-                        </div>
-                        <p className="text-sm md:text-base font-bold">R$ {calculo.valorParcela.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                      </div>
-                      <div>
-                        <div className="flex items-center justify-center gap-1 mb-1">
-                          <TrendingUp className="h-3 w-3 text-success" />
-                          <span className="text-[10px] uppercase tracking-wider text-success font-medium">Lucro</span>
-                        </div>
-                        <p className="text-sm md:text-base font-bold text-success">R$ {calculo.lucro.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </>
-            )}
-
-            <div className="flex flex-col md:flex-row gap-2 pt-3 border-t">
-              <Button type="button" variant="outline" onClick={handlePreview} disabled={!calculo} className="flex-1">
-                <Eye className="h-4 w-4 mr-1.5" />
-                Visualizar parcelas
-              </Button>
-              <Button type="submit" className="flex-1">
-                <FileText className="h-4 w-4 mr-1.5" />
-                Criar contrato
-              </Button>
-            </div>
-          </form>
+            </form>
+          </DialogBody>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={handlePreview} disabled={!calculo} className="w-full sm:w-auto">
+              <Eye className="h-4 w-4 mr-1.5" />
+              Visualizar parcelas
+            </Button>
+            <Button type="submit" form="contrato-form" className="w-full sm:w-auto">
+              <FileText className="h-4 w-4 mr-1.5" />
+              Criar contrato
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Preview Dialog */}
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full p-4 sm:p-6">
+        <DialogContent className="max-w-4xl w-[95vw] sm:w-full flex flex-col">
           <DialogHeader>
             <DialogTitle>Prévia do contrato</DialogTitle>
           </DialogHeader>
-          {previewData && (
-            <div className="space-y-4">
-              <Card>
-                <CardContent className="pt-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                  <div className="space-y-1.5">
-                    <p><span className="text-muted-foreground">Cliente:</span> <strong>{previewData.cliente}</strong></p>
-                    <p><span className="text-muted-foreground">Data:</span> {format(new Date(previewData.dataEmprestimo + 'T00:00:00'), 'dd/MM/yyyy')}</p>
-                    <p><span className="text-muted-foreground">Periodicidade:</span> <span className="capitalize">{previewData.periodicidade}</span></p>
-                  </div>
-                  <div className="space-y-1.5">
-                    <p><span className="text-muted-foreground">Emprestado:</span> <strong>R$ {parseFloat(previewData.valorEmprestado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong></p>
-                    <p><span className="text-muted-foreground">Juros:</span> {previewData.percentual}%</p>
-                    <p><span className="text-muted-foreground">Total:</span> <strong>R$ {previewData.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong></p>
-                  </div>
-                </CardContent>
-              </Card>
+          <DialogBody>
+            {previewData && (
+              <div className="space-y-4">
+                <Card>
+                  <CardContent className="pt-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                    <div className="space-y-1.5">
+                      <p><span className="text-muted-foreground">Cliente:</span> <strong>{previewData.cliente}</strong></p>
+                      <p><span className="text-muted-foreground">Data:</span> {format(new Date(previewData.dataEmprestimo + 'T00:00:00'), 'dd/MM/yyyy')}</p>
+                      <p><span className="text-muted-foreground">Periodicidade:</span> <span className="capitalize">{previewData.periodicidade}</span></p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <p><span className="text-muted-foreground">Emprestado:</span> <strong>R$ {parseFloat(previewData.valorEmprestado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong></p>
+                      <p><span className="text-muted-foreground">Juros:</span> {previewData.percentual}%</p>
+                      <p><span className="text-muted-foreground">Total:</span> <strong>R$ {previewData.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong></p>
+                    </div>
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardContent className="pt-4">
-                  <div className="overflow-x-auto -mx-4 sm:mx-0">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="min-w-[60px]">Nº</TableHead>
-                          <TableHead className="min-w-[100px]">Vencimento</TableHead>
-                          <TableHead className="min-w-[80px]">Valor</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {previewData.parcelas.map((parcela: PreviewParcela) => (
-                          <TableRow key={parcela.numero}>
-                            <TableCell className="font-medium">{parcela.numero}</TableCell>
-                            <TableCell className="text-sm">{format(new Date(parcela.data + 'T00:00:00'), 'dd/MM/yyyy')}</TableCell>
-                            <TableCell className="text-sm">R$ {parcela.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
+                <Card>
+                  <CardContent className="pt-4">
+                    <div className="overflow-x-auto -mx-4 sm:mx-0">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="min-w-[60px]">Nº</TableHead>
+                            <TableHead className="min-w-[100px]">Vencimento</TableHead>
+                            <TableHead className="min-w-[80px]">Valor</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
+                        </TableHeader>
+                        <TableBody>
+                          {previewData.parcelas.map((parcela: PreviewParcela) => (
+                            <TableRow key={parcela.numero}>
+                              <TableCell className="font-medium">{parcela.numero}</TableCell>
+                              <TableCell className="text-sm">{format(new Date(parcela.data + 'T00:00:00'), 'dd/MM/yyyy')}</TableCell>
+                              <TableCell className="text-sm">R$ {parcela.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </DialogBody>
         </DialogContent>
       </Dialog>
 
