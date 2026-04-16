@@ -26,13 +26,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Download, History, Pencil, RefreshCw, Trash2, Undo2 } from "lucide-react";
+import { Calendar as CalendarIcon, Download, History, Pencil, RefreshCw, Trash2, Undo2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { getLocalDateString } from "@/lib/utils";
 import { calcularJurosParcela, calcularValorTotal, getLabelTipoJuros, TipoJuros } from "@/lib/calculos";
 import { RelatorioGenerator } from "./RelatorioGenerator";
-import { HistoricoModal } from "@/components/parcelas/HistoricoModal";
+import { HistoricoModal, EditarDataModal } from "@/components/parcelas";
 
 export interface Contrato {
   id: string;
