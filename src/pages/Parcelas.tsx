@@ -260,16 +260,16 @@ export default function Parcelas() {
       />
 
       {/* Filtro de Período */}
-      <Card>
-        <CardContent className="py-3 px-3 md:px-4">
-          <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-end">
+      <Card className="overflow-hidden">
+        <CardContent className="py-3 px-3 md:px-4 overflow-x-hidden">
+          <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-end min-w-0">
             <div className="flex-1 min-w-0">
               <Label htmlFor="data-inicio" className="text-xs mb-1 block text-muted-foreground">Período inicial</Label>
-              <Input id="data-inicio" type="date" value={dataInicioDashboard} onChange={(e) => setDataInicioDashboard(e.target.value)} className="w-full h-8 text-base md:text-xs" />
+              <Input id="data-inicio" type="date" value={dataInicioDashboard} onChange={(e) => setDataInicioDashboard(e.target.value)} className="w-full max-w-full h-8 text-base md:text-xs appearance-none [&::-webkit-date-and-time-value]:text-left" />
             </div>
             <div className="flex-1 min-w-0">
               <Label htmlFor="data-fim" className="text-xs mb-1 block text-muted-foreground">Período final</Label>
-              <Input id="data-fim" type="date" value={dataFimDashboard} onChange={(e) => setDataFimDashboard(e.target.value)} className="w-full h-8 text-base md:text-xs" />
+              <Input id="data-fim" type="date" value={dataFimDashboard} onChange={(e) => setDataFimDashboard(e.target.value)} className="w-full max-w-full h-8 text-base md:text-xs appearance-none [&::-webkit-date-and-time-value]:text-left" />
             </div>
             {(dataInicioDashboard || dataFimDashboard) && (
               <Button variant="ghost" size="sm" onClick={() => { setDataInicioDashboard(""); setDataFimDashboard(""); }} className="h-8 text-xs px-3 text-muted-foreground">
