@@ -644,6 +644,13 @@ export function ContratoDetails({
         }}
         onParcelasUpdated={() => onParcelasUpdated(contrato.id)}
       />
+
+      <EditarDataModal
+        isOpen={editarDataOpen}
+        onOpenChange={setEditarDataOpen}
+        parcela={parcelaEditarData}
+        onDataAlterada={() => onParcelasUpdated(contrato.id)}
+      />
     </>
   );
 }
