@@ -102,6 +102,7 @@ export type Database = {
           data_emprestimo: string
           id: string
           numero_parcelas: number
+          observacoes: string | null
           percentual: number
           periodicidade: string
           permite_cobranca_domingo: boolean | null
@@ -118,6 +119,7 @@ export type Database = {
           data_emprestimo: string
           id?: string
           numero_parcelas: number
+          observacoes?: string | null
           percentual: number
           periodicidade: string
           permite_cobranca_domingo?: boolean | null
@@ -134,6 +136,7 @@ export type Database = {
           data_emprestimo?: string
           id?: string
           numero_parcelas?: number
+          observacoes?: string | null
           percentual?: number
           periodicidade?: string
           permite_cobranca_domingo?: boolean | null
