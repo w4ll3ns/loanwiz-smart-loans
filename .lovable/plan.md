@@ -1,23 +1,32 @@
 
 
-# Fix: Replace native date inputs with custom DatePicker on Parcelas
+# Add due date editing to Contract Details parcelas
 
 ## Problem
-Native `<input type="date">` on iOS Safari ignores `appearance-none` and renders its own UI chrome (spinner, calendar icon) that pushes the input beyond the container width. CSS-only fixes cannot fully control iOS Safari's native date input rendering — this is a known platform limitation.
+In the Contratos page, the contract details modal shows parcelas but has no option to edit their due dates. The Parcelas page already has this feature via `EditarDataModal`.
 
 ## Solution
-Replace the two native `<input type="date">` fields in the Período card with Shadcn's Popover + Calendar (DatePicker) pattern. This renders identically on all platforms since it's a fully custom UI — no native browser chrome involved.
+Reuse the existing `EditarDataModal` component inside `ContratoDetails.tsx`. Add a "calendar/edit date" button next to each parcela (for pending ones only), which opens the same modal used in the Parcelas page.
 
-### Changes
+### Changes in `src/components/contratos/ContratoDetails.tsx`
 
-**`src/pages/Parcelas.tsx`** (lines 262-281):
-- Replace `<Input type="date">` for "Período inicial" and "Período final" with `<Popover>` + `<PopoverTrigger>` (Button) + `<PopoverContent>` + `<Calendar mode="single">`
-- Convert `dataInicioDashboard`/`dataFimDashboard` (currently ISO strings `YYYY-MM-DD`) to/from `Date` objects for the Calendar component
-- Display formatted date (`dd/MM/yyyy`) in the trigger button, or placeholder text when empty
-- Add `pointer-events-auto` to Calendar className per Shadcn requirements
-- Keep the "Limpar" button as-is
+1. **Import** `EditarDataModal` from `@/components/parcelas`
+2. **Add state**: `editarDataOpen` (boolean) and `parcelaEditarData` (parcela object or null)
+3. **Add edit-date button** next to each pending parcela — both in the desktop table and mobile cards. Use a small `CalendarIcon` or `Pencil` button.
+4. **Render** `<EditarDataModal>` at the bottom, passing:
+   - `isOpen={editarDataOpen}`
+   - `onOpenChange={setEditarDataOpen}`
+   - `parcela={parcelaEditarData}` (mapped to match the expected interface — needs `contratos.clientes.nome` from the parent `contrato`)
+   - `onDataAlterada={() => onParcelasUpdated(contrato.id)}`
 
-**Imports to add**: `format, parse` from `date-fns`, `ptBR` from `date-fns/locale/pt-BR`, `Calendar`, `Popover/PopoverContent/PopoverTrigger`, `CalendarIcon` from lucide-react.
+The `EditarDataModal` expects a parcela with `{ id, data_vencimento, data_vencimento_original, numero_parcela, contratos?: { clientes?: { nome } } }` — we'll map the ContratoDetails parcela to this shape using the parent contrato's client name.
 
-No logic, business rules, or database changes. Only the date input rendering method changes.
+### UI placement
+- **Desktop table**: Add a small calendar icon button in the "Ação" column for pending parcelas
+- **Mobile cards**: Add a small calendar icon button next to the history button for pending parcelas
+
+No database, RLS, or business logic changes. The existing `EditarDataModal` handles everything including justification, history logging, and validation.
+
+## File
+- `src/components/contratos/ContratoDetails.tsx` — import, state, buttons, and modal render
 
