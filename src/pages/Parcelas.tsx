@@ -322,7 +322,7 @@ export default function Parcelas() {
         <div className="metric-card cursor-default">
           <div className="flex items-center justify-between mb-1">
             <span className="metric-card-label">A Receber</span>
-            <Calendar className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+            <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
           </div>
           <p className="metric-card-value">R$ {totalPendente.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
           <p className="text-[10px] text-muted-foreground">{dashboardParcelas.filter(p => p.status !== "pago").length} pendentes</p>
@@ -461,7 +461,7 @@ export default function Parcelas() {
                     <div className="flex flex-col gap-1.5 pt-1.5 border-t">
                       <div className="flex gap-1.5">
                         <Button variant="outline" size="sm" onClick={() => { setParcelaToEditData(parcela); setIsEditarDataDialogOpen(true); }} className="flex-1 h-9 text-xs px-2">
-                          <Calendar className="h-3.5 w-3.5 mr-1" />Data
+                          <CalendarIcon className="h-3.5 w-3.5 mr-1" />Data
                         </Button>
                         <Button variant="outline" size="sm" onClick={() => loadHistorico(parcela)} className="flex-1 h-9 text-xs px-2">
                           <FileText className="h-3.5 w-3.5 mr-1" />Histórico
@@ -524,7 +524,7 @@ export default function Parcelas() {
                       <TableCell className="text-right">
                         <div className="flex gap-1 justify-end">
                           <Button variant="outline" size="sm" onClick={() => { setParcelaToEditData(parcela); setIsEditarDataDialogOpen(true); }} title="Editar data" className="h-8 w-8 p-0">
-                            <Calendar className="h-3.5 w-3.5" />
+                            <CalendarIcon className="h-3.5 w-3.5" />
                           </Button>
                           <Button variant="outline" size="sm" onClick={() => loadHistorico(parcela)} title="Histórico" className="h-8 w-8 p-0">
                             <FileText className="h-3.5 w-3.5" />
