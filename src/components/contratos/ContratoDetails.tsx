@@ -102,6 +102,17 @@ export function ContratoDetails({
 
   if (!contrato) return null;
 
+  const abrirEditarData = (parcela: Parcela) => {
+    setParcelaEditarData({
+      id: parcela.id,
+      data_vencimento: parcela.data_vencimento,
+      data_vencimento_original: (parcela as any).data_vencimento_original,
+      numero_parcela: parcela.numero_parcela,
+      contratos: { clientes: { nome: contrato.clientes?.nome || "" } },
+    });
+    setEditarDataOpen(true);
+  };
+
   const loadHistorico = async (parcela: Parcela) => {
     try {
       const { data, error } = await supabase
