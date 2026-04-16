@@ -269,12 +269,32 @@ export default function Parcelas() {
         <CardContent className="py-3 px-3 md:px-4 overflow-x-hidden">
           <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-end min-w-0">
             <div className="flex-1 min-w-0">
-              <Label htmlFor="data-inicio" className="text-xs mb-1 block text-muted-foreground">Período inicial</Label>
-              <Input id="data-inicio" type="date" value={dataInicioDashboard} onChange={(e) => setDataInicioDashboard(e.target.value)} className="w-full max-w-full h-8 text-base md:text-xs appearance-none [&::-webkit-date-and-time-value]:text-left" />
+              <Label className="text-xs mb-1 block text-muted-foreground">Período inicial</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-full h-8 justify-start text-left font-normal text-base md:text-xs", !dataInicioDashboard && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-2 h-3.5 w-3.5 flex-shrink-0" />
+                    {dataInicioDashboard ? format(parse(dataInicioDashboard, "yyyy-MM-dd", new Date()), "dd/MM/yyyy") : "Selecionar"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" locale={ptBR} selected={dataInicioDashboard ? parse(dataInicioDashboard, "yyyy-MM-dd", new Date()) : undefined} onSelect={(date) => setDataInicioDashboard(date ? format(date, "yyyy-MM-dd") : "")} initialFocus className="p-3 pointer-events-auto" />
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="flex-1 min-w-0">
-              <Label htmlFor="data-fim" className="text-xs mb-1 block text-muted-foreground">Período final</Label>
-              <Input id="data-fim" type="date" value={dataFimDashboard} onChange={(e) => setDataFimDashboard(e.target.value)} className="w-full max-w-full h-8 text-base md:text-xs appearance-none [&::-webkit-date-and-time-value]:text-left" />
+              <Label className="text-xs mb-1 block text-muted-foreground">Período final</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-full h-8 justify-start text-left font-normal text-base md:text-xs", !dataFimDashboard && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-2 h-3.5 w-3.5 flex-shrink-0" />
+                    {dataFimDashboard ? format(parse(dataFimDashboard, "yyyy-MM-dd", new Date()), "dd/MM/yyyy") : "Selecionar"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" locale={ptBR} selected={dataFimDashboard ? parse(dataFimDashboard, "yyyy-MM-dd", new Date()) : undefined} onSelect={(date) => setDataFimDashboard(date ? format(date, "yyyy-MM-dd") : "")} initialFocus className="p-3 pointer-events-auto" />
+                </PopoverContent>
+              </Popover>
             </div>
             {(dataInicioDashboard || dataFimDashboard) && (
               <Button variant="ghost" size="sm" onClick={() => { setDataInicioDashboard(""); setDataFimDashboard(""); }} className="h-8 text-xs px-3 text-muted-foreground">
