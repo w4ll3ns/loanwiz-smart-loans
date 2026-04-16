@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,7 +26,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Calendar as CalendarIcon, Download, History, Pencil, RefreshCw, Trash2, Undo2 } from "lucide-react";
+import { Calendar as CalendarIcon, Check, Download, History, Pencil, RefreshCw, Trash2, Undo2, X } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { getLocalDateString } from "@/lib/utils";
@@ -48,6 +49,7 @@ export interface Contrato {
   tipo_juros?: TipoJuros;
   permite_cobranca_sabado?: boolean;
   permite_cobranca_domingo?: boolean;
+  observacoes?: string | null;
 }
 
 export interface Parcela {
@@ -98,7 +100,39 @@ export function ContratoDetails({
   const [historicoData, setHistoricoData] = useState<any[]>([]);
   const [editarDataOpen, setEditarDataOpen] = useState(false);
   const [parcelaEditarData, setParcelaEditarData] = useState<any>(null);
+  const [isEditingObs, setIsEditingObs] = useState(false);
+  const [obsText, setObsText] = useState(contrato?.observacoes || "");
+  const [isSavingObs, setIsSavingObs] = useState(false);
   const { toast } = useToast();
+
+  // Sync obsText when contrato changes
+  const prevContratoId = useRef(contrato?.id);
+  useEffect(() => {
+    if (contrato && contrato.id !== prevContratoId.current) {
+      setObsText(contrato.observacoes || "");
+      setIsEditingObs(false);
+    }
+    prevContratoId.current = contrato?.id;
+  }, [contrato]);
+
+  const handleSaveObs = async () => {
+    if (!contrato) return;
+    setIsSavingObs(true);
+    try {
+      const { error } = await supabase
+        .from("contratos")
+        .update({ observacoes: obsText || null })
+        .eq("id", contrato.id);
+      if (error) throw error;
+      toast({ title: "Observações salvas" });
+      setIsEditingObs(false);
+      onContratoUpdated();
+    } catch (error: any) {
+      toast({ title: "Erro ao salvar observações", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSavingObs(false);
+    }
+  };
 
   if (!contrato) return null;
 
@@ -324,6 +358,41 @@ export function ContratoDetails({
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Parcelas</p>
                   <p className="text-sm font-bold">{parcelasPagas}/{contrato.numero_parcelas} <span className="text-xs font-normal text-muted-foreground">pagas</span></p>
                 </div>
+              </div>
+
+              {/* Observações */}
+              <div className="rounded-lg border p-3">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Observações</p>
+                  {!isEditingObs && (
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setObsText(contrato.observacoes || ""); setIsEditingObs(true); }}>
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+                {isEditingObs ? (
+                  <div className="space-y-2">
+                    <Textarea
+                      value={obsText}
+                      onChange={(e) => setObsText(e.target.value)}
+                      placeholder="Adicionar observações..."
+                      className="min-h-[60px] text-sm"
+                      autoFocus
+                    />
+                    <div className="flex gap-2 justify-end">
+                      <Button variant="ghost" size="sm" className="h-7" onClick={() => setIsEditingObs(false)}>
+                        <X className="h-3.5 w-3.5 mr-1" /> Cancelar
+                      </Button>
+                      <Button size="sm" className="h-7" onClick={handleSaveObs} disabled={isSavingObs}>
+                        <Check className="h-3.5 w-3.5 mr-1" /> Salvar
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                    {contrato.observacoes || "Nenhuma observação"}
+                  </p>
+                )}
               </div>
 
               {/* Actions row */}
