@@ -398,6 +398,11 @@ export function ContratoDetails({
                                   Desfazer
                                 </Button>
                               )}
+                              {parcela.status !== 'pago' && (
+                                <Button size="sm" variant="ghost" onClick={() => abrirEditarData(parcela)} title="Alterar vencimento">
+                                  <CalendarIcon className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
                               <Button size="sm" variant="ghost" onClick={() => loadHistorico(parcela)} title="Histórico">
                                 <History className="h-3.5 w-3.5" />
                               </Button>
