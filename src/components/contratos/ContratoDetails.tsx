@@ -463,6 +463,11 @@ export function ContratoDetails({
                             </Button>
                           )}
                         </div>
+                        {parcela.status !== 'pago' && (
+                          <Button size="sm" variant="ghost" onClick={() => abrirEditarData(parcela)} title="Alterar vencimento" className="h-9 w-9 p-0">
+                            <CalendarIcon className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                         <Button size="sm" variant="ghost" onClick={() => loadHistorico(parcela)} title="Histórico" className="h-9 w-9 p-0">
                           <History className="h-3.5 w-3.5" />
                         </Button>
