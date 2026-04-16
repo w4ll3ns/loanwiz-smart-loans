@@ -26,13 +26,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Download, History, Pencil, RefreshCw, Trash2, Undo2 } from "lucide-react";
+import { Calendar as CalendarIcon, Download, History, Pencil, RefreshCw, Trash2, Undo2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { getLocalDateString } from "@/lib/utils";
 import { calcularJurosParcela, calcularValorTotal, getLabelTipoJuros, TipoJuros } from "@/lib/calculos";
 import { RelatorioGenerator } from "./RelatorioGenerator";
-import { HistoricoModal } from "@/components/parcelas/HistoricoModal";
+import { HistoricoModal, EditarDataModal } from "@/components/parcelas";
 
 export interface Contrato {
   id: string;
@@ -96,9 +96,22 @@ export function ContratoDetails({
   const [historicoModalOpen, setHistoricoModalOpen] = useState(false);
   const [parcelaHistorico, setParcelaHistorico] = useState<Parcela | null>(null);
   const [historicoData, setHistoricoData] = useState<any[]>([]);
+  const [editarDataOpen, setEditarDataOpen] = useState(false);
+  const [parcelaEditarData, setParcelaEditarData] = useState<any>(null);
   const { toast } = useToast();
 
   if (!contrato) return null;
+
+  const abrirEditarData = (parcela: Parcela) => {
+    setParcelaEditarData({
+      id: parcela.id,
+      data_vencimento: parcela.data_vencimento,
+      data_vencimento_original: (parcela as any).data_vencimento_original,
+      numero_parcela: parcela.numero_parcela,
+      contratos: { clientes: { nome: contrato.clientes?.nome || "" } },
+    });
+    setEditarDataOpen(true);
+  };
 
   const loadHistorico = async (parcela: Parcela) => {
     try {
@@ -385,6 +398,11 @@ export function ContratoDetails({
                                   Desfazer
                                 </Button>
                               )}
+                              {parcela.status !== 'pago' && (
+                                <Button size="sm" variant="ghost" onClick={() => abrirEditarData(parcela)} title="Alterar vencimento">
+                                  <CalendarIcon className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
                               <Button size="sm" variant="ghost" onClick={() => loadHistorico(parcela)} title="Histórico">
                                 <History className="h-3.5 w-3.5" />
                               </Button>
@@ -445,6 +463,11 @@ export function ContratoDetails({
                             </Button>
                           )}
                         </div>
+                        {parcela.status !== 'pago' && (
+                          <Button size="sm" variant="ghost" onClick={() => abrirEditarData(parcela)} title="Alterar vencimento" className="h-9 w-9 p-0">
+                            <CalendarIcon className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                         <Button size="sm" variant="ghost" onClick={() => loadHistorico(parcela)} title="Histórico" className="h-9 w-9 p-0">
                           <History className="h-3.5 w-3.5" />
                         </Button>
@@ -620,6 +643,13 @@ export function ContratoDetails({
           loadHistorico(p as any);
         }}
         onParcelasUpdated={() => onParcelasUpdated(contrato.id)}
+      />
+
+      <EditarDataModal
+        isOpen={editarDataOpen}
+        onOpenChange={setEditarDataOpen}
+        parcela={parcelaEditarData}
+        onDataAlterada={() => onParcelasUpdated(contrato.id)}
       />
     </>
   );
