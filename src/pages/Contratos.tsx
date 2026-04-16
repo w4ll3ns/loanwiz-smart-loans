@@ -306,14 +306,14 @@ export default function Contratos() {
                 className="pl-9 h-10 text-base md:text-sm bg-muted/40 border-transparent focus:bg-background focus:border-input transition-colors"
               />
             </div>
-            {/* Title + actions row */}
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold">
-                {statusFilter === "ativos" ? "Contratos Ativos" : statusFilter === "quitados" ? "Contratos Quitados" : "Todos os Contratos"}
-                <span className="ml-1.5 text-muted-foreground font-normal text-xs">({contratosFiltrados.length})</span>
-              </h3>
-              <div className="flex gap-1.5 items-center">
-                <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" onClick={() => {
+            {/* Title + filters */}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold">
+                  {statusFilter === "ativos" ? "Contratos Ativos" : statusFilter === "quitados" ? "Contratos Quitados" : "Todos os Contratos"}
+                  <span className="ml-1.5 text-muted-foreground font-normal text-xs">({contratosFiltrados.length})</span>
+                </h3>
+                <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground flex-shrink-0" onClick={() => {
                   exportarCsv("contratos.csv",
                     ["Cliente", "Valor Emprestado", "Valor Total", "Parcelas", "Status", "Data Empréstimo"],
                     contratosFiltrados.map(c => [
@@ -329,14 +329,16 @@ export default function Contratos() {
                   <Download className="h-3 w-3 mr-1" />
                   CSV
                 </Button>
-                <div className="filter-toggle-group">
+              </div>
+              <div className="overflow-x-auto -mx-1 px-1">
+                <div className="filter-toggle-group w-full">
                   {(["ativos", "quitados", "todos"] as const).map(f => (
                     <Button
                       key={f}
                       size="sm"
                       variant="ghost"
                       onClick={() => setStatusFilter(f)}
-                      className={`filter-toggle-item ${statusFilter === f ? "filter-toggle-item-active" : ""}`}
+                      className={`filter-toggle-item flex-1 ${statusFilter === f ? "filter-toggle-item-active" : ""}`}
                     >
                       {f === "ativos" ? "Ativos" : f === "quitados" ? "Quitados" : "Todos"}
                     </Button>
