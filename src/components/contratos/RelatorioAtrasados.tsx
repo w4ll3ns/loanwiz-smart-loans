@@ -69,7 +69,7 @@ export function RelatorioAtrasados() {
           const venc = new Date(p.data_vencimento + "T00:00:00");
           if (venc < hoje) {
             entry.parcAtrasadas++;
-            entry.valorAtrasado += Number(p.valor_original || p.valor) - Number(p.valor_pago || 0);
+            entry.valorAtrasado += Number(p.valor_original || p.valor);
           }
         }
       });
