@@ -201,7 +201,7 @@ export default function Contratos() {
     <div className="space-y-4 md:space-y-5">
       <PageHeader
         title="Contratos"
-        description="Central de empréstimos — crie, acompanhe e gerencie"
+        description="Gerencie todos os empréstimos em um só lugar"
       >
         <Button size="sm" variant="outline" onClick={() => {
           if (!canCreate) {
@@ -230,51 +230,64 @@ export default function Contratos() {
 
       {/* Summary metrics */}
       {!loading && contratos.length > 0 && (
-        <div className="grid gap-2 md:gap-3 grid-cols-2 md:grid-cols-4">
-          <div
-            className={`metric-card border-l-4 border-l-primary ${statusFilter === "ativos" ? "ring-2 ring-primary shadow-md" : ""}`}
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+          {/* Ativos */}
+          <button
             onClick={() => setStatusFilter("ativos")}
+            className={`relative rounded-xl border bg-card p-3 md:p-4 text-left transition-all hover:shadow-md ${statusFilter === "ativos" ? "ring-2 ring-primary border-primary/30 shadow-md" : "hover:border-primary/20"}`}
           >
-            <div className="flex items-center justify-between mb-1">
-              <span className="metric-card-label">Ativos</span>
-              <FileText className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10">
+                <FileText className="h-3.5 w-3.5 text-primary" />
+              </div>
+              <span className="text-xs font-medium text-muted-foreground">Ativos</span>
             </div>
-            <p className="metric-card-value text-primary">{summaryStats.ativos}</p>
-            <p className="text-[10px] text-muted-foreground">contrato{summaryStats.ativos !== 1 ? 's' : ''}</p>
-          </div>
-          <div
-            className={`metric-card border-l-4 border-l-success ${statusFilter === "quitados" ? "ring-2 ring-success shadow-md" : ""}`}
+            <p className="text-2xl md:text-3xl font-bold tabular-nums text-primary">{summaryStats.ativos}</p>
+          </button>
+
+          {/* Quitados */}
+          <button
             onClick={() => setStatusFilter("quitados")}
+            className={`relative rounded-xl border bg-card p-3 md:p-4 text-left transition-all hover:shadow-md ${statusFilter === "quitados" ? "ring-2 ring-success border-success/30 shadow-md" : "hover:border-success/20"}`}
           >
-            <div className="flex items-center justify-between mb-1">
-              <span className="metric-card-label">Quitados</span>
-              <CheckCircle2 className="h-3.5 w-3.5 text-success flex-shrink-0" />
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-success/10">
+                <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+              </div>
+              <span className="text-xs font-medium text-muted-foreground">Quitados</span>
             </div>
-            <p className="metric-card-value text-success">{summaryStats.quitados}</p>
-            <p className="text-[10px] text-muted-foreground">finalizado{summaryStats.quitados !== 1 ? 's' : ''}</p>
-          </div>
-          <div
-            className={`metric-card ${statusFilter === "todos" ? "ring-2 ring-ring shadow-md" : ""}`}
+            <p className="text-2xl md:text-3xl font-bold tabular-nums text-success">{summaryStats.quitados}</p>
+          </button>
+
+          {/* Capital Emprestado */}
+          <button
             onClick={() => setStatusFilter("todos")}
+            className={`relative rounded-xl border bg-card p-3 md:p-4 text-left transition-all hover:shadow-md ${statusFilter === "todos" ? "ring-2 ring-ring shadow-md" : ""}`}
           >
-            <div className="flex items-center justify-between mb-1">
-              <span className="metric-card-label">Capital Emprestado</span>
-              <DollarSign className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-muted">
+                <DollarSign className="h-3.5 w-3.5 text-foreground" />
+              </div>
+              <span className="text-xs font-medium text-muted-foreground">Capital Emprestado</span>
             </div>
-            <p className="metric-card-value">
+            <p className="text-lg md:text-xl font-bold tabular-nums">
               R$ {summaryStats.totalEmprestado.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </p>
-            <p className="text-[10px] text-muted-foreground">em contratos ativos</p>
-          </div>
-          <div className="metric-card cursor-default border-l-4 border-l-warning">
-            <div className="flex items-center justify-between mb-1">
-              <span className="metric-card-label">Total a Receber</span>
-              <Clock className="h-3.5 w-3.5 text-warning flex-shrink-0" />
+            <p className="text-[10px] text-muted-foreground mt-0.5">em contratos ativos</p>
+          </button>
+
+          {/* Total a Receber */}
+          <div className="relative rounded-xl border bg-card p-3 md:p-4 text-left border-l-4 border-l-warning">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-warning/10">
+                <Clock className="h-3.5 w-3.5 text-warning" />
+              </div>
+              <span className="text-xs font-medium text-muted-foreground">Total a Receber</span>
             </div>
-            <p className="metric-card-value text-warning">
+            <p className="text-lg md:text-xl font-bold tabular-nums text-warning">
               R$ {summaryStats.valorEmAberto.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </p>
-            <p className="text-[10px] text-muted-foreground">valor total dos ativos</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">valor total dos ativos</p>
           </div>
         </div>
       )}
@@ -282,51 +295,55 @@ export default function Contratos() {
       {/* Search + Filters + List */}
       <Card>
         <CardHeader className="pb-3 space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <CardTitle className="text-sm md:text-base font-semibold">
-              {statusFilter === "ativos" ? "Contratos Ativos" : statusFilter === "quitados" ? "Contratos Quitados" : "Todos os Contratos"}
-              <span className="ml-1.5 text-muted-foreground font-normal">({contratosFiltrados.length})</span>
-            </CardTitle>
-            <div className="flex gap-1.5 items-center">
-              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => {
-                exportarCsv("contratos.csv",
-                  ["Cliente", "Valor Emprestado", "Valor Total", "Parcelas", "Status", "Data Empréstimo"],
-                  contratosFiltrados.map(c => [
-                    c.clientes?.nome || "",
-                    Number(c.valor_emprestado).toLocaleString("pt-BR", { minimumFractionDigits: 2 }),
-                    Number(c.valor_total).toLocaleString("pt-BR", { minimumFractionDigits: 2 }),
-                    c.numero_parcelas,
-                    c.status,
-                    c.data_emprestimo,
-                  ])
-                );
-              }}>
-                <Download className="h-3 w-3 mr-1" />
-                CSV
-              </Button>
-              <div className="filter-toggle-group">
-                {(["ativos", "quitados", "todos"] as const).map(f => (
-                  <Button
-                    key={f}
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setStatusFilter(f)}
-                    className={`filter-toggle-item ${statusFilter === f ? "filter-toggle-item-active" : ""}`}
-                  >
-                    {f === "ativos" ? "Ativos" : f === "quitados" ? "Quitados" : "Todos"}
-                  </Button>
-                ))}
+          <div className="flex flex-col gap-3">
+            {/* Search bar — full width, prominent */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nome do cliente..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 h-10 text-base md:text-sm bg-muted/40 border-transparent focus:bg-background focus:border-input transition-colors"
+              />
+            </div>
+            {/* Title + actions row */}
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold">
+                {statusFilter === "ativos" ? "Contratos Ativos" : statusFilter === "quitados" ? "Contratos Quitados" : "Todos os Contratos"}
+                <span className="ml-1.5 text-muted-foreground font-normal text-xs">({contratosFiltrados.length})</span>
+              </h3>
+              <div className="flex gap-1.5 items-center">
+                <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" onClick={() => {
+                  exportarCsv("contratos.csv",
+                    ["Cliente", "Valor Emprestado", "Valor Total", "Parcelas", "Status", "Data Empréstimo"],
+                    contratosFiltrados.map(c => [
+                      c.clientes?.nome || "",
+                      Number(c.valor_emprestado).toLocaleString("pt-BR", { minimumFractionDigits: 2 }),
+                      Number(c.valor_total).toLocaleString("pt-BR", { minimumFractionDigits: 2 }),
+                      c.numero_parcelas,
+                      c.status,
+                      c.data_emprestimo,
+                    ])
+                  );
+                }}>
+                  <Download className="h-3 w-3 mr-1" />
+                  CSV
+                </Button>
+                <div className="filter-toggle-group">
+                  {(["ativos", "quitados", "todos"] as const).map(f => (
+                    <Button
+                      key={f}
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setStatusFilter(f)}
+                      className={`filter-toggle-item ${statusFilter === f ? "filter-toggle-item-active" : ""}`}
+                    >
+                      {f === "ativos" ? "Ativos" : f === "quitados" ? "Quitados" : "Todos"}
+                    </Button>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-          <div className="relative">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nome do cliente..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 h-9 text-base md:text-sm"
-            />
           </div>
         </CardHeader>
         <CardContent className="p-0 md:p-6 md:pt-0">
