@@ -13,6 +13,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogBody,
 } from "@/components/ui/dialog";
 import { Upload, Loader2, FileText, ArrowRightLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -124,7 +125,7 @@ export function ImportComprovante({
       console.error("Erro ao importar comprovante:", error);
       toast({
         title: "Erro ao processar comprovante",
-        description: error.message || "Não foi possível extrair os dados do comprovante.",
+        description: error.message || "Não foi possível extrair os dados.",
         variant: "destructive",
       });
     } finally {
@@ -199,155 +200,159 @@ export function ImportComprovante({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md w-[95vw] sm:w-full p-4 sm:p-6">
+      <DialogContent className="max-w-md w-[95vw] sm:w-full flex flex-col">
         <DialogHeader>
-          <DialogTitle className="text-lg">Importar Comprovante PIX</DialogTitle>
+          <DialogTitle>Importar comprovante PIX</DialogTitle>
           <DialogDescription>
             {importStep === "upload"
-              ? "Faça upload de uma imagem ou PDF do comprovante PIX para extrair os dados automaticamente."
-              : "Confira os dados extraídos do comprovante antes de confirmar."}
+              ? "Envie uma imagem ou PDF do comprovante para extrair os dados automaticamente."
+              : "Confira os dados extraídos antes de prosseguir."}
           </DialogDescription>
         </DialogHeader>
 
-        {importStep === "upload" && (
-          <div className="space-y-4">
-            <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
-              <Upload className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground mb-3">
-                Selecione uma imagem (PNG, JPG) ou PDF
-              </p>
-              <Input
-                type="file"
-                accept="image/png,image/jpeg,image/jpg,application/pdf"
-                className="max-w-xs mx-auto"
-                disabled={isImportLoading}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleImportComprovante(file);
-                }}
-              />
-            </div>
-            {isImportLoading && (
-              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Processando comprovante...
+        <DialogBody>
+          {importStep === "upload" && (
+            <div className="space-y-4">
+              <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
+                <Upload className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground mb-3">
+                  PNG, JPG ou PDF do comprovante
+                </p>
+                <Input
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg,application/pdf"
+                  className="max-w-xs mx-auto"
+                  disabled={isImportLoading}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleImportComprovante(file);
+                  }}
+                />
               </div>
-            )}
-          </div>
-        )}
+              {isImportLoading && (
+                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Processando comprovante...
+                </div>
+              )}
+            </div>
+          )}
 
-        {importStep === "review" && dadosComprovante && (
-          <div className="space-y-4">
-            <Card>
-              <CardContent className="pt-4 space-y-3">
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="col-span-2">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-muted-foreground text-xs">Cliente</p>
-                        {!showClienteOverride ? (
-                          <p className="font-medium">{dadosComprovante.nome_cliente}</p>
-                        ) : (
-                          <p className="font-medium text-muted-foreground text-xs italic">Original: {dadosComprovante.nome_cliente}</p>
+          {importStep === "review" && dadosComprovante && (
+            <div className="space-y-4">
+              <Card>
+                <CardContent className="pt-4 space-y-3">
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="col-span-2">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-muted-foreground text-xs">Cliente</p>
+                          {!showClienteOverride ? (
+                            <p className="font-medium">{dadosComprovante.nome_cliente}</p>
+                          ) : (
+                            <p className="font-medium text-muted-foreground text-xs italic">Original: {dadosComprovante.nome_cliente}</p>
+                          )}
+                        </div>
+                        {!showClienteOverride && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setShowClienteOverride(true);
+                              setClienteOverrideType("existing");
+                              setSelectedOverrideClienteId("");
+                              setNovoClienteNome(dadosComprovante.nome_cliente);
+                            }}
+                            className="h-8 px-2 text-xs"
+                          >
+                            <ArrowRightLeft className="h-3 w-3 mr-1" />
+                            Trocar
+                          </Button>
                         )}
                       </div>
-                      {!showClienteOverride && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setShowClienteOverride(true);
-                            setClienteOverrideType("existing");
-                            setSelectedOverrideClienteId("");
-                            setNovoClienteNome(dadosComprovante.nome_cliente);
-                          }}
-                          className="h-8 px-2 text-xs"
-                        >
-                          <ArrowRightLeft className="h-3 w-3 mr-1" />
-                          Trocar
-                        </Button>
+
+                      {showClienteOverride && (
+                        <div className="mt-3 space-y-3 border rounded-md p-3 bg-muted/30">
+                          <RadioGroup value={clienteOverrideType} onValueChange={(v) => setClienteOverrideType(v as "existing" | "new")}>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="existing" id="override-existing" />
+                              <Label htmlFor="override-existing" className="cursor-pointer text-xs">Cliente existente</Label>
+                            </div>
+                            {clienteOverrideType === "existing" && (
+                              <Select value={selectedOverrideClienteId} onValueChange={setSelectedOverrideClienteId}>
+                                <SelectTrigger className="h-9 text-xs">
+                                  <SelectValue placeholder="Selecione um cliente" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {clientes.map((c) => (
+                                    <SelectItem key={c.id} value={c.id} className="text-xs">{c.nome}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="new" id="override-new" />
+                              <Label htmlFor="override-new" className="cursor-pointer text-xs">Novo cliente</Label>
+                            </div>
+                            {clienteOverrideType === "new" && (
+                              <Input
+                                value={novoClienteNome}
+                                onChange={(e) => setNovoClienteNome(e.target.value)}
+                                placeholder="Nome do novo cliente"
+                                className="h-9 text-xs"
+                              />
+                            )}
+                          </RadioGroup>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setShowClienteOverride(false);
+                              setSelectedOverrideClienteId("");
+                              setNovoClienteNome("");
+                            }}
+                            className="h-7 text-xs"
+                          >
+                            Cancelar
+                          </Button>
+                        </div>
                       )}
                     </div>
-
-                    {showClienteOverride && (
-                      <div className="mt-3 space-y-3 border rounded-md p-3 bg-muted/30">
-                        <RadioGroup value={clienteOverrideType} onValueChange={(v) => setClienteOverrideType(v as "existing" | "new")}>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="existing" id="override-existing" />
-                            <Label htmlFor="override-existing" className="cursor-pointer text-xs">Cliente existente</Label>
-                          </div>
-                          {clienteOverrideType === "existing" && (
-                            <Select value={selectedOverrideClienteId} onValueChange={setSelectedOverrideClienteId}>
-                              <SelectTrigger className="h-9 text-xs">
-                                <SelectValue placeholder="Selecione um cliente" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {clientes.map((c) => (
-                                  <SelectItem key={c.id} value={c.id} className="text-xs">{c.nome}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          )}
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="new" id="override-new" />
-                            <Label htmlFor="override-new" className="cursor-pointer text-xs">Novo cliente</Label>
-                          </div>
-                          {clienteOverrideType === "new" && (
-                            <Input
-                              value={novoClienteNome}
-                              onChange={(e) => setNovoClienteNome(e.target.value)}
-                              placeholder="Nome do novo cliente"
-                              className="h-9 text-xs"
-                            />
-                          )}
-                        </RadioGroup>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setShowClienteOverride(false);
-                            setSelectedOverrideClienteId("");
-                            setNovoClienteNome("");
-                          }}
-                          className="h-7 text-xs"
-                        >
-                          Cancelar
-                        </Button>
+                    <div>
+                      <p className="text-muted-foreground text-xs">Valor</p>
+                      <p className="font-medium">R$ {dadosComprovante.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs">Data</p>
+                      <p className="font-medium">{dadosComprovante.data ? format(new Date(dadosComprovante.data + "T00:00:00"), "dd/MM/yyyy") : "N/A"}</p>
+                    </div>
+                    {dadosComprovante.chave_pix && (
+                      <div>
+                        <p className="text-muted-foreground text-xs">Chave PIX ({dadosComprovante.tipo_chave})</p>
+                        <p className="font-medium text-xs break-all">{dadosComprovante.chave_pix}</p>
                       </div>
                     )}
                   </div>
-                  <div>
-                    <p className="text-muted-foreground text-xs">Valor</p>
-                    <p className="font-medium">R$ {dadosComprovante.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-xs">Data</p>
-                    <p className="font-medium">{dadosComprovante.data ? format(new Date(dadosComprovante.data + "T00:00:00"), "dd/MM/yyyy") : "N/A"}</p>
-                  </div>
-                  {dadosComprovante.chave_pix && (
-                    <div>
-                      <p className="text-muted-foreground text-xs">Chave PIX ({dadosComprovante.tipo_chave})</p>
-                      <p className="font-medium text-xs break-all">{dadosComprovante.chave_pix}</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </DialogBody>
 
-            <DialogFooter className="flex-col sm:flex-row gap-2">
-              <Button variant="outline" onClick={() => {
-                setImportStep("upload");
-                setDadosComprovante(null);
-                setShowClienteOverride(false);
-              }} className="w-full sm:w-auto">
-                Tentar novamente
-              </Button>
-              <Button onClick={handleConfirmImport} className="w-full sm:w-auto" disabled={showClienteOverride && clienteOverrideType === "existing" && !selectedOverrideClienteId || showClienteOverride && clienteOverrideType === "new" && !novoClienteNome.trim()}>
-                <FileText className="h-4 w-4 mr-2" />
-                Confirmar e Criar Contrato
-              </Button>
-            </DialogFooter>
-          </div>
+        {importStep === "review" && dadosComprovante && (
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setImportStep("upload");
+              setDadosComprovante(null);
+              setShowClienteOverride(false);
+            }} className="w-full sm:w-auto">
+              Tentar novamente
+            </Button>
+            <Button onClick={handleConfirmImport} className="w-full sm:w-auto" disabled={showClienteOverride && clienteOverrideType === "existing" && !selectedOverrideClienteId || showClienteOverride && clienteOverrideType === "new" && !novoClienteNome.trim()}>
+              <FileText className="h-4 w-4 mr-1.5" />
+              Criar contrato
+            </Button>
+          </DialogFooter>
         )}
       </DialogContent>
     </Dialog>

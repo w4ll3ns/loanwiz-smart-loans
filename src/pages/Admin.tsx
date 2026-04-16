@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogBody } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
@@ -933,28 +933,28 @@ export default function Admin() {
 
       {/* Modal WhatsApp */}
       <Dialog open={isWhatsappModalOpen} onOpenChange={setIsWhatsappModalOpen}>
-        <DialogContent className="w-[95vw] sm:max-w-md">
+        <DialogContent className="w-[95vw] sm:max-w-md flex flex-col">
           <DialogHeader>
-            <DialogTitle>Configurar WhatsApp de Contato</DialogTitle>
+            <DialogTitle>Configurar WhatsApp</DialogTitle>
             <DialogDescription>
-              Este número será usado para que novos usuários entrem em contato para ativar o acesso.
+              Número para novos usuários solicitarem ativação de acesso.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="whatsapp">Número do WhatsApp</Label>
+          <DialogBody>
+            <div className="space-y-1.5">
+              <Label htmlFor="whatsapp" className="text-xs">Número do WhatsApp</Label>
               <Input
                 id="whatsapp"
                 placeholder="Ex: 5585999999999"
                 value={whatsappNumber}
                 onChange={(e) => setWhatsappNumber(e.target.value)}
               />
-              <p className="text-xs text-muted-foreground mt-1">
-                Digite o número completo com código do país (ex: 55 para Brasil)
+              <p className="text-xs text-muted-foreground">
+                Número completo com código do país (ex: 55 para Brasil)
               </p>
             </div>
-          </div>
-          <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
+          </DialogBody>
+          <DialogFooter>
             <Button variant="outline" onClick={() => setIsWhatsappModalOpen(false)}>Cancelar</Button>
             <Button onClick={handleSaveWhatsapp}>Salvar</Button>
           </DialogFooter>
@@ -963,22 +963,22 @@ export default function Admin() {
 
       {/* Modal Observações */}
       <Dialog open={isObservacoesModalOpen} onOpenChange={setIsObservacoesModalOpen}>
-        <DialogContent className="w-[95vw] sm:max-w-md">
+        <DialogContent className="w-[95vw] sm:max-w-md flex flex-col">
           <DialogHeader>
-            <DialogTitle>Observações do Usuário</DialogTitle>
+            <DialogTitle>Observações</DialogTitle>
             <DialogDescription>
               {selectedUser?.nome || selectedUser?.email}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <DialogBody>
             <Textarea
               placeholder="Notas internas sobre o usuário..."
               value={observacoesText}
               onChange={(e) => setObservacoesText(e.target.value)}
-              rows={4}
+              rows={3}
             />
-          </div>
-          <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
+          </DialogBody>
+          <DialogFooter>
             <Button variant="outline" onClick={() => setIsObservacoesModalOpen(false)}>Cancelar</Button>
             <Button onClick={handleSaveObservacoes}>Salvar</Button>
           </DialogFooter>
@@ -987,16 +987,16 @@ export default function Admin() {
 
       {/* Modal Alterar Plano */}
       <Dialog open={isPlanoModalOpen} onOpenChange={setIsPlanoModalOpen}>
-        <DialogContent className="w-[95vw] sm:max-w-md">
+        <DialogContent className="w-[95vw] sm:max-w-md flex flex-col">
           <DialogHeader>
-            <DialogTitle>Alterar Plano</DialogTitle>
+            <DialogTitle>Alterar plano</DialogTitle>
             <DialogDescription>
               {selectedUser?.nome || selectedUser?.email}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Status do Plano</Label>
+          <DialogBody>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Status do plano</Label>
               <Select value={selectedPlano} onValueChange={(v) => setSelectedPlano(v as StatusPlano)}>
                 <SelectTrigger>
                   <SelectValue />
@@ -1009,8 +1009,8 @@ export default function Admin() {
                 </SelectContent>
               </Select>
             </div>
-          </div>
-          <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
+          </DialogBody>
+          <DialogFooter>
             <Button variant="outline" onClick={() => setIsPlanoModalOpen(false)}>Cancelar</Button>
             <Button onClick={handleSavePlano}>Salvar</Button>
           </DialogFooter>

@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Separator } from "@/components/ui/separator";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +15,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogBody,
 } from "@/components/ui/dialog";
 import {
   Table,
@@ -176,7 +178,7 @@ export function ContratoDetails({
     } catch (error: any) {
       toast({
         title: "Não foi possível processar o pagamento",
-        description: "Verifique os valores informados e sua conexão com a internet.",
+        description: "Verifique os valores informados e sua conexão.",
         variant: "destructive",
       });
     }
@@ -239,7 +241,7 @@ export function ContratoDetails({
 
       if (error) throw error;
 
-      toast({ title: "Contrato atualizado", description: "Parcelas recalculadas." });
+      toast({ title: "Contrato atualizado", description: "Parcelas recalculadas com sucesso." });
       setIsEditDialogOpen(false);
       onContratoUpdated();
       onParcelasUpdated(contrato.id);
@@ -266,74 +268,86 @@ export function ContratoDetails({
 
   const previewEdicao = calcularPreviewEdicao();
 
+  const parcelasPagas = parcelas.filter(p => p.status === 'pago').length;
+  const parcelasPendentes = parcelas.filter(p => p.status !== 'pago').length;
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full p-4 sm:p-6">
+        <DialogContent className="max-w-4xl w-[95vw] sm:w-full flex flex-col">
           <DialogHeader>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pr-8">
-              <DialogTitle className="text-lg sm:text-xl">Detalhes do Contrato</DialogTitle>
-              <div className="flex gap-2 flex-col sm:flex-row">
-                <RelatorioGenerator contrato={contrato} parcelas={parcelas} />
-                {contrato.status !== 'quitado' && (
-                  <Button variant="outline" size="sm" onClick={abrirModalEdicao} className="w-full sm:w-auto">
-                    <Pencil className="h-4 w-4 mr-2" />
-                    Editar Juros
-                  </Button>
-                )}
-                {contrato.status === 'quitado' && (
-                  <Button variant="default" size="sm" onClick={() => onRenovar(contrato)} className="w-full sm:w-auto">
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Renovar Contrato
-                  </Button>
-                )}
-                <Button variant="destructive" size="sm" onClick={() => setIsDeleteDialogOpen(true)} className="w-full sm:w-auto">
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Excluir Contrato
-                </Button>
+            <div className="flex flex-col gap-1 pr-8">
+              <DialogTitle className="text-lg sm:text-xl">
+                {contrato.clientes?.nome}
+              </DialogTitle>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge variant={contrato.status === 'ativo' ? 'default' : contrato.status === 'quitado' ? 'outline' : 'secondary'}>
+                  {contrato.status === 'ativo' ? 'Ativo' : contrato.status === 'quitado' ? 'Quitado' : contrato.status}
+                </Badge>
+                <span className="text-xs text-muted-foreground">
+                  {format(new Date(contrato.data_emprestimo + 'T00:00:00'), 'dd/MM/yyyy')} · {contrato.numero_parcelas}x {contrato.periodicidade}
+                </span>
               </div>
             </div>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base sm:text-lg">Informações do Contrato</CardTitle>
-              </CardHeader>
-              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm sm:text-base">
-                <div className="space-y-2">
-                  <p><strong>Cliente:</strong> {contrato.clientes?.nome}</p>
-                  <p><strong>Data:</strong> {format(new Date(contrato.data_emprestimo + 'T00:00:00'), 'dd/MM/yyyy')}</p>
-                  <p><strong>Periodicidade:</strong> {contrato.periodicidade}</p>
-                  <p><strong>Número de Parcelas:</strong> {contrato.numero_parcelas}</p>
-                  <p><strong>Tipo de Juros:</strong> {getLabelTipoJuros(contrato.tipo_juros || 'simples')}</p>
+          <DialogBody>
+            <div className="space-y-4">
+              {/* Contract info summary */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="rounded-lg bg-muted/50 p-3 text-center">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Emprestado</p>
+                  <p className="text-sm font-bold">R$ {Number(contrato.valor_emprestado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                 </div>
-                <div className="space-y-2">
-                  <p><strong>Valor Emprestado:</strong> R$ {Number(contrato.valor_emprestado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                  <p><strong>Percentual:</strong> {Number(contrato.percentual)}%</p>
-                  <p><strong>Valor Total:</strong> R$ {Number(contrato.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                  <p><strong>Status:</strong> <Badge variant={contrato.status === 'ativo' ? 'default' : contrato.status === 'quitado' ? 'outline' : 'secondary'}>{contrato.status === 'ativo' ? 'Ativo' : contrato.status === 'quitado' ? 'Quitado' : contrato.status}</Badge></p>
+                <div className="rounded-lg bg-muted/50 p-3 text-center">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Total</p>
+                  <p className="text-sm font-bold">R$ {Number(contrato.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                 </div>
-              </CardContent>
-            </Card>
+                <div className="rounded-lg bg-muted/50 p-3 text-center">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Juros</p>
+                  <p className="text-sm font-bold">{Number(contrato.percentual)}% · {getLabelTipoJuros(contrato.tipo_juros || 'simples')}</p>
+                </div>
+                <div className="rounded-lg bg-muted/50 p-3 text-center">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Parcelas</p>
+                  <p className="text-sm font-bold">{parcelasPagas}/{contrato.numero_parcelas} <span className="text-xs font-normal text-muted-foreground">pagas</span></p>
+                </div>
+              </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base sm:text-lg">Parcelas</CardTitle>
-              </CardHeader>
-              <CardContent>
+              {/* Actions row */}
+              <div className="flex flex-wrap gap-2">
+                <RelatorioGenerator contrato={contrato} parcelas={parcelas} />
+                {contrato.status !== 'quitado' && (
+                  <Button variant="outline" size="sm" onClick={abrirModalEdicao}>
+                    <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                    Editar juros
+                  </Button>
+                )}
+                {contrato.status === 'quitado' && (
+                  <Button variant="default" size="sm" onClick={() => onRenovar(contrato)}>
+                    <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                    Renovar
+                  </Button>
+                )}
+              </div>
+
+              <Separator />
+
+              {/* Parcelas section */}
+              <div>
+                <h3 className="text-sm font-semibold mb-3">Parcelas ({parcelas.length})</h3>
+
                 {/* Desktop Table */}
                 <div className="hidden md:block overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Parcela</TableHead>
+                        <TableHead>Nº</TableHead>
                         <TableHead>Vencimento</TableHead>
                         <TableHead>Valor</TableHead>
-                        <TableHead>Valor Pago</TableHead>
+                        <TableHead>Pago</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead>Pagamento</TableHead>
-                        <TableHead>Ação</TableHead>
+                        <TableHead>Data Pgto</TableHead>
+                        <TableHead className="text-right">Ação</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -347,7 +361,7 @@ export function ContratoDetails({
                               <span className="text-success font-medium">
                                 R$ {Number(parcela.valor_pago).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                               </span>
-                            ) : '-'}
+                            ) : '—'}
                           </TableCell>
                           <TableCell>
                             {parcela.status === 'pago' ? (
@@ -359,20 +373,20 @@ export function ContratoDetails({
                             )}
                           </TableCell>
                           <TableCell>
-                            {parcela.data_pagamento ? format(new Date(parcela.data_pagamento + 'T00:00:00'), 'dd/MM/yyyy') : '-'}
+                            {parcela.data_pagamento ? format(new Date(parcela.data_pagamento + 'T00:00:00'), 'dd/MM/yyyy') : '—'}
                           </TableCell>
-                          <TableCell>
-                            <div className="flex gap-1">
+                          <TableCell className="text-right">
+                            <div className="flex gap-1 justify-end">
                               {parcela.status !== 'pago' ? (
                                 <Button size="sm" onClick={() => abrirModalPagamento(parcela)}>Baixar</Button>
                               ) : (
                                 <Button size="sm" variant="outline" onClick={() => handleDesfazerPagamento(parcela.id)} className="text-warning hover:bg-warning hover:text-warning-foreground">
-                                  <Undo2 className="h-4 w-4 mr-1" />
+                                  <Undo2 className="h-3.5 w-3.5 mr-1" />
                                   Desfazer
                                 </Button>
                               )}
-                              <Button size="sm" variant="ghost" onClick={() => loadHistorico(parcela)} title="Ver Histórico">
-                                <History className="h-4 w-4" />
+                              <Button size="sm" variant="ghost" onClick={() => loadHistorico(parcela)} title="Histórico">
+                                <History className="h-3.5 w-3.5" />
                               </Button>
                             </div>
                           </TableCell>
@@ -383,37 +397,37 @@ export function ContratoDetails({
                 </div>
 
                 {/* Mobile Cards */}
-                <div className="md:hidden space-y-3">
+                <div className="md:hidden space-y-2">
                   {parcelas.map((parcela) => (
                     <Card key={parcela.id} className="p-3">
-                      <div className="flex justify-between items-center mb-3">
-                        <span className="font-bold text-base">Parcela {parcela.numero_parcela}</span>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-bold text-sm">Parcela {parcela.numero_parcela}</span>
                         {parcela.status === 'pago' ? (
-                          <Badge variant="default" className="bg-success">Pago</Badge>
+                          <Badge variant="default" className="bg-success text-xs">Pago</Badge>
                         ) : new Date(parcela.data_vencimento + 'T00:00:00') < new Date(new Date().setHours(0, 0, 0, 0)) ? (
-                          <Badge variant="destructive">Atrasado</Badge>
+                          <Badge variant="destructive" className="text-xs">Atrasado</Badge>
                         ) : (
-                          <Badge variant="secondary">Pendente</Badge>
+                          <Badge variant="secondary" className="text-xs">Pendente</Badge>
                         )}
                       </div>
-                      <div className="space-y-1.5 text-sm text-muted-foreground mb-3">
+                      <div className="space-y-1 text-sm text-muted-foreground mb-3">
                         <div className="flex justify-between">
-                          <span>Vencimento:</span>
+                          <span>Vencimento</span>
                           <span className="font-medium text-foreground">{format(new Date(parcela.data_vencimento + 'T00:00:00'), 'dd/MM/yyyy')}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span>Valor:</span>
+                          <span>Valor</span>
                           <span className="font-medium text-foreground">R$ {Number(parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                         </div>
                         {Number(parcela.valor_pago || 0) > 0 && (
                           <div className="flex justify-between">
-                            <span>Valor pago:</span>
+                            <span>Pago</span>
                             <span className="font-medium text-success">R$ {Number(parcela.valor_pago).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                           </div>
                         )}
                         {parcela.data_pagamento && (
                           <div className="flex justify-between">
-                            <span>Pago em:</span>
+                            <span>Data pgto</span>
                             <span className="font-medium text-foreground">{format(new Date(parcela.data_pagamento + 'T00:00:00'), 'dd/MM/yyyy')}</span>
                           </div>
                         )}
@@ -421,142 +435,159 @@ export function ContratoDetails({
                       <div className="flex gap-2">
                         <div className="flex-1">
                           {parcela.status !== 'pago' ? (
-                            <Button size="sm" onClick={() => abrirModalPagamento(parcela)} className="w-full">
-                              Baixar Parcela
+                            <Button size="sm" onClick={() => abrirModalPagamento(parcela)} className="w-full h-9">
+                              Baixar parcela
                             </Button>
                           ) : (
-                            <Button size="sm" variant="outline" onClick={() => handleDesfazerPagamento(parcela.id)} className="w-full text-warning hover:bg-warning hover:text-warning-foreground">
-                              <Undo2 className="h-4 w-4 mr-2" />
+                            <Button size="sm" variant="outline" onClick={() => handleDesfazerPagamento(parcela.id)} className="w-full h-9 text-warning hover:bg-warning hover:text-warning-foreground">
+                              <Undo2 className="h-3.5 w-3.5 mr-1.5" />
                               Desfazer
                             </Button>
                           )}
                         </div>
-                        <Button size="sm" variant="ghost" onClick={() => loadHistorico(parcela)} title="Ver Histórico">
-                          <History className="h-4 w-4" />
+                        <Button size="sm" variant="ghost" onClick={() => loadHistorico(parcela)} title="Histórico" className="h-9 w-9 p-0">
+                          <History className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </Card>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+
+              {/* Danger zone */}
+              <div className="pt-2">
+                <Button variant="ghost" size="sm" onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs">
+                  <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                  Excluir contrato
+                </Button>
+              </div>
+            </div>
+          </DialogBody>
         </DialogContent>
       </Dialog>
 
       {/* Payment Dialog */}
       <Dialog open={isPagamentoDialogOpen} onOpenChange={setIsPagamentoDialogOpen}>
-        <DialogContent className="w-[95vw] sm:max-w-md p-4 sm:p-6">
+        <DialogContent className="w-[95vw] sm:max-w-md flex flex-col">
           <DialogHeader>
-            <DialogTitle>Confirmar Pagamento</DialogTitle>
+            <DialogTitle>Registrar pagamento</DialogTitle>
             <DialogDescription>
               {parcelaToPay && (
                 <>
-                  Parcela {parcelaToPay.numero_parcela} - {contrato.clientes?.nome}
+                  Parcela {parcelaToPay.numero_parcela} · {contrato.clientes?.nome}
                   <br />
-                  Valor da parcela: R$ {Number(parcelaToPay.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  Valor: R$ {Number(parcelaToPay.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </>
               )}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <RadioGroup value={tipoPagamento} onValueChange={setTipoPagamento}>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="total" id="total" />
-                <Label htmlFor="total" className="cursor-pointer">
-                  Pagar valor total (R$ {parcelaToPay ? Number(parcelaToPay.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'})
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="juros" id="juros" />
-                <Label htmlFor="juros" className="cursor-pointer">
-                  Pagar somente juros (R$ {parcelaToPay ? calcularJuros(parcelaToPay).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'})
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="personalizado" id="personalizado" />
-                <Label htmlFor="personalizado" className="cursor-pointer">Valor personalizado</Label>
-              </div>
-            </RadioGroup>
+          <DialogBody>
+            <div className="space-y-4">
+              <RadioGroup value={tipoPagamento} onValueChange={setTipoPagamento}>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="total" id="det-total" />
+                  <Label htmlFor="det-total" className="cursor-pointer flex-1">
+                    Quitar parcela
+                    <span className="block text-xs text-muted-foreground">
+                      R$ {parcelaToPay ? Number(parcelaToPay.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}
+                    </span>
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="juros" id="det-juros" />
+                  <Label htmlFor="det-juros" className="cursor-pointer flex-1">
+                    Apenas juros
+                    <span className="block text-xs text-muted-foreground">
+                      R$ {parcelaToPay ? calcularJuros(parcelaToPay).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}
+                    </span>
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="personalizado" id="det-personalizado" />
+                  <Label htmlFor="det-personalizado" className="cursor-pointer">Valor personalizado</Label>
+                </div>
+              </RadioGroup>
 
-            {tipoPagamento === "personalizado" && (
-              <div className="space-y-2">
-                <Label htmlFor="valorPagamento">Valor do Pagamento</Label>
-                <Input id="valorPagamento" type="number" step="0.01" min="0" max={parcelaToPay?.valor} value={valorPagamento} onChange={(e) => setValorPagamento(e.target.value)} placeholder="0.00" />
-              </div>
-            )}
+              {tipoPagamento === "personalizado" && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="valorPagamento" className="text-xs">Valor</Label>
+                  <Input id="valorPagamento" type="number" step="0.01" min="0" max={parcelaToPay?.valor} value={valorPagamento} onChange={(e) => setValorPagamento(e.target.value)} placeholder="0,00" />
+                </div>
+              )}
 
-            <div className="space-y-2">
-              <Label htmlFor="data-pagamento">Data do Pagamento</Label>
-              <Input id="data-pagamento" type="date" value={dataPagamento} onChange={(e) => setDataPagamento(e.target.value)} max={getLocalDateString()} />
+              <div className="space-y-1.5">
+                <Label htmlFor="det-data-pagamento" className="text-xs">Data do pagamento</Label>
+                <Input id="det-data-pagamento" type="date" value={dataPagamento} onChange={(e) => setDataPagamento(e.target.value)} max={getLocalDateString()} />
+              </div>
             </div>
-          </div>
-          <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2">
+          </DialogBody>
+          <DialogFooter>
             <Button variant="outline" onClick={() => setIsPagamentoDialogOpen(false)} className="w-full sm:w-auto">Cancelar</Button>
-            <Button onClick={handleConfirmarPagamento} className="w-full sm:w-auto">Confirmar Pagamento</Button>
+            <Button onClick={handleConfirmarPagamento} className="w-full sm:w-auto">Confirmar pagamento</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Edit Dialog */}
+      {/* Edit Interest Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-lg w-[95vw] sm:w-full p-4 sm:p-6 max-h-[90vh] flex flex-col">
+        <DialogContent className="max-w-lg w-[95vw] sm:w-full flex flex-col">
           <DialogHeader>
-            <DialogTitle>Editar Tipo de Juros</DialogTitle>
-            <DialogDescription>Altere o tipo de juros e percentual. Parcelas pendentes serão recalculadas.</DialogDescription>
+            <DialogTitle>Editar juros do contrato</DialogTitle>
+            <DialogDescription>Altere o tipo ou percentual. Parcelas pendentes serão recalculadas automaticamente.</DialogDescription>
           </DialogHeader>
-          <div className="flex-1 overflow-y-auto space-y-4 pr-1">
-            <Card className="bg-muted/50">
-              <CardContent className="pt-4 text-sm space-y-1">
-                <p><strong>Cliente:</strong> {contrato.clientes?.nome}</p>
-                <p><strong>Valor Emprestado:</strong> R$ {Number(contrato.valor_emprestado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                <p><strong>Parcelas:</strong> {contrato.numero_parcelas} ({parcelas.filter(p => p.status === 'pago').length} pagas, {parcelas.filter(p => p.status === 'pendente').length} pendentes)</p>
-              </CardContent>
-            </Card>
-
-            {parcelas.filter(p => p.status === 'pago').length > 0 && (
-              <div className="bg-warning/10 border border-warning/30 rounded-md p-3 text-sm">
-                <p className="font-medium text-warning">⚠️ Atenção</p>
-                <p className="text-muted-foreground mt-1">
-                  {parcelas.filter(p => p.status === 'pago').length} parcela(s) já paga(s). O novo cálculo será aplicado apenas às pendentes.
-                </p>
-              </div>
-            )}
-
+          <DialogBody>
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Novo Tipo de Juros</Label>
-                <Select value={editFormData.tipoJuros} onValueChange={(value: any) => setEditFormData({ ...editFormData, tipoJuros: value })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="simples">Juros Fixo</SelectItem>
-                    <SelectItem value="parcela">Juros por Parcela</SelectItem>
-                    <SelectItem value="composto">Juros Composto</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <Card className="bg-muted/50">
+                <CardContent className="pt-4 text-sm space-y-1">
+                  <p><strong>Cliente:</strong> {contrato.clientes?.nome}</p>
+                  <p><strong>Emprestado:</strong> R$ {Number(contrato.valor_emprestado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                  <p><strong>Parcelas:</strong> {contrato.numero_parcelas} ({parcelas.filter(p => p.status === 'pago').length} pagas, {parcelas.filter(p => p.status === 'pendente').length} pendentes)</p>
+                </CardContent>
+              </Card>
 
-              <div className="space-y-2">
-                <Label>Novo Percentual (%)</Label>
-                <Input type="number" step="0.1" value={editFormData.percentual} onChange={(e) => setEditFormData({ ...editFormData, percentual: e.target.value })} />
-              </div>
-
-              {previewEdicao && (
-                <Card className="bg-muted/50">
-                  <CardContent className="pt-4 text-sm space-y-2">
-                    <p className="font-medium">Preview:</p>
-                    <p>Valor Total: R$ {previewEdicao.valorTotalAnterior.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} → R$ {previewEdicao.valorTotalNovo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                    <p>Valor por parcela pendente: R$ {previewEdicao.valorNovaParcela.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                  </CardContent>
-                </Card>
+              {parcelas.filter(p => p.status === 'pago').length > 0 && (
+                <div className="bg-warning/10 border border-warning/30 rounded-md p-3 text-sm">
+                  <p className="font-medium text-warning">⚠️ Atenção</p>
+                  <p className="text-muted-foreground mt-1">
+                    {parcelas.filter(p => p.status === 'pago').length} parcela(s) já paga(s). O recálculo será aplicado apenas às pendentes.
+                  </p>
+                </div>
               )}
-            </div>
-          </div>
 
-          <DialogFooter className="flex-col sm:flex-row gap-2 mt-4">
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Tipo de juros</Label>
+                  <Select value={editFormData.tipoJuros} onValueChange={(value: any) => setEditFormData({ ...editFormData, tipoJuros: value })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="simples">Juros Fixo</SelectItem>
+                      <SelectItem value="parcela">Juros por Parcela</SelectItem>
+                      <SelectItem value="composto">Juros Composto</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Percentual (%)</Label>
+                  <Input type="number" step="0.1" value={editFormData.percentual} onChange={(e) => setEditFormData({ ...editFormData, percentual: e.target.value })} />
+                </div>
+
+                {previewEdicao && (
+                  <Card className="border-primary/20 bg-primary/5">
+                    <CardContent className="pt-4 text-sm space-y-1.5">
+                      <p className="font-medium text-xs uppercase tracking-wider text-muted-foreground">Simulação</p>
+                      <p>Total: R$ {previewEdicao.valorTotalAnterior.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} → <strong>R$ {previewEdicao.valorTotalNovo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong></p>
+                      <p>Nova parcela: <strong>R$ {previewEdicao.valorNovaParcela.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong></p>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </div>
+          </DialogBody>
+          <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="w-full sm:w-auto">Cancelar</Button>
             <Button onClick={handleEditContrato} disabled={isEditLoading} className="w-full sm:w-auto">
-              {isEditLoading ? "Salvando..." : "Confirmar Alteração"}
+              {isEditLoading ? "Salvando..." : "Confirmar alteração"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -566,15 +597,15 @@ export function ContratoDetails({
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent className="w-[95vw] sm:max-w-lg">
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogTitle>Excluir contrato?</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir este contrato? Todas as parcelas também serão excluídas.
+              Esta ação é irreversível. O contrato e todas as suas parcelas serão excluídos permanentemente.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
             <AlertDialogCancel className="w-full sm:w-auto">Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteContrato} className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Excluir
+              Excluir contrato
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

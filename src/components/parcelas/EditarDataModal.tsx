@@ -11,6 +11,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogBody,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,7 +38,6 @@ export function EditarDataModal({ isOpen, onOpenChange, parcela, onDataAlterada 
   const [justificativaAlteracao, setJustificativaAlteracao] = useState<string>("");
   const { toast } = useToast();
 
-  // Sync state when parcela changes
   if (parcela && novaDataVencimento === "" && isOpen) {
     setNovaDataVencimento(parcela.data_vencimento);
   }
@@ -88,8 +88,8 @@ export function EditarDataModal({ isOpen, onOpenChange, parcela, onDataAlterada 
       }
 
       toast({
-        title: "Data de vencimento alterada",
-        description: `Nova data: ${format(new Date(novaDataVencimento + 'T00:00:00'), 'dd/MM/yyyy')}`,
+        title: "Data alterada",
+        description: `Novo vencimento: ${format(new Date(novaDataVencimento + 'T00:00:00'), 'dd/MM/yyyy')}`,
       });
 
       onOpenChange(false);
@@ -97,7 +97,7 @@ export function EditarDataModal({ isOpen, onOpenChange, parcela, onDataAlterada 
       setJustificativaAlteracao("");
       onDataAlterada();
     } catch (error: any) {
-      toast({ title: "Erro ao alterar data", description: "Não foi possível alterar a data.", variant: "destructive" });
+      toast({ title: "Erro ao alterar data", description: "Não foi possível salvar a alteração.", variant: "destructive" });
     }
   };
 
@@ -109,41 +109,39 @@ export function EditarDataModal({ isOpen, onOpenChange, parcela, onDataAlterada 
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return format(new Date(dateString + 'T00:00:00'), 'dd/MM/yyyy');
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="w-[95vw] sm:max-w-md">
+      <DialogContent className="w-[95vw] sm:max-w-md flex flex-col">
         <DialogHeader>
-          <DialogTitle>Editar Data de Vencimento</DialogTitle>
+          <DialogTitle>Alterar vencimento</DialogTitle>
           <DialogDescription>
             {parcela && (
               <>
-                Parcela {parcela.numero_parcela} - {parcela.contratos?.clientes?.nome}
+                Parcela {parcela.numero_parcela} · {parcela.contratos?.clientes?.nome}
                 <br />
-                Data Atual: {formatDate(parcela.data_vencimento)}
+                Vencimento atual: {format(new Date(parcela.data_vencimento + 'T00:00:00'), 'dd/MM/yyyy')}
               </>
             )}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="nova-data">Nova Data de Vencimento</Label>
-            <Input id="nova-data" type="date" value={novaDataVencimento} onChange={(e) => setNovaDataVencimento(e.target.value)} />
-          </div>
+        <DialogBody>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="nova-data" className="text-xs">Nova data de vencimento</Label>
+              <Input id="nova-data" type="date" value={novaDataVencimento} onChange={(e) => setNovaDataVencimento(e.target.value)} />
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="justificativa">Justificativa *</Label>
-            <Textarea id="justificativa" value={justificativaAlteracao} onChange={(e) => setJustificativaAlteracao(e.target.value)} placeholder="Informe o motivo da alteração..." rows={3} />
+            <div className="space-y-1.5">
+              <Label htmlFor="justificativa" className="text-xs">Justificativa *</Label>
+              <Textarea id="justificativa" value={justificativaAlteracao} onChange={(e) => setJustificativaAlteracao(e.target.value)} placeholder="Motivo da alteração..." rows={2} />
+            </div>
           </div>
-        </div>
+        </DialogBody>
 
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="outline" onClick={() => handleClose(false)}>Cancelar</Button>
-          <Button onClick={handleEditarDataVencimento}>Confirmar Alteração</Button>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => handleClose(false)} className="w-full sm:w-auto">Cancelar</Button>
+          <Button onClick={handleEditarDataVencimento} className="w-full sm:w-auto">Confirmar alteração</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

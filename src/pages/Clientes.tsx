@@ -12,7 +12,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogBody, DialogFooter,
 } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, Search, Users, Download, Phone } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -207,32 +207,34 @@ export default function Clientes() {
               Novo cliente
             </Button>
           </DialogTrigger>
-          <DialogContent className="w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-[95vw] sm:max-w-lg flex flex-col">
             <DialogHeader>
-              <DialogTitle>{editingCliente ? "Editar cliente" : "Cadastrar novo cliente"}</DialogTitle>
+              <DialogTitle>{editingCliente ? "Editar cliente" : "Cadastrar cliente"}</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="nome">Nome *</Label>
-                <Input id="nome" value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} required placeholder="Nome completo do cliente" />
-              </div>
-              <div>
-                <Label htmlFor="telefone">Telefone</Label>
-                <Input id="telefone" value={formData.telefone} onChange={(e) => setFormData({ ...formData, telefone: e.target.value })} placeholder="(00) 00000-0000" />
-              </div>
-              <div>
-                <Label htmlFor="endereco">Endereço</Label>
-                <Input id="endereco" value={formData.endereco} onChange={(e) => setFormData({ ...formData, endereco: e.target.value })} placeholder="Endereço do cliente" />
-              </div>
-              <div>
-                <Label htmlFor="observacoes">Observações</Label>
-                <Textarea id="observacoes" value={formData.observacoes} onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })} rows={3} placeholder="Anotações sobre o cliente" />
-              </div>
-              <div className="flex flex-col-reverse sm:flex-row gap-2 pt-2">
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="w-full sm:w-auto">Cancelar</Button>
-                <Button type="submit" className="w-full sm:w-auto">{editingCliente ? "Salvar alterações" : "Cadastrar cliente"}</Button>
-              </div>
-            </form>
+            <DialogBody>
+              <form id="cliente-form" onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="nome" className="text-xs">Nome *</Label>
+                  <Input id="nome" value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} required placeholder="Nome completo" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="telefone" className="text-xs">Telefone</Label>
+                  <Input id="telefone" value={formData.telefone} onChange={(e) => setFormData({ ...formData, telefone: e.target.value })} placeholder="(00) 00000-0000" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="endereco" className="text-xs">Endereço</Label>
+                  <Input id="endereco" value={formData.endereco} onChange={(e) => setFormData({ ...formData, endereco: e.target.value })} placeholder="Endereço completo" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="observacoes" className="text-xs">Observações</Label>
+                  <Textarea id="observacoes" value={formData.observacoes} onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })} rows={2} placeholder="Anotações sobre o cliente" />
+                </div>
+              </form>
+            </DialogBody>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="w-full sm:w-auto">Cancelar</Button>
+              <Button type="submit" form="cliente-form" className="w-full sm:w-auto">{editingCliente ? "Salvar alterações" : "Cadastrar cliente"}</Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </PageHeader>
