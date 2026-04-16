@@ -203,6 +203,8 @@ export default function Contratos() {
         title="Contratos"
         description="Gerencie todos os empréstimos em um só lugar"
       >
+        <RelatorioAtrasados />
+
         <Button size="sm" variant="outline" onClick={() => {
           if (!canCreate) {
             setIsAccessModalOpen(true);
