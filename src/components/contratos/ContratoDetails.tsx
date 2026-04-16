@@ -96,6 +96,8 @@ export function ContratoDetails({
   const [historicoModalOpen, setHistoricoModalOpen] = useState(false);
   const [parcelaHistorico, setParcelaHistorico] = useState<Parcela | null>(null);
   const [historicoData, setHistoricoData] = useState<any[]>([]);
+  const [editarDataOpen, setEditarDataOpen] = useState(false);
+  const [parcelaEditarData, setParcelaEditarData] = useState<any>(null);
   const { toast } = useToast();
 
   if (!contrato) return null;
