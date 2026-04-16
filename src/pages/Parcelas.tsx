@@ -187,10 +187,10 @@ export default function Parcelas() {
     try {
       const { estornarPagamento } = await import("@/services/parcelas");
       await estornarPagamento(parcelaId);
-      toast({ title: "Pagamentos desfeitos", description: "A parcela foi resetada." });
+      toast({ title: "Pagamentos desfeitos", description: "A parcela foi resetada para pendente." });
       loadParcelas();
     } catch (error: any) {
-      toast({ title: "Erro", description: "Não foi possível desfazer.", variant: "destructive" });
+      toast({ title: "Erro ao desfazer", description: "Não foi possível reverter o pagamento.", variant: "destructive" });
     }
   };
 
@@ -215,7 +215,7 @@ export default function Parcelas() {
     if (!parcelaToDelete) return;
     try {
       await supabase.from("parcelas").delete().eq("id", parcelaToDelete);
-      toast({ title: "Parcela excluída" });
+      toast({ title: "Parcela excluída", description: "O registro foi removido." });
       setIsDeleteDialogOpen(false);
       setParcelaToDelete(null);
       loadParcelas();
@@ -225,15 +225,15 @@ export default function Parcelas() {
   };
 
   const getStatusBadge = (parcela: Parcela) => {
-    if (parcela.status === "pago") return <Badge variant="default" className="bg-success">Pago Total</Badge>;
+    if (parcela.status === "pago") return <Badge variant="default" className="bg-success text-[10px]">Pago</Badge>;
     if (parcela.status === "parcialmente_pago") {
       const diasAtraso = calcularDiasAtraso(parcela.data_vencimento);
-      if (diasAtraso > 0) return <Badge className="bg-amber-500 text-white">Parcial - Atrasado ({diasAtraso}d)</Badge>;
-      return <Badge className="bg-amber-500 text-white">Pago Parcial</Badge>;
+      if (diasAtraso > 0) return <Badge className="bg-warning text-warning-foreground text-[10px]">Parcial ({diasAtraso}d)</Badge>;
+      return <Badge className="bg-warning text-warning-foreground text-[10px]">Parcial</Badge>;
     }
     const diasAtraso = calcularDiasAtraso(parcela.data_vencimento);
-    if (diasAtraso > 0) return <Badge variant="destructive">Atrasado ({diasAtraso}d)</Badge>;
-    return <Badge variant="secondary">Pendente</Badge>;
+    if (diasAtraso > 0) return <Badge variant="destructive" className="text-[10px]">Atrasado ({diasAtraso}d)</Badge>;
+    return <Badge variant="secondary" className="text-[10px]">Pendente</Badge>;
   };
 
   const totalPendente = dashboardParcelas.filter(p => p.status !== "pago").reduce((acc, p) => acc + Number(p.valor_original || p.valor), 0);
@@ -250,106 +250,104 @@ export default function Parcelas() {
   const totalVencido = dashboardParcelas
     .filter(p => (p.status === "pendente" || p.status === "parcialmente_pago") && calcularDiasAtraso(p.data_vencimento) > 0)
     .reduce((acc, p) => acc + Number(p.valor_original || p.valor), 0);
+  const parcelasEmAtraso = dashboardParcelas.filter(p => (p.status === "pendente" || p.status === "parcialmente_pago") && calcularDiasAtraso(p.data_vencimento) > 0).length;
 
   return (
-    <div className="space-y-4 md:space-y-6">
+    <div className="space-y-4 md:space-y-5">
       <PageHeader
         title="Parcelas"
-        description="Controle de cobranças e pagamentos"
+        description="Controle de cobranças e recebimentos do dia a dia"
       />
 
       {/* Filtro de Período */}
-      <Card className="w-full">
-        <CardHeader className="pb-2 pt-4">
-          <CardTitle className="text-sm font-medium">Filtrar Período</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 pb-4">
+      <Card>
+        <CardContent className="py-3 px-3 md:px-4">
           <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-end">
             <div className="flex-1 min-w-0">
-              <Label htmlFor="data-inicio" className="text-xs mb-1 block">Data Inicial</Label>
-              <Input id="data-inicio" type="date" value={dataInicioDashboard} onChange={(e) => setDataInicioDashboard(e.target.value)} className="w-full sm:w-[140px] h-8 text-base md:text-xs" />
+              <Label htmlFor="data-inicio" className="text-xs mb-1 block text-muted-foreground">Período inicial</Label>
+              <Input id="data-inicio" type="date" value={dataInicioDashboard} onChange={(e) => setDataInicioDashboard(e.target.value)} className="w-full h-8 text-base md:text-xs" />
             </div>
             <div className="flex-1 min-w-0">
-              <Label htmlFor="data-fim" className="text-xs mb-1 block">Data Final</Label>
-              <Input id="data-fim" type="date" value={dataFimDashboard} onChange={(e) => setDataFimDashboard(e.target.value)} className="w-full sm:w-[140px] h-8 text-base md:text-xs" />
+              <Label htmlFor="data-fim" className="text-xs mb-1 block text-muted-foreground">Período final</Label>
+              <Input id="data-fim" type="date" value={dataFimDashboard} onChange={(e) => setDataFimDashboard(e.target.value)} className="w-full h-8 text-base md:text-xs" />
             </div>
-            <Button variant="outline" size="sm" onClick={() => { setDataInicioDashboard(""); setDataFimDashboard(""); }} className="h-8 text-xs px-3">Limpar</Button>
+            {(dataInicioDashboard || dataFimDashboard) && (
+              <Button variant="ghost" size="sm" onClick={() => { setDataInicioDashboard(""); setDataFimDashboard(""); }} className="h-8 text-xs px-3 text-muted-foreground">
+                Limpar
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Cards de Resumo */}
-      <div className="grid gap-1.5 md:gap-4 grid-cols-2 md:grid-cols-5 w-full min-w-0">
-        <Card className={`min-w-0 overflow-hidden border-l-4 border-l-primary cursor-pointer transition-shadow hover:shadow-md ${cardFilter === "recebido_hoje" ? "ring-2 ring-primary" : ""}`} onClick={() => setCardFilter(cardFilter === "recebido_hoje" ? null : "recebido_hoje")}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-2 md:px-3 pt-2 md:pt-3">
-            <CardTitle className="text-xs md:text-sm font-medium truncate">Recebido Hoje</CardTitle>
-            <Banknote className="h-3 w-3 md:h-4 md:w-4 text-primary flex-shrink-0 ml-1" />
-          </CardHeader>
-          <CardContent className="px-2 md:px-3 pb-2 md:pb-3">
-            <div className="text-sm md:text-2xl font-bold text-primary truncate">R$ {totalRecebidoHoje.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
-            <p className="text-xs text-muted-foreground truncate">{pagamentosHoje} pagamento{pagamentosHoje !== 1 ? 's' : ''}</p>
-          </CardContent>
-        </Card>
+      {/* Summary cards */}
+      <div className="grid gap-2 md:gap-3 grid-cols-2 md:grid-cols-5">
+        <div
+          className={`metric-card border-l-4 border-l-primary ${cardFilter === "recebido_hoje" ? "ring-2 ring-primary shadow-md" : ""}`}
+          onClick={() => setCardFilter(cardFilter === "recebido_hoje" ? null : "recebido_hoje")}
+        >
+          <div className="flex items-center justify-between mb-1">
+            <span className="metric-card-label">Recebido Hoje</span>
+            <Banknote className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+          </div>
+          <p className="metric-card-value text-primary">R$ {totalRecebidoHoje.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+          <p className="text-[10px] text-muted-foreground">{pagamentosHoje} pagamento{pagamentosHoje !== 1 ? 's' : ''}</p>
+        </div>
 
-        <Card className="min-w-0 overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-2 md:px-3 pt-2 md:pt-3">
-            <CardTitle className="text-xs md:text-sm font-medium truncate">A Receber (Pendente)</CardTitle>
-            <Calendar className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground flex-shrink-0 ml-1" />
-          </CardHeader>
-          <CardContent className="px-2 md:px-3 pb-2 md:pb-3">
-            <div className="text-sm md:text-2xl font-bold truncate">R$ {totalPendente.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
-            <p className="text-xs text-muted-foreground truncate">{dashboardParcelas.filter(p => p.status !== "pago").length} parcelas a quitar</p>
-          </CardContent>
-        </Card>
+        <div className="metric-card cursor-default">
+          <div className="flex items-center justify-between mb-1">
+            <span className="metric-card-label">A Receber</span>
+            <Calendar className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+          </div>
+          <p className="metric-card-value">R$ {totalPendente.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+          <p className="text-[10px] text-muted-foreground">{dashboardParcelas.filter(p => p.status !== "pago").length} pendentes</p>
+        </div>
 
-        <Card className="min-w-0 overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-2 md:px-3 pt-2 md:pt-3">
-            <CardTitle className="text-xs md:text-sm font-medium truncate">Total Recebido</CardTitle>
-            <Check className="h-3 w-3 md:h-4 md:w-4 text-success flex-shrink-0 ml-1" />
-          </CardHeader>
-          <CardContent className="px-2 md:px-3 pb-2 md:pb-3">
-            <div className="text-sm md:text-2xl font-bold text-success truncate">R$ {totalPago.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
-            <p className="text-xs text-muted-foreground truncate">Inclui parciais e quitações</p>
-          </CardContent>
-        </Card>
+        <div className="metric-card cursor-default">
+          <div className="flex items-center justify-between mb-1">
+            <span className="metric-card-label">Total Recebido</span>
+            <Check className="h-3.5 w-3.5 text-success flex-shrink-0" />
+          </div>
+          <p className="metric-card-value text-success">R$ {totalPago.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+          <p className="text-[10px] text-muted-foreground">Parciais e quitações</p>
+        </div>
 
-        <Card className="min-w-0 overflow-hidden border-l-4 border-l-emerald-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-2 md:px-3 pt-2 md:pt-3">
-            <CardTitle className="text-xs md:text-sm font-medium truncate">Juros Recebidos</CardTitle>
-            <TrendingUp className="h-3 w-3 md:h-4 md:w-4 text-emerald-500 flex-shrink-0 ml-1" />
-          </CardHeader>
-          <CardContent className="px-2 md:px-3 pb-2 md:pb-3">
-            <div className="text-sm md:text-2xl font-bold text-emerald-600 truncate">R$ {totalJurosRecebido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
-            <p className="text-xs text-muted-foreground truncate">Lucro sobre capital</p>
-          </CardContent>
-        </Card>
+        <div className="metric-card cursor-default border-l-4 border-l-success">
+          <div className="flex items-center justify-between mb-1">
+            <span className="metric-card-label">Juros Recebidos</span>
+            <TrendingUp className="h-3.5 w-3.5 text-success flex-shrink-0" />
+          </div>
+          <p className="metric-card-value text-success">R$ {totalJurosRecebido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+          <p className="text-[10px] text-muted-foreground">Lucro sobre capital</p>
+        </div>
 
-        <Card className={`min-w-0 overflow-hidden cursor-pointer transition-shadow hover:shadow-md ${cardFilter === "vencido" ? "ring-2 ring-destructive" : ""}`} onClick={() => setCardFilter(cardFilter === "vencido" ? null : "vencido")}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-2 md:px-3 pt-2 md:pt-3">
-            <CardTitle className="text-xs md:text-sm font-medium truncate">Total Vencido</CardTitle>
-            <AlertTriangle className="h-3 w-3 md:h-4 md:w-4 text-destructive flex-shrink-0 ml-1" />
-          </CardHeader>
-          <CardContent className="px-2 md:px-3 pb-2 md:pb-3">
-            <div className="text-sm md:text-2xl font-bold text-destructive truncate">R$ {totalVencido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
-            <p className="text-xs text-muted-foreground truncate">{dashboardParcelas.filter(p => (p.status === "pendente" || p.status === "parcialmente_pago") && calcularDiasAtraso(p.data_vencimento) > 0).length} parcelas em atraso</p>
-          </CardContent>
-        </Card>
+        <div
+          className={`metric-card col-span-2 md:col-span-1 ${cardFilter === "vencido" ? "ring-2 ring-destructive shadow-md" : ""}`}
+          onClick={() => setCardFilter(cardFilter === "vencido" ? null : "vencido")}
+        >
+          <div className="flex items-center justify-between mb-1">
+            <span className="metric-card-label">Total Vencido</span>
+            <AlertTriangle className="h-3.5 w-3.5 text-destructive flex-shrink-0" />
+          </div>
+          <p className="metric-card-value text-destructive">R$ {totalVencido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+          <p className="text-[10px] text-muted-foreground">{parcelasEmAtraso} em atraso</p>
+        </div>
       </div>
 
-      {/* Filtros */}
-      <Card className="w-full overflow-hidden">
-        <CardContent className="pt-3 pb-3 px-3 md:px-6">
-          <div className="flex flex-col md:flex-row gap-2 w-full">
-            <div className="flex-1 relative w-full min-w-0">
-              <Search className="absolute left-2 top-2 h-3 w-3 text-muted-foreground" />
-              <Input placeholder="Buscar cliente..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-7 w-full h-8 text-base md:text-xs" />
+      {/* Filters */}
+      <Card>
+        <CardContent className="py-3 px-3 md:px-4">
+          <div className="flex flex-col md:flex-row gap-2">
+            <div className="flex-1 relative min-w-0">
+              <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input placeholder="Buscar por cliente..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-8 h-8 text-base md:text-xs" />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full md:w-40 h-8 text-xs">
+              <SelectTrigger className="w-full md:w-36 h-8 text-xs">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="todos">Todos</SelectItem>
+                <SelectItem value="todos">Todos os status</SelectItem>
                 <SelectItem value="pendente">Pendente</SelectItem>
                 <SelectItem value="pago">Pago</SelectItem>
               </SelectContent>
@@ -358,21 +356,24 @@ export default function Parcelas() {
         </CardContent>
       </Card>
 
-      {/* Lista de Parcelas */}
-      <Card className="w-full overflow-hidden">
+      {/* Lista */}
+      <Card>
         <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3">
           <div className="flex items-center gap-2 flex-wrap">
-            <CardTitle className="text-base md:text-lg">
-              Parcelas ({filteredParcelas.length})
-              {!mostrarTodas && !cardFilter && <span className="text-sm font-normal text-muted-foreground ml-2 hidden sm:inline">(Próximos 7 dias)</span>}
+            <CardTitle className="text-sm md:text-base font-semibold">
+              Parcelas
+              <span className="ml-1.5 text-muted-foreground font-normal">({filteredParcelas.length})</span>
             </CardTitle>
+            {!mostrarTodas && !cardFilter && (
+              <Badge variant="outline" className="text-[10px]">Próximos 7 dias</Badge>
+            )}
             {cardFilter && (
-              <Badge variant="secondary" className="cursor-pointer text-xs" onClick={() => setCardFilter(null)}>
+              <Badge variant="secondary" className="cursor-pointer text-[10px]" onClick={() => setCardFilter(null)}>
                 {cardFilter === "recebido_hoje" ? "Recebido Hoje" : "Vencidas"} ✕
               </Badge>
             )}
           </div>
-          <div className="flex gap-1 items-center">
+          <div className="flex gap-1.5 items-center">
             <Button variant="outline" size="sm" onClick={() => {
               exportarCsv("parcelas.csv",
                 ["Cliente", "Nº Parcela", "Valor", "Vencimento", "Status", "Valor Pago", "Data Pagamento"],
@@ -386,28 +387,28 @@ export default function Parcelas() {
                   p.data_pagamento ? formatDate(p.data_pagamento) : "",
                 ])
               );
-            }} className="text-xs">
-              <Download className="h-4 w-4 mr-1" />
+            }} className="h-7 text-xs">
+              <Download className="h-3 w-3 mr-1" />
               <span className="hidden sm:inline">CSV</span>
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setMostrarTodas(!mostrarTodas)} className="text-xs sm:text-sm">
-              {mostrarTodas ? "Próximos 7 Dias" : "Ver Todas"}
+            <Button variant="outline" size="sm" onClick={() => setMostrarTodas(!mostrarTodas)} className="h-7 text-xs">
+              {mostrarTodas ? "Próx. 7 dias" : "Ver todas"}
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="p-0 md:p-6">
+        <CardContent className="p-0 md:p-6 md:pt-0">
           {/* Mobile Cards */}
-          <div className="md:hidden space-y-3 p-2 w-full min-w-0 max-w-full">
+          <div className="md:hidden space-y-2 p-3">
             {parcelasPaginadas.length === 0 ? (
               <EmptyState icon={Calculator} title="Nenhuma parcela encontrada" description="Ajuste os filtros ou aguarde novos vencimentos." />
             ) : (
               parcelasPaginadas.map((parcela) => (
-                <Card key={parcela.id} className="border-l-4 min-w-0 overflow-hidden" style={{
+                <Card key={parcela.id} className="border-l-4 overflow-hidden" style={{
                   borderLeftColor: parcela.status === "pago" ? "hsl(var(--success))" : calcularDiasAtraso(parcela.data_vencimento) > 0 ? "hsl(var(--destructive))" : "hsl(var(--warning))"
                 }}>
                   <CardContent className="p-3 space-y-2">
                     <div className="flex items-start justify-between gap-1.5">
-                      <div className="flex-1 min-w-0 overflow-hidden">
+                      <div className="flex-1 min-w-0">
                         <p className="font-semibold text-sm truncate">{parcela.contratos?.clientes?.nome}</p>
                         <p className="text-xs text-muted-foreground">Parcela {parcela.numero_parcela}</p>
                       </div>
@@ -416,25 +417,25 @@ export default function Parcelas() {
 
                     <div className="grid grid-cols-2 gap-1.5">
                       <div className="overflow-hidden">
-                        <p className="text-muted-foreground text-xs">Valor</p>
-                        <p className="font-semibold text-sm break-all">R$ {Number(parcela.valor_original || parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                        <p className="text-muted-foreground text-[10px] uppercase">Valor</p>
+                        <p className="font-semibold text-sm tabular-nums">R$ {Number(parcela.valor_original || parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                         {parcela.valor_pago && parcela.valor_pago > 0 && (
-                          <p className="text-xs text-success break-all">Pago: R$ {Number(parcela.valor_pago).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                          <p className="text-[10px] text-success tabular-nums">Pago: R$ {Number(parcela.valor_pago).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                         )}
                       </div>
                       <div className="overflow-hidden">
-                        <p className="text-muted-foreground text-xs">Vencimento</p>
+                        <p className="text-muted-foreground text-[10px] uppercase">Vencimento</p>
                         <p className="font-semibold text-sm">{formatDate(parcela.data_vencimento)}</p>
                         {calcularDiasAtraso(parcela.data_vencimento) > 0 && (
-                          <p className="text-xs text-destructive">{calcularDiasAtraso(parcela.data_vencimento)}d atraso</p>
+                          <p className="text-[10px] text-destructive">{calcularDiasAtraso(parcela.data_vencimento)}d atraso</p>
                         )}
                       </div>
                     </div>
 
-                    <div className="flex flex-col gap-1.5 pt-1.5 border-t w-full">
+                    <div className="flex flex-col gap-1.5 pt-1.5 border-t">
                       <div className="flex gap-1.5">
                         <Button variant="outline" size="sm" onClick={() => { setParcelaToEditData(parcela); setIsEditarDataDialogOpen(true); }} className="flex-1 h-9 text-xs px-2">
-                          <Calendar className="h-3.5 w-3.5 mr-1" />Editar Data
+                          <Calendar className="h-3.5 w-3.5 mr-1" />Data
                         </Button>
                         <Button variant="outline" size="sm" onClick={() => loadHistorico(parcela)} className="flex-1 h-9 text-xs px-2">
                           <FileText className="h-3.5 w-3.5 mr-1" />Histórico
@@ -450,8 +451,8 @@ export default function Parcelas() {
                             <Undo2 className="h-3.5 w-3.5 mr-1" />Desfazer
                           </Button>
                         )}
-                        <Button variant="outline" size="sm" onClick={() => { setParcelaToDelete(parcela.id); setIsDeleteDialogOpen(true); }} className="flex-1 text-destructive hover:bg-destructive hover:text-destructive-foreground h-9 text-xs px-2">
-                          <Trash2 className="h-3.5 w-3.5 mr-1" />Excluir
+                        <Button variant="outline" size="sm" onClick={() => { setParcelaToDelete(parcela.id); setIsDeleteDialogOpen(true); }} className="flex-shrink-0 text-destructive hover:bg-destructive hover:text-destructive-foreground h-9 w-9 p-0">
+                          <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </div>
@@ -466,8 +467,8 @@ export default function Parcelas() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[150px]">Cliente</TableHead>
-                  <TableHead>Parcela</TableHead>
+                  <TableHead className="min-w-[140px]">Cliente</TableHead>
+                  <TableHead>Nº</TableHead>
                   <TableHead>Valor</TableHead>
                   <TableHead>Vencimento</TableHead>
                   <TableHead className="hidden lg:table-cell">Pagamento</TableHead>
@@ -482,37 +483,37 @@ export default function Parcelas() {
                   parcelasPaginadas.map((parcela) => (
                     <TableRow key={parcela.id}>
                       <TableCell className="font-medium">{parcela.contratos?.clientes?.nome}</TableCell>
-                      <TableCell className="text-sm">{parcela.numero_parcela}</TableCell>
+                      <TableCell className="text-sm tabular-nums">{parcela.numero_parcela}</TableCell>
                       <TableCell className="text-sm">
                         <div className="flex flex-col">
-                          <span>R$ {Number(parcela.valor_original || parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                          <span className="tabular-nums">R$ {Number(parcela.valor_original || parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                           {parcela.valor_pago && parcela.valor_pago > 0 && (
-                            <span className="text-xs text-muted-foreground">Pago: R$ {Number(parcela.valor_pago).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                            <span className="text-xs text-muted-foreground tabular-nums">Pago: R$ {Number(parcela.valor_pago).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                           )}
                         </div>
                       </TableCell>
                       <TableCell className="text-sm">{formatDate(parcela.data_vencimento)}</TableCell>
-                      <TableCell className="hidden lg:table-cell text-sm">{parcela.data_pagamento ? formatDate(parcela.data_pagamento) : "-"}</TableCell>
+                      <TableCell className="hidden lg:table-cell text-sm">{parcela.data_pagamento ? formatDate(parcela.data_pagamento) : "—"}</TableCell>
                       <TableCell>{getStatusBadge(parcela)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex gap-1 justify-end">
-                          <Button variant="outline" size="sm" onClick={() => { setParcelaToEditData(parcela); setIsEditarDataDialogOpen(true); }} title="Editar data">
-                            <Calendar className="h-4 w-4" />
+                          <Button variant="outline" size="sm" onClick={() => { setParcelaToEditData(parcela); setIsEditarDataDialogOpen(true); }} title="Editar data" className="h-8 w-8 p-0">
+                            <Calendar className="h-3.5 w-3.5" />
                           </Button>
-                          <Button variant="outline" size="sm" onClick={() => loadHistorico(parcela)} title="Histórico">
-                            <FileText className="h-4 w-4" />
+                          <Button variant="outline" size="sm" onClick={() => loadHistorico(parcela)} title="Histórico" className="h-8 w-8 p-0">
+                            <FileText className="h-3.5 w-3.5" />
                           </Button>
                           {parcela.status !== "pago" ? (
-                            <Button variant="outline" size="sm" onClick={() => abrirModalPagamento(parcela)} className="text-success hover:bg-success hover:text-success-foreground" title="Baixar">
-                              <Check className="h-4 w-4" />
+                            <Button variant="outline" size="sm" onClick={() => abrirModalPagamento(parcela)} className="h-8 w-8 p-0 text-success hover:bg-success hover:text-success-foreground" title="Baixar">
+                              <Check className="h-3.5 w-3.5" />
                             </Button>
                           ) : (
-                            <Button variant="outline" size="sm" onClick={() => handleMarcarPendente(parcela.id)} className="text-warning hover:bg-warning hover:text-warning-foreground" title="Desfazer">
-                              <Undo2 className="h-4 w-4" />
+                            <Button variant="outline" size="sm" onClick={() => handleMarcarPendente(parcela.id)} className="h-8 w-8 p-0 text-warning hover:bg-warning hover:text-warning-foreground" title="Desfazer">
+                              <Undo2 className="h-3.5 w-3.5" />
                             </Button>
                           )}
-                          <Button variant="outline" size="sm" onClick={() => { setParcelaToDelete(parcela.id); setIsDeleteDialogOpen(true); }} className="text-destructive hover:bg-destructive hover:text-destructive-foreground" title="Excluir">
-                            <Trash2 className="h-4 w-4" />
+                          <Button variant="outline" size="sm" onClick={() => { setParcelaToDelete(parcela.id); setIsDeleteDialogOpen(true); }} className="h-8 w-8 p-0 text-destructive hover:bg-destructive hover:text-destructive-foreground" title="Excluir">
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                       </TableCell>
@@ -560,12 +561,12 @@ export default function Parcelas() {
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent className="w-[95vw] sm:max-w-lg">
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
-            <AlertDialogDescription>Tem certeza que deseja excluir esta parcela? Esta ação não pode ser desfeita.</AlertDialogDescription>
+            <AlertDialogTitle>Excluir parcela?</AlertDialogTitle>
+            <AlertDialogDescription>Esta ação não pode ser desfeita. A parcela será removida permanentemente.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
             <AlertDialogCancel className="w-full sm:w-auto">Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="w-full sm:w-auto bg-destructive hover:bg-destructive/90">Excluir</AlertDialogAction>
+            <AlertDialogAction onClick={handleDelete} className="w-full sm:w-auto bg-destructive hover:bg-destructive/90">Excluir parcela</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

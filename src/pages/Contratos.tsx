@@ -6,11 +6,11 @@ import { Input } from "@/components/ui/input";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Upload, Search, Download, FileText, DollarSign, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Upload, Search, Download, FileText, DollarSign, CheckCircle2, AlertTriangle, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { getLocalDateString } from "@/lib/utils";
-import { removerAcentos } from "@/lib/calculos";
+import { removerAcentos, calcularDiasAtraso } from "@/lib/calculos";
 import { exportarCsv } from "@/lib/exportCsv";
 import { useUserRole } from "@/hooks/useUserRole";
 import { AccessRestrictedModal } from "@/components/AccessRestrictedModal";
@@ -91,7 +91,7 @@ export default function Contratos() {
     } catch (error: any) {
       toast({
         title: "Não foi possível carregar os contratos",
-        description: "Verifique sua conexão com a internet e tente novamente.",
+        description: "Verifique sua conexão e tente novamente.",
         variant: "destructive",
       });
     } finally {
@@ -111,7 +111,7 @@ export default function Contratos() {
     } catch (error: any) {
       toast({
         title: "Não foi possível carregar os clientes",
-        description: "Verifique sua conexão com a internet e tente novamente.",
+        description: "Verifique sua conexão e tente novamente.",
         variant: "destructive",
       });
     }
@@ -187,11 +187,19 @@ export default function Contratos() {
     }
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "ativo": return "hsl(var(--primary))";
+      case "quitado": return "hsl(var(--success))";
+      default: return "hsl(var(--muted-foreground))";
+    }
+  };
+
   return (
     <div className="space-y-4 md:space-y-5">
       <PageHeader
         title="Contratos"
-        description="Gerencie os contratos de empréstimo"
+        description="Gerencie empréstimos e acompanhe pagamentos"
       >
         <Button size="sm" variant="outline" onClick={() => {
           if (!canCreate) {
@@ -218,53 +226,65 @@ export default function Contratos() {
         />
       </PageHeader>
 
-      {/* Summary cards */}
+      {/* Summary metrics */}
       {!loading && contratos.length > 0 && (
-        <div className="grid gap-2 grid-cols-2 lg:grid-cols-4">
-          <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setStatusFilter("ativos")}>
-            <CardContent className="p-3 flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+        <div className="grid gap-2 md:gap-3 grid-cols-3">
+          <div
+            className={`metric-card ${statusFilter === "ativos" ? "ring-2 ring-primary shadow-md" : ""}`}
+            onClick={() => setStatusFilter("ativos")}
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="metric-card-icon bg-primary/10">
                 <FileText className="h-4 w-4 text-primary" />
               </div>
-              <div>
-                <p className="text-lg font-bold">{summaryStats.ativos}</p>
-                <p className="text-[11px] text-muted-foreground">Ativos</p>
+              <div className="min-w-0">
+                <p className="metric-card-value">{summaryStats.ativos}</p>
+                <p className="metric-card-label">Ativos</p>
               </div>
-            </CardContent>
-          </Card>
-          <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setStatusFilter("quitados")}>
-            <CardContent className="p-3 flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg bg-success/10 flex items-center justify-center flex-shrink-0">
+            </div>
+          </div>
+          <div
+            className={`metric-card ${statusFilter === "quitados" ? "ring-2 ring-success shadow-md" : ""}`}
+            onClick={() => setStatusFilter("quitados")}
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="metric-card-icon bg-success/10">
                 <CheckCircle2 className="h-4 w-4 text-success" />
               </div>
-              <div>
-                <p className="text-lg font-bold">{summaryStats.quitados}</p>
-                <p className="text-[11px] text-muted-foreground">Quitados</p>
+              <div className="min-w-0">
+                <p className="metric-card-value">{summaryStats.quitados}</p>
+                <p className="metric-card-label">Quitados</p>
               </div>
-            </CardContent>
-          </Card>
-          <Card className="col-span-2">
-            <CardContent className="p-3 flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg bg-warning/10 flex items-center justify-center flex-shrink-0">
+            </div>
+          </div>
+          <div
+            className={`metric-card ${statusFilter === "todos" ? "ring-2 ring-ring shadow-md" : ""}`}
+            onClick={() => setStatusFilter("todos")}
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="metric-card-icon bg-warning/10">
                 <DollarSign className="h-4 w-4 text-warning" />
               </div>
-              <div>
-                <p className="text-lg font-bold truncate">R$ {summaryStats.valorEmAberto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                <p className="text-[11px] text-muted-foreground">Valor total em aberto</p>
+              <div className="min-w-0">
+                <p className="metric-card-value text-base md:text-lg">
+                  R$ {summaryStats.valorEmAberto.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                </p>
+                <p className="metric-card-label">Em aberto</p>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Filters & List */}
+      {/* Search + Filters + List */}
       <Card>
         <CardHeader className="pb-3 space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <CardTitle className="text-sm md:text-base font-semibold">
-              {statusFilter === "ativos" ? "Contratos Ativos" : statusFilter === "quitados" ? "Contratos Quitados" : "Todos os Contratos"} ({contratosFiltrados.length})
+              {statusFilter === "ativos" ? "Contratos Ativos" : statusFilter === "quitados" ? "Contratos Quitados" : "Todos os Contratos"}
+              <span className="ml-1.5 text-muted-foreground font-normal">({contratosFiltrados.length})</span>
             </CardTitle>
-            <div className="flex gap-1 items-center">
+            <div className="flex gap-1.5 items-center">
               <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => {
                 exportarCsv("contratos.csv",
                   ["Cliente", "Valor Emprestado", "Valor Total", "Parcelas", "Status", "Data Empréstimo"],
@@ -281,10 +301,18 @@ export default function Contratos() {
                 <Download className="h-3 w-3 mr-1" />
                 CSV
               </Button>
-              <div className="flex bg-muted rounded-md p-0.5">
-                <Button size="sm" variant={statusFilter === "ativos" ? "default" : "ghost"} onClick={() => setStatusFilter("ativos")} className="h-6 text-[11px] px-2.5 rounded-sm">Ativos</Button>
-                <Button size="sm" variant={statusFilter === "quitados" ? "default" : "ghost"} onClick={() => setStatusFilter("quitados")} className="h-6 text-[11px] px-2.5 rounded-sm">Quitados</Button>
-                <Button size="sm" variant={statusFilter === "todos" ? "default" : "ghost"} onClick={() => setStatusFilter("todos")} className="h-6 text-[11px] px-2.5 rounded-sm">Todos</Button>
+              <div className="filter-toggle-group">
+                {(["ativos", "quitados", "todos"] as const).map(f => (
+                  <Button
+                    key={f}
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setStatusFilter(f)}
+                    className={`filter-toggle-item ${statusFilter === f ? "filter-toggle-item-active" : ""}`}
+                  >
+                    {f === "ativos" ? "Ativos" : f === "quitados" ? "Quitados" : "Todos"}
+                  </Button>
+                ))}
               </div>
             </div>
           </div>
@@ -318,10 +346,8 @@ export default function Contratos() {
                   contratosPaginados.map((contrato) => (
                     <Card
                       key={contrato.id}
-                      className="cursor-pointer hover:bg-muted/30 transition-colors border-l-4"
-                      style={{
-                        borderLeftColor: contrato.status === "ativo" ? "hsl(var(--primary))" : contrato.status === "quitado" ? "hsl(var(--success))" : "hsl(var(--muted))"
-                      }}
+                      className="cursor-pointer hover:bg-muted/30 transition-all border-l-4 active:scale-[0.99]"
+                      style={{ borderLeftColor: getStatusColor(contrato.status) }}
                       onClick={() => handleContratoClick(contrato)}
                     >
                       <CardContent className="p-3">
@@ -329,13 +355,18 @@ export default function Contratos() {
                           <div className="min-w-0 flex-1">
                             <p className="font-medium text-sm truncate">{contrato.clientes?.nome}</p>
                             <p className="text-xs text-muted-foreground mt-0.5">
-                              {contrato.periodicidade} • {Number(contrato.percentual)}% • {contrato.numero_parcelas}x
+                              {contrato.periodicidade} · {Number(contrato.percentual)}% · {contrato.numero_parcelas}x
                             </p>
                           </div>
                           <div className="text-right flex-shrink-0">
-                            <p className="text-sm font-semibold">R$ {Number(contrato.valor_total).toLocaleString('pt-BR')}</p>
-                            <Badge variant={contrato.status === "ativo" ? "default" : "outline"} className="text-[10px] mt-0.5">
-                              {contrato.status === "ativo" ? "Ativo" : contrato.status === "quitado" ? "Quitado" : contrato.status}
+                            <p className="text-sm font-semibold tabular-nums">
+                              R$ {Number(contrato.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </p>
+                            <Badge
+                              variant={contrato.status === "ativo" ? "default" : "outline"}
+                              className="text-[10px] mt-0.5"
+                            >
+                              {contrato.status === "ativo" ? "Ativo" : "Quitado"}
                             </Badge>
                           </div>
                         </div>
@@ -350,11 +381,11 @@ export default function Contratos() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="min-w-[120px] pl-3">Cliente</TableHead>
-                      <TableHead>Valor Emprestado</TableHead>
-                      <TableHead className="hidden lg:table-cell">Percentual</TableHead>
+                      <TableHead className="min-w-[140px] pl-3">Cliente</TableHead>
+                      <TableHead>Emprestado</TableHead>
+                      <TableHead className="hidden lg:table-cell">Juros</TableHead>
                       <TableHead>Periodicidade</TableHead>
-                      <TableHead>Valor Total</TableHead>
+                      <TableHead>Total</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -377,13 +408,13 @@ export default function Contratos() {
                           onClick={() => handleContratoClick(contrato)}
                         >
                           <TableCell className="font-medium pl-3">{contrato.clientes?.nome}</TableCell>
-                          <TableCell className="text-sm">R$ {Number(contrato.valor_emprestado).toLocaleString('pt-BR')}</TableCell>
+                          <TableCell className="text-sm tabular-nums">R$ {Number(contrato.valor_emprestado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
                           <TableCell className="hidden lg:table-cell text-sm">{Number(contrato.percentual)}%</TableCell>
                           <TableCell className="text-sm capitalize">{contrato.periodicidade}</TableCell>
-                          <TableCell className="text-sm font-medium">R$ {Number(contrato.valor_total).toLocaleString('pt-BR')}</TableCell>
+                          <TableCell className="text-sm font-medium tabular-nums">R$ {Number(contrato.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
                           <TableCell>
                             <Badge variant={contrato.status === "ativo" ? "default" : "outline"} className="text-xs">
-                              {contrato.status === "ativo" ? "Ativo" : contrato.status === "quitado" ? "Quitado" : contrato.status}
+                              {contrato.status === "ativo" ? "Ativo" : "Quitado"}
                             </Badge>
                           </TableCell>
                         </TableRow>
@@ -424,11 +455,7 @@ export default function Contratos() {
         onClientesUpdated={loadClientes}
       />
 
-      <AccessRestrictedModal
-        open={isAccessModalOpen}
-        onOpenChange={setIsAccessModalOpen}
-        userEmail={userEmail}
-      />
+      <AccessRestrictedModal open={isAccessModalOpen} onOpenChange={setIsAccessModalOpen} userEmail={userEmail} />
     </div>
   );
 }

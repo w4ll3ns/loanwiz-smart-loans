@@ -14,7 +14,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Search, Users, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Users, Download, Phone } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -73,7 +73,7 @@ export default function Clientes() {
     } catch (error: any) {
       toast({
         title: "Não foi possível carregar os clientes",
-        description: "Verifique sua conexão com a internet e tente novamente.",
+        description: "Verifique sua conexão e tente novamente.",
         variant: "destructive",
       });
     } finally {
@@ -148,7 +148,7 @@ export default function Clientes() {
     } catch (error: any) {
       toast({
         title: "Não foi possível salvar o cliente",
-        description: "Verifique os dados preenchidos e tente novamente.",
+        description: "Verifique os dados e tente novamente.",
         variant: "destructive",
       });
     }
@@ -187,7 +187,7 @@ export default function Clientes() {
     <div className="space-y-4 md:space-y-5">
       <PageHeader
         title="Clientes"
-        description="Cadastro e gestão de clientes"
+        description="Cadastro e gestão da sua carteira de clientes"
       >
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
           setIsDialogOpen(open);
@@ -209,7 +209,7 @@ export default function Clientes() {
           </DialogTrigger>
           <DialogContent className="w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{editingCliente ? "Editar cliente" : "Novo cliente"}</DialogTitle>
+              <DialogTitle>{editingCliente ? "Editar cliente" : "Cadastrar novo cliente"}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -253,6 +253,7 @@ export default function Clientes() {
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="text-sm md:text-base font-semibold">
             {filteredClientes.length} cliente{filteredClientes.length !== 1 ? 's' : ''}
+            {searchTerm && <span className="font-normal text-muted-foreground ml-1">para "{searchTerm}"</span>}
           </CardTitle>
           <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => {
             exportarCsv("clientes.csv",
@@ -265,42 +266,36 @@ export default function Clientes() {
           </Button>
         </CardHeader>
         <CardContent className="p-0 md:p-6 md:pt-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="min-w-[150px] pl-4 md:pl-3">Nome</TableHead>
-                  <TableHead className="hidden md:table-cell">Telefone</TableHead>
-                  <TableHead className="text-right pr-4 md:pr-3">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow><TableCell colSpan={3} className="p-0"><TableSkeleton rows={5} /></TableCell></TableRow>
-                ) : filteredClientes.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={3}>
-                      <EmptyState
-                        icon={Users}
-                        title={searchTerm ? "Nenhum cliente encontrado" : "Nenhum cliente cadastrado"}
-                        description={searchTerm ? "Tente buscar com outro nome ou telefone." : "Cadastre seu primeiro cliente para começar a criar contratos."}
-                        actionLabel={!searchTerm ? "Cadastrar cliente" : undefined}
-                        onAction={!searchTerm ? () => setIsDialogOpen(true) : undefined}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  clientesPaginados.map((cliente) => (
-                    <TableRow key={cliente.id}>
-                      <TableCell className="font-medium pl-4 md:pl-3">
-                        {cliente.nome}
-                        <div className="md:hidden text-xs text-muted-foreground mt-0.5">
-                          {cliente.telefone || "Sem telefone"}
+          {loading ? (
+            <TableSkeleton rows={5} />
+          ) : filteredClientes.length === 0 ? (
+            <div className="p-4">
+              <EmptyState
+                icon={Users}
+                title={searchTerm ? "Nenhum cliente encontrado" : "Nenhum cliente cadastrado"}
+                description={searchTerm ? `Nenhum resultado para "${searchTerm}". Tente outro termo.` : "Cadastre seu primeiro cliente para começar a criar contratos."}
+                actionLabel={!searchTerm ? "Cadastrar cliente" : undefined}
+                onAction={!searchTerm ? () => setIsDialogOpen(true) : undefined}
+              />
+            </div>
+          ) : (
+            <>
+              {/* Mobile Cards */}
+              <div className="md:hidden space-y-2 p-3">
+                {clientesPaginados.map((cliente) => (
+                  <Card key={cliente.id} className="hover:bg-muted/30 transition-all">
+                    <CardContent className="p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-sm truncate">{cliente.nome}</p>
+                          {cliente.telefone && (
+                            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                              <Phone className="h-3 w-3" />
+                              {cliente.telefone}
+                            </p>
+                          )}
                         </div>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell text-sm">{cliente.telefone || "—"}</TableCell>
-                      <TableCell className="text-right pr-4 md:pr-3">
-                        <div className="flex gap-1 justify-end">
+                        <div className="flex gap-1 flex-shrink-0">
                           <Button variant="outline" size="sm" onClick={() => handleEdit(cliente)} className="h-8 w-8 p-0">
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
@@ -312,15 +307,51 @@ export default function Clientes() {
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
-                      </TableCell>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Desktop Table */}
+              <div className="hidden md:block overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="min-w-[150px] pl-4 md:pl-3">Nome</TableHead>
+                      <TableHead>Telefone</TableHead>
+                      <TableHead className="text-right pr-4 md:pr-3">Ações</TableHead>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-          {showPagination && (
-            <PaginationControls currentPage={currentPage} totalPages={totalPages} onPrevPage={goToPrevPage} onNextPage={goToNextPage} />
+                  </TableHeader>
+                  <TableBody>
+                    {clientesPaginados.map((cliente) => (
+                      <TableRow key={cliente.id}>
+                        <TableCell className="font-medium pl-4 md:pl-3">{cliente.nome}</TableCell>
+                        <TableCell className="text-sm">{cliente.telefone || "—"}</TableCell>
+                        <TableCell className="text-right pr-4 md:pr-3">
+                          <div className="flex gap-1 justify-end">
+                            <Button variant="outline" size="sm" onClick={() => handleEdit(cliente)} className="h-8 w-8 p-0">
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="outline" size="sm"
+                              onClick={() => { setClienteToDelete(cliente.id); setIsDeleteDialogOpen(true); }}
+                              className="h-8 w-8 p-0 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {showPagination && (
+                <PaginationControls currentPage={currentPage} totalPages={totalPages} onPrevPage={goToPrevPage} onNextPage={goToNextPage} />
+              )}
+            </>
           )}
         </CardContent>
       </Card>
