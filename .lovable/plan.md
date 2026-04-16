@@ -1,32 +1,32 @@
 
 
-# Add due date editing to Contract Details parcelas
+# Add "Observações" field to contracts
 
-## Problem
-In the Contratos page, the contract details modal shows parcelas but has no option to edit their due dates. The Parcelas page already has this feature via `EditarDataModal`.
+## What changes
 
-## Solution
-Reuse the existing `EditarDataModal` component inside `ContratoDetails.tsx`. Add a "calendar/edit date" button next to each parcela (for pending ones only), which opens the same modal used in the Parcelas page.
+Add an optional notes/observations field (`observacoes`) to the contracts table and integrate it into the creation form and details view, allowing users to annotate contracts at creation time or edit them later.
 
-### Changes in `src/components/contratos/ContratoDetails.tsx`
+## Technical details
 
-1. **Import** `EditarDataModal` from `@/components/parcelas`
-2. **Add state**: `editarDataOpen` (boolean) and `parcelaEditarData` (parcela object or null)
-3. **Add edit-date button** next to each pending parcela — both in the desktop table and mobile cards. Use a small `CalendarIcon` or `Pencil` button.
-4. **Render** `<EditarDataModal>` at the bottom, passing:
-   - `isOpen={editarDataOpen}`
-   - `onOpenChange={setEditarDataOpen}`
-   - `parcela={parcelaEditarData}` (mapped to match the expected interface — needs `contratos.clientes.nome` from the parent `contrato`)
-   - `onDataAlterada={() => onParcelasUpdated(contrato.id)}`
+### 1. Database migration
+- Add column `observacoes TEXT NULL` to the `contratos` table. No RLS changes needed (existing policies cover all columns).
 
-The `EditarDataModal` expects a parcela with `{ id, data_vencimento, data_vencimento_original, numero_parcela, contratos?: { clientes?: { nome } } }` — we'll map the ContratoDetails parcela to this shape using the parent contrato's client name.
+### 2. `src/components/contratos/ContratoForm.tsx`
+- Add `observacoes: string` to `ContratoFormData` interface and `defaultFormData`
+- Add a `<Textarea>` field after the "Regras de Cobrança" section, labeled "Observações (opcional)"
+- Pass `observacoes` through to the contract creation flow — since `criarContratoComParcelas` is an RPC that doesn't accept observacoes, we'll update the contract immediately after creation with a simple `.update()` call
 
-### UI placement
-- **Desktop table**: Add a small calendar icon button in the "Ação" column for pending parcelas
-- **Mobile cards**: Add a small calendar icon button next to the history button for pending parcelas
+### 3. `src/services/contratos.ts`
+- Add `observacoes?: string` to `CriarContratoParams`
+- After the RPC call returns the contract ID, if `observacoes` is provided, do a `supabase.from('contratos').update({ observacoes }).eq('id', contratoId)`
 
-No database, RLS, or business logic changes. The existing `EditarDataModal` handles everything including justification, history logging, and validation.
+### 4. `src/components/contratos/ContratoDetails.tsx`
+- Add `observacoes?: string` to the `Contrato` interface
+- Display the observations below the contract summary cards (before the actions row), with an inline edit capability — a small edit icon that toggles a textarea, with save/cancel
+- The save calls `supabase.from('contratos').update({ observacoes }).eq('id', contrato.id)` then triggers `onContratoUpdated()`
 
-## File
-- `src/components/contratos/ContratoDetails.tsx` — import, state, buttons, and modal render
+### 5. `src/pages/Contratos.tsx`
+- Ensure `loadContratos` query already uses `select("*, clientes(nome)")` which returns all columns — the new `observacoes` column will be included automatically
+
+No business logic, RLS, or RPC changes needed beyond the column addition.
 
