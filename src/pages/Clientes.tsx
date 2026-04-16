@@ -187,7 +187,7 @@ export default function Clientes() {
     <div className="space-y-4 md:space-y-5">
       <PageHeader
         title="Clientes"
-        description="Cadastro e gestão da sua carteira de clientes"
+        description="Gerencie sua carteira e acompanhe cadastros"
       >
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
           setIsDialogOpen(open);

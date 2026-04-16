@@ -145,8 +145,8 @@ export default function Dashboard() {
   return (
     <div className="space-y-5 md:space-y-6">
       <PageHeader
-        title="Visão geral"
-        description="Acompanhe seus empréstimos e ações pendentes"
+        title="Painel de controle"
+        description="Resumo financeiro e ações do dia"
       >
         <Button asChild size="sm">
           <Link to="/contratos">

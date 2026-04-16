@@ -133,10 +133,10 @@ All colors MUST be HSL.
 
   /* Summary metric card — compact & clickable */
   .metric-card {
-    @apply rounded-lg border bg-card p-3 md:p-4 transition-all hover:shadow-md cursor-pointer;
+    @apply rounded-lg border bg-card p-3 md:p-4 transition-all hover:shadow-md cursor-pointer select-none;
   }
   .metric-card-value {
-    @apply text-lg md:text-2xl font-bold tracking-tight truncate;
+    @apply text-lg md:text-xl font-bold tracking-tight truncate tabular-nums;
   }
   .metric-card-label {
     @apply text-[11px] md:text-xs font-medium text-muted-foreground truncate;

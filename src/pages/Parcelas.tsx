@@ -256,7 +256,7 @@ export default function Parcelas() {
     <div className="space-y-4 md:space-y-5">
       <PageHeader
         title="Parcelas"
-        description="Controle de cobranças e recebimentos do dia a dia"
+        description="Cobranças, recebimentos e controle diário"
       />
 
       {/* Filtro de Período */}
@@ -349,6 +349,7 @@ export default function Parcelas() {
               <SelectContent>
                 <SelectItem value="todos">Todos os status</SelectItem>
                 <SelectItem value="pendente">Pendente</SelectItem>
+                <SelectItem value="parcialmente_pago">Parcial</SelectItem>
                 <SelectItem value="pago">Pago</SelectItem>
               </SelectContent>
             </Select>
