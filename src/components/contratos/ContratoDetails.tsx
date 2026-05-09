@@ -556,12 +556,30 @@ export function ContratoDetails({
               </div>
 
               {/* Danger zone */}
-              <div className="pt-2">
-                <Button variant="ghost" size="sm" onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs">
-                  <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-                  Excluir contrato
-                </Button>
-              </div>
+              {(() => {
+                const temPagamento = parcelas.some(p => p.status === 'pago' || Number(p.valor_pago || 0) > 0);
+                const podeExcluir = !temPagamento && contrato.status !== 'quitado';
+                return (
+                  <div className="pt-2 flex flex-col gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsDeleteDialogOpen(true)}
+                      disabled={!podeExcluir}
+                      title={!podeExcluir ? "Contratos com parcelas pagas ou já quitados não podem ser excluídos." : undefined}
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs disabled:opacity-50 self-start"
+                    >
+                      <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                      Excluir contrato
+                    </Button>
+                    {!podeExcluir && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Apenas contratos sem pagamentos registrados podem ser excluídos.
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </DialogBody>
         </DialogContent>
