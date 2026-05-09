@@ -301,15 +301,24 @@ export function ContratoDetails({
 
   const handleDeleteContrato = async () => {
     try {
-      await supabase.from("parcelas").delete().eq("contrato_id", contrato.id);
-      await supabase.from("contratos").delete().eq("id", contrato.id);
-
+      const { error } = await supabase.rpc("excluir_contrato", { p_contrato_id: contrato.id });
+      if (error) throw error;
       toast({ title: "Contrato excluído", description: "Contrato e parcelas removidos." });
       setIsDeleteDialogOpen(false);
       onOpenChange(false);
       onContratoUpdated();
     } catch (error: any) {
-      toast({ title: "Erro", description: "Não foi possível excluir.", variant: "destructive" });
+      const msg = String(error?.message || "");
+      let descricao = "Não foi possível excluir.";
+      if (msg.includes("Cannot delete contract with payments")) {
+        descricao = "Este contrato já possui pagamentos registrados e não pode ser excluído.";
+      } else if (msg.includes("Cannot delete a settled contract")) {
+        descricao = "Contratos quitados não podem ser excluídos.";
+      } else if (msg.includes("Not authorized")) {
+        descricao = "Você não tem permissão para excluir este contrato.";
+      }
+      toast({ title: "Erro ao excluir", description: descricao, variant: "destructive" });
+      setIsDeleteDialogOpen(false);
     }
   };
 
