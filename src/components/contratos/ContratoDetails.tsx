@@ -301,15 +301,24 @@ export function ContratoDetails({
 
   const handleDeleteContrato = async () => {
     try {
-      await supabase.from("parcelas").delete().eq("contrato_id", contrato.id);
-      await supabase.from("contratos").delete().eq("id", contrato.id);
-
+      const { error } = await supabase.rpc("excluir_contrato", { p_contrato_id: contrato.id });
+      if (error) throw error;
       toast({ title: "Contrato excluído", description: "Contrato e parcelas removidos." });
       setIsDeleteDialogOpen(false);
       onOpenChange(false);
       onContratoUpdated();
     } catch (error: any) {
-      toast({ title: "Erro", description: "Não foi possível excluir.", variant: "destructive" });
+      const msg = String(error?.message || "");
+      let descricao = "Não foi possível excluir.";
+      if (msg.includes("Cannot delete contract with payments")) {
+        descricao = "Este contrato já possui pagamentos registrados e não pode ser excluído.";
+      } else if (msg.includes("Cannot delete a settled contract")) {
+        descricao = "Contratos quitados não podem ser excluídos.";
+      } else if (msg.includes("Not authorized")) {
+        descricao = "Você não tem permissão para excluir este contrato.";
+      }
+      toast({ title: "Erro ao excluir", description: descricao, variant: "destructive" });
+      setIsDeleteDialogOpen(false);
     }
   };
 
@@ -547,12 +556,30 @@ export function ContratoDetails({
               </div>
 
               {/* Danger zone */}
-              <div className="pt-2">
-                <Button variant="ghost" size="sm" onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs">
-                  <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-                  Excluir contrato
-                </Button>
-              </div>
+              {(() => {
+                const temPagamento = parcelas.some(p => p.status === 'pago' || Number(p.valor_pago || 0) > 0);
+                const podeExcluir = !temPagamento && contrato.status !== 'quitado';
+                return (
+                  <div className="pt-2 flex flex-col gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsDeleteDialogOpen(true)}
+                      disabled={!podeExcluir}
+                      title={!podeExcluir ? "Contratos com parcelas pagas ou já quitados não podem ser excluídos." : undefined}
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs disabled:opacity-50 self-start"
+                    >
+                      <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                      Excluir contrato
+                    </Button>
+                    {!podeExcluir && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Apenas contratos sem pagamentos registrados podem ser excluídos.
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </DialogBody>
         </DialogContent>
