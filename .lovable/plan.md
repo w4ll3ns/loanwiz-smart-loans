@@ -1,48 +1,61 @@
+# Permitir Exclusão de Contratos
 
+## Análise da regra
 
-# Relatório Flexível com Flags de Visibilidade
+A premissa "contratos sem nenhuma parcela paga podem ser excluídos sem problema" está **correta e é a abordagem mais segura**. Justificativa:
 
-## Conceito
+- **Sem pagamentos** → não há histórico financeiro nem dinheiro recebido para rastrear. Excluir é seguro e reversível conceitualmente (basta recriar).
+- **Com pelo menos uma parcela paga** (total, parcial ou só juros) → existe valor recebido, registros em `parcelas_historico`, métricas de Dashboard (lucro, recebido hoje, capital em circulação) que ficariam distorcidas se o contrato sumisse. **Bloquear** é o correto.
+- **Contratos quitados** → também não devem ser excluídos (representam histórico fechado e impactam relatórios). Para "limpar" a lista, o filtro "Ativos" já esconde quitados.
 
-Transformar o componente `RelatorioAtrasados` em um gerador de relatórios flexível. Três switches/toggles no modal controlam quais colunas e dados aparecem no relatório:
+Adicional: por segurança, a exclusão fica restrita ao **dono do contrato** (RLS já garante isso) e é uma ação destrutiva, então pede confirmação explícita.
 
-- **Mostrar Pagas** — coluna "Pagas" (parcelas quitadas)
-- **Mostrar Atrasadas** — coluna "Atrasadas" (vencidas e não pagas)
-- **Mostrar Pendentes** — coluna "Pendentes" (ainda não vencidas)
+## Onde fica o botão
 
-O título do relatório se adapta automaticamente com base nos filtros ativos:
-- Só atrasadas → "RELATÓRIO DE CONTRATOS ATRASADOS"
-- Só pendentes → "RELATÓRIO DE CONTRATOS PENDENTES"
-- Todas → "RELATÓRIO GERAL DE CONTRATOS"
-- Atrasadas + Pendentes → "RELATÓRIO DE CONTRATOS EM ABERTO"
+Dentro do modal **`ContratoDetails`** (que já abre ao clicar num contrato), no rodapé/cabeçalho de ações, ao lado de "Renovar". O botão só aparece quando a regra permite (sem parcelas pagas e status ≠ quitado). Caso contrário, mostrar tooltip/mensagem explicativa: *"Contratos com parcelas pagas não podem ser excluídos. Para encerrar, aguarde a quitação."*
 
-A lista de contratos exibidos no modal também filtra: se "Mostrar Atrasadas" está desligado e "Mostrar Pendentes" está ligado, mostra contratos que tenham pendentes (mesmo sem atrasadas).
+## Fluxo do usuário
 
-## Mudanças técnicas
+1. Abre o contrato.
+2. Vê botão **"Excluir contrato"** (vermelho, ícone lixeira) — habilitado só se elegível.
+3. Clica → `AlertDialog` de confirmação: *"Excluir contrato de {Cliente}? Esta ação remove o contrato e suas {N} parcelas. Não pode ser desfeita."*
+4. Confirma → exclusão → toast de sucesso → fecha modal → recarrega lista.
 
-### `src/components/contratos/RelatorioAtrasados.tsx`
+## Implementação técnica
 
-1. **Novo estado e interface de dados**:
-   - Adicionar `parcPendentes` e `valorPendente` ao tipo `ContratoAtrasado`
-   - Três estados booleanos: `showPagas`, `showAtrasadas` (default true), `showPendentes`
-   - Na agregação de dados, contar também parcelas pendentes (status !== 'pago' e vencimento >= hoje)
+### 1. Nova função no banco (`supabase/migrations`)
 
-2. **Filtro da lista no modal**:
-   - Exibir apenas contratos que tenham dados relevantes para as flags ativas (ex: se só "Atrasadas" está ligado, filtra contratos com `parcAtrasadas > 0`)
+`excluir_contrato(p_contrato_id uuid)` — `SECURITY DEFINER`, valida:
+- `auth.uid()` é dono do contrato (via `clientes.user_id`).
+- Não existe nenhuma parcela com `status IN ('pago')` **nem** com `valor_pago > 0` (cobre pagamentos parciais/juros).
+- Status do contrato ≠ `'quitado'`.
 
-3. **UI do modal** — adicionar 3 switches (usando `Switch` do shadcn) acima da lista de seleção, com labels curtos: "Pagas", "Atrasadas", "Pendentes"
+Se passar: `DELETE FROM parcelas_historico` (das parcelas do contrato) → `DELETE FROM parcelas` → `DELETE FROM contratos`. Tudo em uma transação implícita da função.
 
-4. **Geração HTML/PDF** — renderizar apenas as colunas cujas flags estão ativas:
-   - Colunas dinâmicas na tabela (headers e células)
-   - Resumo no topo mostra apenas os cards correspondentes às flags ativas
-   - Título dinâmico conforme combinação de flags
+Erros lançados com mensagens claras (`Cannot delete contract with payments`, etc.) para o frontend traduzir.
 
-### Nenhuma mudança em outros arquivos
+### 2. Service (`src/services/contratos.ts`)
 
-## Detalhes de implementação
+Adicionar `excluirContrato(contratoId: string)` que chama `supabase.rpc("excluir_contrato", { p_contrato_id })`.
 
-- Os switches ficam em uma linha horizontal compacta com `flex gap-4`, cada um com `Switch` + label
-- A coluna "Valor Atrasado" aparece quando "Atrasadas" está ativo; adicionar "Valor Pendente" quando "Pendentes" está ativo
-- O PDF e imagem usam arrays dinâmicos de colunas para montar headers e linhas
-- Manter pelo menos uma flag ativa (desabilitar a última que restar)
+### 3. UI (`src/components/contratos/ContratoDetails.tsx`)
 
+- Helper `podeExcluir = parcelas.every(p => p.status !== 'pago' && (!p.valor_pago || Number(p.valor_pago) === 0)) && contrato.status !== 'quitado'`.
+- Botão **"Excluir"** com `variant="destructive"` no header de ações, ao lado de "Renovar". Desabilitado quando `!podeExcluir`, com tooltip explicando o motivo.
+- `AlertDialog` de confirmação reaproveitando o padrão já usado no arquivo.
+- Ao confirmar: chama service, mostra toast, fecha modal, dispara `onContratoUpdated()` (que já recarrega a lista em `Contratos.tsx`).
+
+### 4. Sem mudanças em RLS
+
+As policies de DELETE em `contratos`/`parcelas`/`parcelas_historico` já existem e permitem ao dono apagar. A função `SECURITY DEFINER` apenas centraliza a regra de negócio e a ordem dos deletes.
+
+## Arquivos
+
+- **Criar migração**: nova função `excluir_contrato`.
+- **Editar**: `src/services/contratos.ts` (+ função wrapper).
+- **Editar**: `src/components/contratos/ContratoDetails.tsx` (botão + dialog + handler).
+
+## Pontos abertos para você decidir
+
+- Quer permitir que **admins** excluam qualquer contrato (mesmo com pagamentos)? Por padrão a proposta é **não** — manter histórico financeiro intacto.
+- Quer registrar a exclusão em `audit_logs`? Útil se você quer rastrear quem apagou o quê.
