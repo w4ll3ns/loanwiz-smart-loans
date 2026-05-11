@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Upload, Search, Download, FileText, DollarSign, CheckCircle2, AlertTriangle, Clock } from "lucide-react";
+import { Upload, Search, Download, FileText, DollarSign, CheckCircle2, AlertTriangle, Clock, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { getLocalDateString } from "@/lib/utils";
@@ -20,6 +20,7 @@ import { PaginationControls } from "@/components/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Contrato, Parcela } from "@/components/contratos";
 import type { ContratoFormData } from "@/components/contratos";
 
