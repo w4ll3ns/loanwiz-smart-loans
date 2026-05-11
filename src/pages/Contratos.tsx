@@ -280,18 +280,30 @@ export default function Contratos() {
           </button>
 
           {/* Total a Receber */}
-          <div className="relative rounded-xl border bg-card p-3 md:p-4 text-left border-l-4 border-l-warning">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-warning/10">
-                <Clock className="h-3.5 w-3.5 text-warning" />
-              </div>
-              <span className="text-xs font-medium text-muted-foreground">Total a Receber</span>
-            </div>
-            <p className="text-lg md:text-xl font-bold tabular-nums text-warning">
-              R$ {summaryStats.valorEmAberto.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-            </p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">valor total dos ativos</p>
-          </div>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="relative rounded-xl border bg-card p-3 md:p-4 text-left border-l-4 border-l-warning cursor-help">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-warning/10">
+                      <Clock className="h-3.5 w-3.5 text-warning" />
+                    </div>
+                    <span className="text-xs font-medium text-muted-foreground">Total a Receber</span>
+                    <Info className="h-3 w-3 text-muted-foreground/60" />
+                  </div>
+                  <p className="text-lg md:text-xl font-bold tabular-nums text-warning">
+                    R$ {summaryStats.valorEmAberto.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">valor total dos ativos</p>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-[260px] text-xs">
+                <p className="font-medium mb-1">Por que esse valor é diferente do Dashboard?</p>
+                <p>Esta soma usa o <strong>valor total dos contratos ativos</strong>, incluindo parcelas já pagas.</p>
+                <p className="mt-1">O Dashboard soma apenas as <strong>parcelas em aberto</strong> (pendentes/parciais), excluindo as quitadas.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       )}
 
