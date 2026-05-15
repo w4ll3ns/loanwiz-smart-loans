@@ -472,7 +472,8 @@ export default function Admin() {
   }
 
   return (
-    <div className="space-y-4 md:space-y-6">
+    <>
+      <div className="space-y-4 md:space-y-6">
         {/* Header */}
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-foreground">Painel de Administração</h1>
@@ -1024,6 +1025,6 @@ export default function Admin() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 }
