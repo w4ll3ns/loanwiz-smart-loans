@@ -1,46 +1,55 @@
 ## Objetivo
 
-Estabelecer guardrails para que migrations futuras nunca contenham dados pessoais (UUIDs, emails, telefones), e fornecer mecanismo seguro para promover usuários a admin sem hardcode.
+Proteger a exclusão de parcelas com uma RPC server-side que valide ownership, status e ordem (última parcela), impedindo gaps em `numero_parcela` e remoção de parcelas pagas.
 
-A migration antiga (`20251204230240_*.sql`) permanece intocada — já foi aplicada e está no histórico público do Git. O foco é prevenção daqui em diante.
+## 1. Nova migration: RPC `excluir_parcela(p_parcela_id uuid)`
 
-## Mudanças
+`SECURITY DEFINER`, `SET search_path = public`. Lógica:
 
-### 1. Nova migration: `[timestamp]_add_seed_admin_documentation.sql`
+1. `auth.uid()` obrigatório — senão `RAISE EXCEPTION 'Not authenticated'`.
+2. Buscar parcela + contrato + cliente em um único SELECT validando ownership (`cl.user_id = auth.uid()`). Se não encontrar → `RAISE EXCEPTION 'Parcela não encontrada'`.
+3. Se `contrato.status = 'quitado'` → `RAISE EXCEPTION 'Contrato quitado não pode ter parcelas excluídas'`.
+4. Se `parcela.status = 'pago'` ou `COALESCE(valor_pago,0) > 0` → `RAISE EXCEPTION 'Não é possível excluir uma parcela com pagamentos registrados'`.
+5. Buscar `MAX(numero_parcela)` do contrato; se `parcela.numero_parcela <> max` → `RAISE EXCEPTION 'Apenas a última parcela pode ser excluída para evitar quebra de sequência'`.
+6. `DELETE FROM parcelas_historico WHERE parcela_id = p_parcela_id;`
+7. `DELETE FROM parcelas WHERE id = p_parcela_id;`
 
-Sem dados sensíveis. Apenas:
+Permissões:
+```sql
+REVOKE ALL ON FUNCTION public.excluir_parcela(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.excluir_parcela(uuid) TO authenticated;
+```
 
-- `COMMENT ON TABLE public.user_roles` documentando que admins iniciais devem ser promovidos manualmente via SQL Editor ou via RPC `admin_promote_user`, e que UUIDs/emails nunca devem aparecer em migrations.
-- Cria a RPC `admin_promote_user(p_user_id uuid)`:
-  - `SECURITY DEFINER`, `SET search_path = public`
-  - Valida `auth.uid() IS NOT NULL`
-  - Valida `has_role(auth.uid(), 'admin')` — só admins existentes podem promover
-  - Valida que o `p_user_id` existe em `profiles`
-  - `INSERT INTO user_roles (user_id, role) VALUES (p_user_id, 'admin') ON CONFLICT (user_id, role) DO NOTHING`
-  - Chama `insert_audit_log('promote_admin', p_user_id, ...)` para rastreabilidade
-  - `REVOKE ALL ... FROM PUBLIC` + `GRANT EXECUTE ... TO authenticated`
+## 2. Frontend: `src/pages/Parcelas.tsx` — `handleDelete`
 
-Observação técnica: a tabela `user_roles` precisa de um `UNIQUE (user_id, role)` para o `ON CONFLICT` funcionar. Se a constraint já não existir, a migration adiciona via `ALTER TABLE ... ADD CONSTRAINT IF NOT EXISTS` (ou bloco `DO` checando `pg_constraint`).
+Substituir `supabase.from("parcelas").delete().eq(...)` por:
 
-### 2. Atualização em `docs/ARCHITECTURE.md`
+```ts
+const { error } = await supabase.rpc("excluir_parcela", { p_parcela_id: parcelaToDelete });
+if (error) throw error;
+```
 
-Na seção **"Governança de Migrations" → "Regras"**, adicionar item novo:
+Tratamento de erros no `catch` (mesmo padrão de `ContratoDetails.handleDeleteContrato`):
 
-> 8. **Nunca incluir dados pessoais em migrations** — UUIDs de usuários, emails, telefones, nomes ou qualquer PII são proibidos. Para promover um usuário a admin, usar a RPC `admin_promote_user(p_user_id)` via SQL Editor no dashboard do Supabase, ou inserir manualmente em `user_roles`. Nunca commitar identificadores reais no repositório.
+- `"pagamentos registrados"` → toast "Não é possível excluir", desc "Esta parcela já tem pagamentos. Estorne antes de excluir."
+- `"Contrato quitado"` → toast "Contrato quitado", desc "Não é possível excluir parcelas de contratos quitados."
+- `"Apenas a última parcela"` → toast "Sequência de parcelas", desc "Apenas a última parcela do contrato pode ser excluída."
+- `"Parcela não encontrada"` / `"Not authorized"` → toast genérico de permissão.
+- Fallback → "Erro ao excluir, tente novamente."
 
-E adicionar `admin_promote_user` à tabela de RPCs disponíveis na mesma página.
+Todos `variant: "destructive"`.
 
-### 3. O que NÃO será feito
+## 3. O que NÃO muda
 
-- Não reescrever histórico Git (sem rebase/force push).
-- Não deletar nem alterar a migration antiga `20251204230240_*.sql`.
-- Não revogar/alterar o role admin existente do usuário.
+- RLS atual de `parcelas` permanece (cobre outros DELETEs eventuais via SDK; a UI passa a usar exclusivamente a RPC).
+- Sem alteração em `parcelas_historico` schema.
+- Sem mudança em outros pontos do app.
 
 ## Critério de aceite
 
-- Nova migration criada sem nenhum UUID/email/telefone.
-- RPC `admin_promote_user` disponível e gated por `has_role(..., 'admin')`.
-- `docs/ARCHITECTURE.md` com a regra explícita anti-PII em migrations.
-- Build OK, schema atualizado.
+- Parcela paga → toast claro, nada deletado.
+- Parcela do meio (não-última) → toast de sequência, nada deletado.
+- Última parcela pendente de contrato ativo → exclui OK e remove histórico vinculado.
+- Parcela de contrato quitado → toast bloqueando.
 
-Aprovar para eu implementar.
+Aprovar para implementar.
