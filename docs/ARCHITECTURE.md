@@ -87,6 +87,7 @@ Administradores usam funções `SECURITY DEFINER` dedicadas (prefixo `admin_*`) 
 | `gerar_parcelas` | SECURITY DEFINER | Geração de parcelas (usado internamente) |
 | `is_user_active` | SECURITY DEFINER | Verifica se usuário está ativo/assinante |
 | `has_role` | SECURITY DEFINER | Verifica role do usuário |
+| `admin_promote_user` | SECURITY DEFINER | Promove usuário a admin (apenas admins existentes podem chamar) |
 | `log_api_usage` | SECURITY DEFINER | Registra uso de API para rate limiting |
 | `check_api_rate_limit` | SECURITY DEFINER | Verifica limite de uso (50 chamadas/24h) |
 
@@ -159,6 +160,7 @@ src/
 5. **Usar `IF NOT EXISTS`** para constraints, índices e tabelas quando possível
 6. **Foreign keys com `ON DELETE CASCADE`** quando fizer sentido para integridade referencial
 7. **Sempre testar em ambiente de desenvolvimento** antes de aplicar em produção
+8. **Nunca incluir dados pessoais em migrations** — UUIDs de usuários, emails, telefones, nomes ou qualquer PII são proibidos em arquivos versionados. Para promover um usuário a admin, usar a RPC `admin_promote_user(p_user_id)` via SQL Editor no dashboard do Supabase, ou inserir manualmente em `user_roles`. Identificadores reais nunca devem ser commitados no repositório.
 
 ### Rollback
 
