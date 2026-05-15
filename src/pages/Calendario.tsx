@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, CalendarCheck, TrendingUp, Activity } from "lucide-react";
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { cn, getLocalDateString } from "@/lib/utils";
 import { DetalheDiaModal } from "@/components/calendario/DetalheDiaModal";
+import { MobileCalendarioView } from "@/components/calendario/MobileCalendarioView";
 import { useToast } from "@/hooks/use-toast";
 
 type DiaCalendario = {
@@ -18,6 +19,8 @@ type DiaCalendario = {
   valor: number;
   qtd_movimentacoes: number;
   ja_recebido_hoje?: number;
+  valor_atrasado?: number;
+  qtd_atrasados?: number;
 };
 
 type CalendarioMensal = {
@@ -27,6 +30,8 @@ type CalendarioMensal = {
     previsto_mes: number;
     qtd_recebimentos_mes: number;
     qtd_previstos_mes: number;
+    total_atrasado_mes?: number;
+    qtd_atrasados_mes?: number;
   };
 };
 
@@ -50,6 +55,7 @@ export default function Calendario() {
   const [mesAtual, setMesAtual] = useState<Date>(() => startOfMonth(new Date()));
   const [dataSelecionada, setDataSelecionada] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [dataSelecionadaMobile, setDataSelecionadaMobile] = useState<string>(() => getLocalDateString(new Date()));
 
   const ano = mesAtual.getFullYear();
   const mes = mesAtual.getMonth() + 1;
@@ -76,6 +82,16 @@ export default function Calendario() {
     return eachDayOfInterval({ start: inicio, end: fim }).slice(0, 42);
   }, [mesAtual]);
 
+  // Sincroniza dataSelecionadaMobile com mês visível
+  useEffect(() => {
+    const hoje = new Date();
+    if (isSameMonth(mesAtual, hoje)) {
+      setDataSelecionadaMobile(getLocalDateString(hoje));
+    } else {
+      setDataSelecionadaMobile(getLocalDateString(startOfMonth(mesAtual)));
+    }
+  }, [mesAtual]);
+
   const handlePrev = () => setMesAtual((m) => subMonths(m, 1));
   const handleNext = () => setMesAtual((m) => addMonths(m, 1));
   const handleHoje = () => setMesAtual(startOfMonth(new Date()));
@@ -84,6 +100,11 @@ export default function Calendario() {
     if (!isSameMonth(dia, mesAtual)) return;
     const iso = getLocalDateString(dia);
     setDataSelecionada(iso);
+    setIsModalOpen(true);
+  };
+
+  const abrirModalMobile = () => {
+    setDataSelecionada(dataSelecionadaMobile);
     setIsModalOpen(true);
   };
 
@@ -125,8 +146,8 @@ export default function Calendario() {
           </Button>
         </div>
 
-        {/* Cards de resumo */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {/* Cards de resumo - desktop (4 cards) */}
+        <div className="hidden md:grid grid-cols-4 gap-3">
           <Card className="p-3 md:p-4">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <CalendarCheck className="h-3.5 w-3.5 text-success" />
@@ -165,8 +186,42 @@ export default function Calendario() {
           </Card>
         </div>
 
-        {/* Calendário */}
-        <Card className="overflow-hidden">
+        {/* Cards de resumo - mobile (2 cards) */}
+        <div className="grid grid-cols-2 gap-3 md:hidden">
+          <Card className="p-3">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <CalendarCheck className="h-3.5 w-3.5 text-success" />
+              Recebido no mês
+            </div>
+            <div className="text-lg font-bold text-success mt-1 truncate">
+              {isLoading ? <Skeleton className="h-7 w-24" /> : formatBRL(totais?.recebido_mes ?? 0)}
+            </div>
+          </Card>
+          <Card className="p-3">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <TrendingUp className="h-3.5 w-3.5 text-primary" />
+              Previsto no mês
+            </div>
+            <div className="text-lg font-bold text-primary mt-1 truncate">
+              {isLoading ? <Skeleton className="h-7 w-24" /> : formatBRL(totais?.previsto_mes ?? 0)}
+            </div>
+          </Card>
+        </div>
+
+        {/* Mobile view */}
+        <div className="md:hidden space-y-4">
+          <MobileCalendarioView
+            dias={data?.dias ?? []}
+            mesAtual={mesAtual}
+            dataSelecionada={dataSelecionadaMobile}
+            onSelectDia={setDataSelecionadaMobile}
+            onAbrirModal={abrirModalMobile}
+            isLoading={isLoading}
+          />
+        </div>
+
+        {/* Calendário desktop */}
+        <Card className="hidden md:block overflow-hidden">
           {/* Cabeçalho dias da semana */}
           <div className="grid grid-cols-7 border-b bg-muted/30 sticky top-0 z-10">
             {DIAS_SEMANA.map((d, i) => (
