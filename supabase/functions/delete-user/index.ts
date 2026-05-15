@@ -1,15 +1,27 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+const ALLOWED_ORIGINS = [
+  "https://wsemprestimos.lovable.app",
+  "https://id-preview--967f0cd4-eadf-45c4-858f-a2848c1eef89.lovable.app",
+  ...(Deno.env.get("ALLOWED_ORIGINS")?.split(",").map((s) => s.trim()).filter(Boolean) ?? []),
+];
+
+function buildCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get("Origin") ?? "";
+  const allowOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin": allowOrigin,
+    "Vary": "Origin",
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  };
+}
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 serve(async (req) => {
+  const corsHeaders = buildCorsHeaders(req);
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -114,11 +126,14 @@ serve(async (req) => {
         parcelaCount = pIds.length;
 
         if (pIds.length > 0) {
-          const { count } = await supabaseAdmin
-            .from("parcelas_historico")
-            .select("id", { count: "exact", head: true })
-            .in("parcela_id", pIds.slice(0, 100)); // count sample
-          historicoCount = count || 0;
+          for (let i = 0; i < pIds.length; i += 100) {
+            const batch = pIds.slice(i, i + 100);
+            const { count } = await supabaseAdmin
+              .from("parcelas_historico")
+              .select("id", { count: "exact", head: true })
+              .in("parcela_id", batch);
+            historicoCount += count || 0;
+          }
         }
       }
     }
@@ -127,7 +142,7 @@ serve(async (req) => {
       clientes: cIds.length,
       contratos: contratoCount,
       parcelas: parcelaCount,
-      historico_estimado: historicoCount,
+      historico: historicoCount,
     };
 
     // === SOFT-DELETE: mark profile inactive BEFORE deletion ===
@@ -230,7 +245,7 @@ serve(async (req) => {
       }
       // Record what was deleted per step
       const counts: Record<string, number> = {
-        parcelas_historico: inventory.historico_estimado,
+        parcelas_historico: inventory.historico,
         parcelas: inventory.parcelas,
         contratos: inventory.contratos,
         clientes: inventory.clientes,
