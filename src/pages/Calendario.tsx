@@ -3,7 +3,6 @@ import { ChevronLeft, ChevronRight, CalendarCheck, TrendingUp, Activity } from "
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useQuery } from "@tanstack/react-query";
-import Layout from "@/components/Layout";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -90,21 +89,21 @@ export default function Calendario() {
 
   if (isError) {
     return (
-      <Layout>
+      <>
         <div className="flex flex-col items-center justify-center py-16 gap-4">
           <p className="text-muted-foreground">Erro ao carregar o calendário.</p>
           <Button onClick={() => { refetch(); toast({ title: "Recarregando..." }); }}>
             Tentar novamente
           </Button>
         </div>
-      </Layout>
+      </>
     );
   }
 
   const totais = data?.totais;
 
   return (
-    <Layout>
+    <>
       <div className="flex flex-col gap-4 md:gap-6">
         <PageHeader title="Calendário" description="Recebimentos e previsões por dia" />
 
@@ -277,6 +276,6 @@ export default function Calendario() {
         onOpenChange={setIsModalOpen}
         data={dataSelecionada}
       />
-    </Layout>
+    </>
   );
 }
