@@ -431,6 +431,7 @@ export type Database = {
           p_cliente_id: string
           p_data_emprestimo: string
           p_numero_parcelas: number
+          p_observacoes?: string
           p_percentual: number
           p_periodicidade: string
           p_permite_domingo?: boolean
