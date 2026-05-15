@@ -425,6 +425,11 @@ export type Database = {
         }
         Returns: undefined
       }
+      calendario_dia_detalhes: { Args: { p_data: string }; Returns: Json }
+      calendario_mensal: {
+        Args: { p_ano: number; p_mes: number }
+        Returns: Json
+      }
       check_api_rate_limit: {
         Args: {
           p_function_name: string

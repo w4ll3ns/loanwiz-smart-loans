@@ -1,7 +1,7 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Calculator, Users, FileText, DollarSign, LogOut, Shield, UserCircle } from "lucide-react";
+import { Calculator, Users, FileText, DollarSign, LogOut, Shield, UserCircle, CalendarDays } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ const baseNavigation = [
   { name: "Clientes", href: "/clientes", icon: Users },
   { name: "Contratos", href: "/contratos", icon: FileText },
   { name: "Parcelas", href: "/parcelas", icon: Calculator },
+  { name: "Calendário", href: "/calendario", icon: CalendarDays },
 ];
 
 const adminNavigation = [
@@ -189,7 +190,7 @@ export default function Layout({ children }: LayoutProps) {
                   <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-b-full bg-primary" />
                 )}
                 <item.icon className={cn("h-5 w-5", isActive && "fill-primary/20")} />
-                <span className="text-[10px] font-medium">{item.name}</span>
+                <span className="text-[9px] font-medium">{item.name}</span>
               </Link>
             );
           })}
