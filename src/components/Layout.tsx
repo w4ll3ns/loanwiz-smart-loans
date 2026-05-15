@@ -190,7 +190,7 @@ export default function Layout({ children }: LayoutProps) {
                   <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-b-full bg-primary" />
                 )}
                 <item.icon className={cn("h-5 w-5", isActive && "fill-primary/20")} />
-                <span className="text-[10px] font-medium">{item.name}</span>
+                <span className="text-[9px] font-medium">{item.name}</span>
               </Link>
             );
           })}
