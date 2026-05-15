@@ -270,11 +270,10 @@ export default function Admin() {
 
   const toggleUserStatus = async (userId: string, currentStatus: boolean) => {
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ ativo: !currentStatus })
-        .eq('id', userId);
-
+      const { error } = await supabase.rpc('admin_toggle_user_status', {
+        p_user_id: userId,
+        p_ativo: !currentStatus,
+      });
       if (error) throw error;
 
       setProfiles(prev =>
@@ -285,7 +284,6 @@ export default function Admin() {
         title: 'Status atualizado',
         description: `Usuário ${!currentStatus ? 'ativado' : 'desativado'} com sucesso.`,
       });
-      await logAuditAction('toggle_user', userId, { ativo: !currentStatus });
     } catch (error) {
       console.error('Erro ao atualizar status:', error);
       toast({
@@ -359,11 +357,10 @@ export default function Admin() {
     if (!selectedUser) return;
 
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ observacoes_admin: observacoesText || null })
-        .eq('id', selectedUser.id);
-
+      const { error } = await supabase.rpc('admin_update_user_observacoes', {
+        p_user_id: selectedUser.id,
+        p_observacoes: observacoesText,
+      });
       if (error) throw error;
 
       setProfiles(prev =>
@@ -383,11 +380,10 @@ export default function Admin() {
     if (!selectedUser) return;
 
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ status_plano: selectedPlano })
-        .eq('id', selectedUser.id);
-
+      const { error } = await supabase.rpc('admin_update_user_plano', {
+        p_user_id: selectedUser.id,
+        p_plano: selectedPlano,
+      });
       if (error) throw error;
 
       setProfiles(prev =>
@@ -395,7 +391,6 @@ export default function Admin() {
       );
 
       toast({ title: 'Plano atualizado', description: 'O status do plano foi alterado.' });
-      await logAuditAction('change_plan', selectedUser.id, { plano: selectedPlano });
       setIsPlanoModalOpen(false);
       setSelectedUser(null);
     } catch (error) {
