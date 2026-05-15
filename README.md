@@ -14,13 +14,20 @@ Sistema SaaS multi-tenant para gestão de empréstimos pessoais com controle de 
 git clone <REPO_URL>
 cd loanwiz
 npm install
-cp .env.example .env   # preencher com suas credenciais Supabase
 npm run dev
 ```
 
 ### Variáveis de Ambiente
 
-Veja `.env.example` para a lista completa. Todas usam o prefixo `VITE_` e são chaves públicas (anon key).
+O arquivo `.env` é **auto-populado pela plataforma Lovable** e **nunca deve ser versionado manualmente** — ele já está listado no `.gitignore`.
+
+Para desenvolvimento local fora da Lovable, copie o template:
+
+```bash
+cp .env.example .env   # preencher com suas credenciais Supabase
+```
+
+Veja `.env.example` para a lista completa. Todas as variáveis usam o prefixo `VITE_` e são chaves públicas (anon key) — ainda assim, mantenha o `.env` fora do Git.
 
 ## Documentação
 
