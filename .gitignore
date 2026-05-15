@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment variables (auto-populated by Lovable platform)
+.env
+.env.local
+.env.*.local
