@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
@@ -22,6 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { DashboardSkeleton } from "@/components/LoadingSkeletons";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { loadDashboardStats } from "@/services/dashboard";
 
 interface DashboardStats {
   totalEmprestado: number;
@@ -58,53 +59,34 @@ interface CapitalMensal {
 }
 
 export default function Dashboard() {
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<DashboardStats>({
-    totalEmprestado: 0,
-    totalReceber: 0,
-    totalRecebido: 0,
-    lucro: 0,
-    clientesAtivos: 0,
-    contratosAtivos: 0,
-    parcelasVencidas: 0,
-  });
-  const [proximosVencimentos, setProximosVencimentos] = useState<ProximoVencimento[]>([]);
-  const [lucroMensal, setLucroMensal] = useState<LucroMensal[]>([]);
-  const [statusDistribuicao, setStatusDistribuicao] = useState<StatusDistribuicao[]>([]);
-  const [capitalMensal, setCapitalMensal] = useState<CapitalMensal[]>([]);
   const { toast } = useToast();
 
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
+  const { data, isLoading } = useQuery({
+    queryKey: ['dashboard-stats'],
+    queryFn: async () => {
+      const raw = await loadDashboardStats();
 
-  const loadDashboardData = async () => {
-    try {
-      const { loadDashboardStats } = await import("@/services/dashboard");
-      const data = await loadDashboardStats();
+      const stats: DashboardStats = {
+        totalEmprestado: Number(raw.total_emprestado) || 0,
+        totalReceber: Number(raw.total_receber) || 0,
+        totalRecebido: Number(raw.total_recebido) || 0,
+        lucro: Number(raw.lucro) || 0,
+        clientesAtivos: Number(raw.clientes_ativos) || 0,
+        contratosAtivos: Number(raw.contratos_ativos) || 0,
+        parcelasVencidas: Number(raw.parcelas_vencidas) || 0,
+      };
 
-      setStats({
-        totalEmprestado: Number(data.total_emprestado) || 0,
-        totalReceber: Number(data.total_receber) || 0,
-        totalRecebido: Number(data.total_recebido) || 0,
-        lucro: Number(data.lucro) || 0,
-        clientesAtivos: Number(data.clientes_ativos) || 0,
-        contratosAtivos: Number(data.contratos_ativos) || 0,
-        parcelasVencidas: Number(data.parcelas_vencidas) || 0,
-      });
-
-      const proximos = (data.proximos_vencimentos || []).map((p: any) => ({
+      const proximosVencimentos: ProximoVencimento[] = (raw.proximos_vencimentos || []).map((p: any) => ({
         cliente: p.cliente || "Cliente",
         valor: Number(p.valor),
         data: new Date(p.data + 'T00:00:00').toLocaleDateString("pt-BR"),
         status: p.status as "vencido" | "vence_hoje" | "proximo",
       }));
-      setProximosVencimentos(proximos);
 
-      setLucroMensal((data.lucro_mensal || []).map((m: any) => ({
+      const lucroMensal: LucroMensal[] = (raw.lucro_mensal || []).map((m: any) => ({
         mes: m.mes,
         lucro: Number(Number(m.lucro).toFixed(2)),
-      })));
+      }));
 
       const statusColors: Record<string, string> = {
         "Pagas": "hsl(var(--success))",
@@ -112,30 +94,31 @@ export default function Dashboard() {
         "Atrasadas": "hsl(var(--destructive))",
         "Parciais": "hsl(var(--warning))",
       };
-      setStatusDistribuicao((data.status_distribuicao || []).map((s: any) => ({
+      const statusDistribuicao: StatusDistribuicao[] = (raw.status_distribuicao || []).map((s: any) => ({
         name: s.name,
         value: Number(s.value),
         color: statusColors[s.name] || "hsl(var(--muted-foreground))",
-      })));
+      }));
 
-      setCapitalMensal((data.capital_mensal || []).map((c: any) => ({
+      const capitalMensal: CapitalMensal[] = (raw.capital_mensal || []).map((c: any) => ({
         mes: c.mes,
         emprestado: Number(Number(c.emprestado).toFixed(2)),
         recebido: Number(Number(c.recebido).toFixed(2)),
-      })));
+      }));
 
-    } catch (error: any) {
-      toast({
-        title: "Não foi possível carregar o dashboard",
-        description: "Verifique sua conexão e recarregue a página.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+      return { stats, proximosVencimentos, lucroMensal, statusDistribuicao, capitalMensal };
+    },
+    staleTime: 60_000,
+    refetchOnWindowFocus: true,
+  });
 
-  if (loading) return <DashboardSkeleton />;
+  if (isLoading) return <DashboardSkeleton />;
+
+  const stats = data!.stats;
+  const proximosVencimentos = data!.proximosVencimentos;
+  const lucroMensal = data!.lucroMensal;
+  const statusDistribuicao = data!.statusDistribuicao;
+  const capitalMensal = data!.capitalMensal;
 
   const vencidosHoje = proximosVencimentos.filter(p => p.status === "vence_hoje");
   const vencidos = proximosVencimentos.filter(p => p.status === "vencido");
