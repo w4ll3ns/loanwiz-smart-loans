@@ -168,16 +168,20 @@ export default function Clientes() {
   const handleDelete = async () => {
     if (!clienteToDelete) return;
     try {
-      const { error } = await supabase.from("clientes").delete().eq("id", clienteToDelete);
+      const { error } = await supabase.rpc("excluir_cliente", { p_cliente_id: clienteToDelete });
       if (error) throw error;
       toast({ title: "Cliente excluído", description: "Registro removido com sucesso." });
       setIsDeleteDialogOpen(false);
       setClienteToDelete(null);
       loadClientes();
     } catch (error: any) {
+      const msg = String(error?.message || "");
+      const hasContratos = msg.includes("contratos vinculados");
       toast({
         title: "Não foi possível excluir",
-        description: "Este cliente pode ter contratos associados. Exclua os contratos primeiro.",
+        description: hasContratos
+          ? "Este cliente possui contratos. Exclua os contratos primeiro."
+          : "Tente novamente em instantes.",
         variant: "destructive",
       });
     }
