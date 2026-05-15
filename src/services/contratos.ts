@@ -24,21 +24,11 @@ export async function criarContratoComParcelas(params: CriarContratoParams): Pro
     p_tipo_juros: params.tipoJuros,
     p_permite_sabado: params.permiteSabado,
     p_permite_domingo: params.permiteDomingo,
+    p_observacoes: params.observacoes ?? null,
   });
 
   if (error) throw error;
-  const contratoId = data as string;
-
-  // Update observacoes after creation (RPC doesn't support it)
-  if (params.observacoes) {
-    const { error: updateError } = await supabase
-      .from("contratos")
-      .update({ observacoes: params.observacoes })
-      .eq("id", contratoId);
-    if (updateError) throw updateError;
-  }
-
-  return contratoId;
+  return data as string;
 }
 
 export async function loadContratos() {
