@@ -87,6 +87,7 @@ Administradores usam funções `SECURITY DEFINER` dedicadas (prefixo `admin_*`) 
 | `gerar_parcelas` | SECURITY DEFINER | Geração de parcelas (usado internamente) |
 | `is_user_active` | SECURITY DEFINER | Verifica se usuário está ativo/assinante |
 | `has_role` | SECURITY DEFINER | Verifica role do usuário |
+| `admin_promote_user` | SECURITY DEFINER | Promove usuário a admin (apenas admins existentes podem chamar) |
 | `log_api_usage` | SECURITY DEFINER | Registra uso de API para rate limiting |
 | `check_api_rate_limit` | SECURITY DEFINER | Verifica limite de uso (50 chamadas/24h) |
 
