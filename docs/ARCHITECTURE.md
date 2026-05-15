@@ -159,6 +159,7 @@ src/
 5. **Usar `IF NOT EXISTS`** para constraints, índices e tabelas quando possível
 6. **Foreign keys com `ON DELETE CASCADE`** quando fizer sentido para integridade referencial
 7. **Sempre testar em ambiente de desenvolvimento** antes de aplicar em produção
+8. **Nunca incluir dados pessoais em migrations** — UUIDs de usuários, emails, telefones, nomes ou qualquer PII são proibidos em arquivos versionados. Para promover um usuário a admin, usar a RPC `admin_promote_user(p_user_id)` via SQL Editor no dashboard do Supabase, ou inserir manualmente em `user_roles`. Identificadores reais nunca devem ser commitados no repositório.
 
 ### Rollback
 
