@@ -435,6 +435,7 @@ export type Database = {
       }
       excluir_cliente: { Args: { p_cliente_id: string }; Returns: undefined }
       excluir_contrato: { Args: { p_contrato_id: string }; Returns: undefined }
+      excluir_parcela: { Args: { p_parcela_id: string }; Returns: undefined }
       gerar_parcelas:
         | {
             Args: {

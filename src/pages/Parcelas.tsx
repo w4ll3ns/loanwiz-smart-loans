@@ -219,13 +219,30 @@ export default function Parcelas() {
   const handleDelete = async () => {
     if (!parcelaToDelete) return;
     try {
-      await supabase.from("parcelas").delete().eq("id", parcelaToDelete);
+      const { error } = await supabase.rpc("excluir_parcela", { p_parcela_id: parcelaToDelete });
+      if (error) throw error;
       toast({ title: "Parcela excluída", description: "O registro foi removido." });
       setIsDeleteDialogOpen(false);
       setParcelaToDelete(null);
       loadParcelas();
     } catch (error: any) {
-      toast({ title: "Erro ao excluir", variant: "destructive" });
+      const msg = String(error?.message || "");
+      let title = "Erro ao excluir";
+      let description = "Tente novamente em instantes.";
+      if (msg.includes("pagamentos registrados")) {
+        title = "Não é possível excluir";
+        description = "Esta parcela já tem pagamentos. Estorne antes de excluir.";
+      } else if (msg.includes("Contrato quitado")) {
+        title = "Contrato quitado";
+        description = "Não é possível excluir parcelas de contratos quitados.";
+      } else if (msg.includes("Apenas a última parcela")) {
+        title = "Sequência de parcelas";
+        description = "Apenas a última parcela do contrato pode ser excluída.";
+      } else if (msg.includes("não encontrada") || msg.includes("Not authorized") || msg.includes("Not authenticated")) {
+        title = "Sem permissão";
+        description = "Você não pode excluir esta parcela.";
+      }
+      toast({ title, description, variant: "destructive" });
     }
   };
 
