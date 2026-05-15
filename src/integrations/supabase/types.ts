@@ -397,6 +397,18 @@ export type Database = {
       }
       admin_get_user_stats: { Args: { p_user_id: string }; Returns: Json }
       admin_promote_user: { Args: { p_user_id: string }; Returns: undefined }
+      admin_toggle_user_status: {
+        Args: { p_ativo: boolean; p_user_id: string }
+        Returns: undefined
+      }
+      admin_update_user_observacoes: {
+        Args: { p_observacoes: string; p_user_id: string }
+        Returns: undefined
+      }
+      admin_update_user_plano: {
+        Args: { p_data_expiracao?: string; p_plano: string; p_user_id: string }
+        Returns: undefined
+      }
       ajustar_data_parcela: {
         Args: {
           p_data: string
