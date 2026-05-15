@@ -1,18 +1,26 @@
-Simplificar a função PostgreSQL `gerar_parcelas` removendo o overload com 5 parâmetros.
+# Corrigir bug de timezone em pagamentos noturnos
 
-### Contexto
-A migration `20251210210012_41ded218-a764-4808-b30a-0779f1e01303.sql` define dois overloads:
-1. **Completa** (7 parâmetros): `gerar_parcelas(uuid, int, numeric, date, text, boolean DEFAULT true, boolean DEFAULT false)`
-2. **Curta** (5 parâmetros): `gerar_parcelas(uuid, int, numeric, date, text)` — apenas faz `PERFORM` na completa com valores padrão.
+## Problema
+Pagamentos registrados após ~21h BRT aparecem no dia seguinte no calendário. Causa: `registrar_pagamento_parcela` grava `now()` (UTC) em `parcelas_historico.data_pagamento` (timestamptz), e as RPCs de calendário fazem `AT TIME ZONE 'UTC'` ao agrupar por dia — somando dois erros.
 
-### Verificação de callers
-Todas as chamadas no banco e no código usam a assinatura completa (7 argumentos):
-- `criar_contrato_com_parcelas` (migrations 20260414212311 e 20260515033859) passa os 7 argumentos explicitamente.
-- Nenhum código TypeScript chama `gerar_parcelas` diretamente (usa `criar_contrato_com_parcelas` RPC).
+## Solução
+Migration única que:
 
-### Ação
-Nova migration com:
-- `DROP FUNCTION IF EXISTS public.gerar_parcelas(uuid, integer, numeric, date, text);`
-- `CREATE OR REPLACE FUNCTION public.gerar_parcelas(...)` com a assinatura completa e os `DEFAULT` preservados.
+1. **`registrar_pagamento_parcela`**
+   - Valida `p_data_pagamento`: não-nulo e `<= CURRENT_DATE + 1`.
+   - No INSERT do histórico, troca `now()` por `(p_data_pagamento::timestamp AT TIME ZONE 'America/Sao_Paulo')` — grava meia-noite BRT do dia escolhido pelo usuário.
+   - Hora real da operação fica preservada em `created_at`.
 
-Nenhum impacto no runtime — o overload curto é apenas um wrapper sem uso real.
+2. **`calendario_mensal` e `calendario_dia_detalhes`**
+   - Trocar todas as ocorrências de `(h.data_pagamento AT TIME ZONE 'UTC')::date` por `(h.data_pagamento AT TIME ZONE 'America/Sao_Paulo')::date`.
+
+3. **`excluir_evento_historico`**: nenhuma alteração necessária (não grava data).
+
+4. **Coluna `data_pagamento`**: permanece `timestamptz` (sem ALTER TYPE).
+
+5. **Sem backfill**. Comentário no final da migration com query de diagnóstico para o usuário rodar manualmente no SQL Editor e decidir caso a caso.
+
+## Critério de aceite
+- Pagamento às 22h BRT com data de hoje → aparece no card do dia correto.
+- Data 1 ano no futuro → erro "Data do pagamento não pode ser no futuro".
+- Histórico antigo intocado.
