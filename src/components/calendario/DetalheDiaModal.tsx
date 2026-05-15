@@ -109,9 +109,9 @@ export function DetalheDiaModal({ isOpen, onOpenChange, data }: DetalheDiaModalP
     return <Badge variant="outline">Dia futuro</Badge>;
   })();
 
-  const handleVerContrato = () => {
+  const handleVerContrato = (contratoId: string) => {
     onOpenChange(false);
-    navigate("/contratos");
+    navigate(`/contratos?open=${contratoId}`);
   };
 
   const handleBaixar = (p: Previsto) => {
@@ -201,9 +201,15 @@ export function DetalheDiaModal({ isOpen, onOpenChange, data }: DetalheDiaModalP
                                 Parcela {r.numero_parcela}/{r.total_parcelas}
                               </span>
                               {r.tipo_pagamento && (
-                                <Badge variant="outline" className="text-[10px]">
-                                  {tipoPagamentoLabel[r.tipo_pagamento] ?? r.tipo_pagamento}
-                                </Badge>
+                                r.tipo_pagamento === "juros" ? (
+                                  <Badge className="bg-warning/15 text-warning border-warning/30 text-[10px]">
+                                    Juros (não abate)
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-[10px]">
+                                    {tipoPagamentoLabel[r.tipo_pagamento] ?? r.tipo_pagamento}
+                                  </Badge>
+                                )
                               )}
                               {isAntecipado && (
                                 <Badge variant="secondary" className="text-[10px]">
@@ -228,7 +234,7 @@ export function DetalheDiaModal({ isOpen, onOpenChange, data }: DetalheDiaModalP
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={handleVerContrato}
+                            onClick={() => handleVerContrato(r.contrato_id)}
                             className="h-7 text-xs"
                           >
                             <ExternalLink className="h-3 w-3 mr-1" />
@@ -275,15 +281,24 @@ export function DetalheDiaModal({ isOpen, onOpenChange, data }: DetalheDiaModalP
                           {p.valor_ja_pago > 0 && (
                             <p className="text-xs text-muted-foreground mt-1">
                               Já pago: {formatBRL(p.valor_ja_pago)} · Falta:{" "}
-                              <span className="font-medium">{formatBRL(p.valor_previsto)}</span>
+                              <span className="font-medium">{formatBRL(Math.max(0, p.valor_previsto))}</span>
                             </p>
                           )}
                         </div>
                         <span className="font-bold text-primary whitespace-nowrap">
-                          {formatBRL(p.valor_previsto)}
+                          {formatBRL(Math.max(0, p.valor_previsto))}
                         </span>
                       </div>
-                      <div className="flex justify-end">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleVerContrato(p.contrato_id)}
+                          className="h-8 text-xs"
+                        >
+                          <ExternalLink className="h-3 w-3 mr-1" />
+                          Ver contrato
+                        </Button>
                         <Button
                           size="sm"
                           onClick={() => handleBaixar(p)}
