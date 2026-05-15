@@ -25,7 +25,6 @@ import {
 import { Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { getLocalDateString } from "@/lib/utils";
 
 interface Parcela {
   id: string;
@@ -74,47 +73,13 @@ export function HistoricoModal({
     if (!parcela) return;
 
     try {
-      const { data: registroData, error: fetchError } = await supabase
-        .from("parcelas_historico")
-        .select("tipo_evento")
-        .eq("id", registroId)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      const { error: deleteError } = await supabase
-        .from("parcelas_historico")
-        .delete()
-        .eq("id", registroId);
-
-      if (deleteError) throw deleteError;
-
-      if (registroData.tipo_evento === "pagamento") {
-        const { data: pagamentosRestantes, error: fetchPagamentosError } = await supabase
-          .from("parcelas_historico")
-          .select("valor_pago")
-          .eq("parcela_id", parcela.id)
-          .eq("tipo_evento", "pagamento");
-
-        if (fetchPagamentosError) throw fetchPagamentosError;
-
-        const novoValorPago = pagamentosRestantes?.reduce(
-          (sum, p) => sum + Number(p.valor_pago || 0), 0
-        ) || 0;
-
-        const valorOriginal = Number(parcela.valor_original || parcela.valor);
-
-        await supabase
-          .from("parcelas")
-          .update({
-            valor_pago: novoValorPago,
-            status: novoValorPago >= valorOriginal ? "pago" : "pendente",
-            data_pagamento: novoValorPago >= valorOriginal ? getLocalDateString() : null,
-          })
-          .eq("id", parcela.id);
-      }
+      const { data, error } = await supabase.rpc("excluir_evento_historico", { p_evento_id: registroId });
+      if (error) throw error;
 
       toast({ title: "Registro excluído", description: "O registro foi removido do histórico." });
+      if ((data as any)?.contrato_reaberto) {
+        toast({ title: "Contrato reaberto", description: "O contrato voltou para ativo." });
+      }
       onHistoricoUpdated(parcela);
       onParcelasUpdated();
     } catch (error: any) {
