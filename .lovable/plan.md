@@ -1,65 +1,52 @@
-# Locks pessimistas em RPCs financeiras
+# Atomic date change RPC + delete-user inventory fix
 
-## Objetivo
-Eliminar race conditions em `recalcular_contrato_parcelas`, `registrar_pagamento_parcela` e `estornar_pagamento_parcela` quando o mesmo contrato/parcela é manipulado em paralelo (PWA em múltiplos dispositivos, automações).
+## Parte 1 — `alterar_data_parcela` RPC + modal fixes
 
-## Mudanças
+### Migration
+Nova função `public.alterar_data_parcela(p_parcela_id uuid, p_nova_data date, p_justificativa text) RETURNS void`:
 
-### 1. Nova migration (apenas recriação das 3 funções)
+- `SECURITY DEFINER`, `SET search_path = public`.
+- Validar `auth.uid() IS NOT NULL`.
+- Validar `p_justificativa IS NOT NULL AND length(trim(p_justificativa)) > 0` → `RAISE EXCEPTION 'Justificativa é obrigatória'`.
+- `SELECT p.*, c.status as contrato_status INTO v_parcela FROM parcelas p JOIN contratos c ON c.id = p.contrato_id JOIN clientes cl ON cl.id = c.cliente_id WHERE p.id = p_parcela_id AND cl.user_id = auth.uid() FOR UPDATE OF p, c`.
+- Se `NOT FOUND` → `Installment not found or not owned by user`.
+- Se `v_parcela.status = 'pago'` → `Cannot change due date of paid installment`.
+- Se `v_parcela.contrato_status = 'quitado'` → `Cannot change due date on settled contract`.
+- Se `p_nova_data = v_parcela.data_vencimento` → `Nova data must be different`.
+- `UPDATE parcelas SET data_vencimento = p_nova_data, justificativa_alteracao_data = trim(p_justificativa), data_vencimento_original = COALESCE(data_vencimento_original, v_parcela.data_vencimento), updated_at = now() WHERE id = p_parcela_id;`
+- `INSERT INTO parcelas_historico (parcela_id, tipo_evento, data_vencimento_anterior, data_vencimento_nova, observacao, data_pagamento) VALUES (p_parcela_id, 'alteracao_data', v_parcela.data_vencimento, p_nova_data, trim(p_justificativa), now());`
+- `REVOKE ALL ON FUNCTION ... FROM PUBLIC, anon; GRANT EXECUTE ... TO authenticated;`
 
-Cada função mantém assinatura, validações, lógica de negócio e auditoria já existentes. A única alteração é adicionar `FOR UPDATE` no SELECT que carrega a entidade central, garantindo lock exclusivo de linha até o fim da transação. Postgres serializa as transações concorrentes: a segunda espera a primeira terminar e então reavalia o estado (status, valor_pago) — se já não for válido, cai nos `RAISE EXCEPTION` existentes (`Installment is already fully paid`, `Cannot edit a settled contract`, etc.).
-
-#### `recalcular_contrato_parcelas(p_contrato_id, p_tipo_juros, p_percentual)`
-- SELECT inicial passa a ser:
-  ```sql
-  SELECT c.*, cl.user_id INTO v_contrato
-  FROM contratos c
-  JOIN clientes cl ON c.cliente_id = cl.id
-  WHERE c.id = p_contrato_id
-  FOR UPDATE OF c;
+### Frontend `src/components/parcelas/EditarDataModal.tsx`
+- Adicionar `useEffect` que sincroniza `novaDataVencimento` com `parcela.data_vencimento` quando `parcela?.id` ou `isOpen` mudam (e reseta `justificativaAlteracao`). Remover o bloco `if (parcela && novaDataVencimento === "" && isOpen) setNovaDataVencimento(...)` da render (linha 41-43).
+- Substituir as duas chamadas `.update` + `.insert` por uma única:
+  ```ts
+  const { error } = await supabase.rpc('alterar_data_parcela', {
+    p_parcela_id: parcela.id,
+    p_nova_data: novaDataVencimento,
+    p_justificativa: justificativaAlteracao.trim(),
+  });
   ```
-- Resto do corpo inalterado.
+- Tratar erro (lança throw → catch existente exibe toast).
 
-#### `registrar_pagamento_parcela(p_parcela_id, p_tipo, p_valor, p_data_pagamento, p_observacao)`
-- SELECT inicial da parcela passa a ser:
-  ```sql
-  SELECT p.*, c.id as contrato_id_ref, c.valor_emprestado, c.numero_parcelas,
-         c.percentual, c.tipo_juros, c.status as contrato_status
-  INTO v_parcela
-  FROM parcelas p
-  JOIN contratos c ON p.contrato_id = c.id
-  JOIN clientes cl ON c.cliente_id = cl.id
-  WHERE p.id = p_parcela_id AND cl.user_id = v_user_id
-  FOR UPDATE OF p, c;
+## Parte 2 — `delete-user` edge function
+
+### `supabase/functions/delete-user/index.ts`
+- Substituir o count amostral por loop em batches de 100 acumulando o total real em `historicoCount`.
+- Atualizar a entrada do `inventory`: renomear chave `historico_estimado` → `historico` (refletindo que agora é exato). Atualizar consumidores: o objeto `counts` em `completedSteps` passa a ler `inventory.historico`.
+- Restringir CORS: trocar `"Access-Control-Allow-Origin": "*"` por validação contra lista permitida (origens preview/published do projeto + custom domain via env opcional `ALLOWED_ORIGINS`):
+  ```ts
+  const ALLOWED = [
+    "https://wsemprestimos.lovable.app",
+    "https://id-preview--967f0cd4-eadf-45c4-858f-a2848c1eef89.lovable.app",
+    ...(Deno.env.get("ALLOWED_ORIGINS")?.split(",").map(s => s.trim()) ?? []),
+  ];
+  const origin = req.headers.get("Origin") ?? "";
+  const allowOrigin = ALLOWED.includes(origin) ? origin : ALLOWED[0];
+  const corsHeaders = { "Access-Control-Allow-Origin": allowOrigin, ... };
   ```
-- Lock também no contrato (`OF p, c`) porque a função pode atualizar `contratos.status = 'quitado'` no final — evita lost update do status quando duas parcelas distintas do mesmo contrato são quitadas em paralelo.
-- Resto inalterado.
-
-#### `estornar_pagamento_parcela(p_parcela_id)`
-- SELECT inicial passa a ser:
-  ```sql
-  SELECT p.*, c.id as contrato_id_ref, c.status as contrato_status
-  INTO v_parcela
-  FROM parcelas p
-  JOIN contratos c ON p.contrato_id = c.id
-  JOIN clientes cl ON c.cliente_id = cl.id
-  WHERE p.id = p_parcela_id AND cl.user_id = v_user_id
-  FOR UPDATE OF p, c;
-  ```
-- Resto inalterado (já segue o mesmo padrão usado em `excluir_evento_historico`).
-
-### 2. Sem mudanças no frontend
-A semântica das RPCs não muda. Em caso de conflito real (segunda chamada vê parcela já paga), o erro retornado é o `RAISE EXCEPTION 'Installment is already fully paid'` que o cliente já trata via toast de erro.
-
-### 3. Sem mudanças nos tipos do Supabase
-Assinaturas idênticas, regeneração não necessária.
+  Mantém os mesmos `Access-Control-Allow-Headers`. Origens não listadas recebem o domínio publicado (preflight falha no browser, mantendo a função efetivamente bloqueada para origens externas).
 
 ## Critério de aceite
-- Pagar a mesma parcela em duas abas simultâneas: uma transação obtém o lock, conclui o INSERT em `parcelas_historico` + UPDATE em `parcelas`. A segunda espera, relê com o novo estado (`status = 'pago'`) e dispara `Installment is already fully paid`.
-- `valor_pago` nunca excede `valor_original` por concorrência.
-- Contrato não é marcado `quitado` indevidamente: o lock no contrato dentro de `registrar_pagamento_parcela` serializa a checagem `v_todas_pagas` e o UPDATE de status.
-
-## Observações técnicas
-- `FOR UPDATE` é seguro dentro de funções `SECURITY DEFINER PLPGSQL` — toda chamada RPC do PostgREST roda em sua própria transação, então o lock é liberado ao retornar.
-- Não há risco de deadlock entre as 3 funções: todas adquirem locks na ordem `parcelas → contratos` ou apenas `contratos`, consistente.
-- Não usamos `NOWAIT` / `SKIP LOCKED`: queremos que a segunda chamada espere (latência de milissegundos) e então reavalie, comportamento mais previsível para o usuário.
+- Alterar data: 1 transação, 1 linha em `parcelas_historico`. Sem warning React (setState durante render eliminado).
+- Deletar usuário com >100 parcelas: `audit_logs.details.inventory.historico` mostra contagem exata; CORS responde apenas para origens conhecidas.
