@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +45,7 @@ export default function Contratos() {
   const [initialFormData, setInitialFormData] = useState<Partial<ContratoFormData> | undefined>(undefined);
   const { toast } = useToast();
   const { canCreate, userEmail } = useUserRole();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const contratosFiltrados = contratos.filter((c) => {
     const matchesStatus = statusFilter === "todos" || (statusFilter === "ativos" ? c.status === "ativo" : c.status === "quitado");
@@ -80,6 +82,18 @@ export default function Contratos() {
     loadContratos();
     loadClientes();
   }, []);
+
+  // Auto-open contrato via ?open=<uuid>
+  useEffect(() => {
+    const openId = searchParams.get("open");
+    if (!openId || loading || contratos.length === 0) return;
+    const target = contratos.find((c) => c.id === openId);
+    if (target) {
+      handleContratoClick(target);
+    }
+    setSearchParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, contratos, searchParams]);
 
   const loadContratos = async () => {
     try {
