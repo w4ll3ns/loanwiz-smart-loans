@@ -417,6 +417,14 @@ export type Database = {
         }
         Returns: string
       }
+      alterar_data_parcela: {
+        Args: {
+          p_justificativa: string
+          p_nova_data: string
+          p_parcela_id: string
+        }
+        Returns: undefined
+      }
       check_api_rate_limit: {
         Args: {
           p_function_name: string

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,9 +38,12 @@ export function EditarDataModal({ isOpen, onOpenChange, parcela, onDataAlterada 
   const [justificativaAlteracao, setJustificativaAlteracao] = useState<string>("");
   const { toast } = useToast();
 
-  if (parcela && novaDataVencimento === "" && isOpen) {
-    setNovaDataVencimento(parcela.data_vencimento);
-  }
+  useEffect(() => {
+    if (isOpen && parcela) {
+      setNovaDataVencimento(parcela.data_vencimento);
+      setJustificativaAlteracao("");
+    }
+  }, [isOpen, parcela?.id, parcela?.data_vencimento]);
 
   const handleEditarDataVencimento = async () => {
     if (!parcela) return;
@@ -56,36 +59,13 @@ export function EditarDataModal({ isOpen, onOpenChange, parcela, onDataAlterada 
     }
 
     try {
-      const updateData: any = {
-        data_vencimento: novaDataVencimento,
-        justificativa_alteracao_data: justificativaAlteracao.trim(),
-      };
-
-      if (!parcela.data_vencimento_original) {
-        updateData.data_vencimento_original = parcela.data_vencimento;
-      }
-
-      const { error } = await supabase
-        .from("parcelas")
-        .update(updateData)
-        .eq("id", parcela.id);
+      const { error } = await supabase.rpc("alterar_data_parcela", {
+        p_parcela_id: parcela.id,
+        p_nova_data: novaDataVencimento,
+        p_justificativa: justificativaAlteracao.trim(),
+      });
 
       if (error) throw error;
-
-      const { error: historicoError } = await supabase
-        .from("parcelas_historico")
-        .insert({
-          parcela_id: parcela.id,
-          tipo_evento: "alteracao_data",
-          data_vencimento_anterior: parcela.data_vencimento,
-          data_vencimento_nova: novaDataVencimento,
-          observacao: justificativaAlteracao.trim(),
-          data_pagamento: new Date().toISOString(),
-        } as any);
-
-      if (historicoError) {
-        console.error("Erro ao registrar no histórico:", historicoError);
-      }
 
       toast({
         title: "Data alterada",
@@ -97,7 +77,7 @@ export function EditarDataModal({ isOpen, onOpenChange, parcela, onDataAlterada 
       setJustificativaAlteracao("");
       onDataAlterada();
     } catch (error: any) {
-      toast({ title: "Erro ao alterar data", description: "Não foi possível salvar a alteração.", variant: "destructive" });
+      toast({ title: "Erro ao alterar data", description: error?.message || "Não foi possível salvar a alteração.", variant: "destructive" });
     }
   };
 
