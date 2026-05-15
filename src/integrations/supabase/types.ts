@@ -463,29 +463,18 @@ export type Database = {
       excluir_contrato: { Args: { p_contrato_id: string }; Returns: undefined }
       excluir_evento_historico: { Args: { p_evento_id: string }; Returns: Json }
       excluir_parcela: { Args: { p_parcela_id: string }; Returns: undefined }
-      gerar_parcelas:
-        | {
-            Args: {
-              p_contrato_id: string
-              p_data_inicio: string
-              p_numero_parcelas: number
-              p_periodicidade: string
-              p_valor_parcela: number
-            }
-            Returns: undefined
-          }
-        | {
-            Args: {
-              p_contrato_id: string
-              p_data_inicio: string
-              p_numero_parcelas: number
-              p_periodicidade: string
-              p_permite_domingo?: boolean
-              p_permite_sabado?: boolean
-              p_valor_parcela: number
-            }
-            Returns: undefined
-          }
+      gerar_parcelas: {
+        Args: {
+          p_contrato_id: string
+          p_data_inicio: string
+          p_numero_parcelas: number
+          p_periodicidade: string
+          p_permite_domingo?: boolean
+          p_permite_sabado?: boolean
+          p_valor_parcela: number
+        }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
