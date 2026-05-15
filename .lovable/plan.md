@@ -1,52 +1,66 @@
-# Atomic date change RPC + delete-user inventory fix
+# Plano — Página /calendario
 
-## Parte 1 — `alterar_data_parcela` RPC + modal fixes
+Adicionar página de calendário mensal mostrando recebimentos (passado) e previstos (hoje/futuro) por dia, com modal de detalhes.
 
-### Migration
-Nova função `public.alterar_data_parcela(p_parcela_id uuid, p_nova_data date, p_justificativa text) RETURNS void`:
+## 1) Migration — 2 RPCs no Postgres
 
+**`calendario_mensal(p_mes int, p_ano int) RETURNS jsonb`**
 - `SECURITY DEFINER`, `SET search_path = public`.
-- Validar `auth.uid() IS NOT NULL`.
-- Validar `p_justificativa IS NOT NULL AND length(trim(p_justificativa)) > 0` → `RAISE EXCEPTION 'Justificativa é obrigatória'`.
-- `SELECT p.*, c.status as contrato_status INTO v_parcela FROM parcelas p JOIN contratos c ON c.id = p.contrato_id JOIN clientes cl ON cl.id = c.cliente_id WHERE p.id = p_parcela_id AND cl.user_id = auth.uid() FOR UPDATE OF p, c`.
-- Se `NOT FOUND` → `Installment not found or not owned by user`.
-- Se `v_parcela.status = 'pago'` → `Cannot change due date of paid installment`.
-- Se `v_parcela.contrato_status = 'quitado'` → `Cannot change due date on settled contract`.
-- Se `p_nova_data = v_parcela.data_vencimento` → `Nova data must be different`.
-- `UPDATE parcelas SET data_vencimento = p_nova_data, justificativa_alteracao_data = trim(p_justificativa), data_vencimento_original = COALESCE(data_vencimento_original, v_parcela.data_vencimento), updated_at = now() WHERE id = p_parcela_id;`
-- `INSERT INTO parcelas_historico (parcela_id, tipo_evento, data_vencimento_anterior, data_vencimento_nova, observacao, data_pagamento) VALUES (p_parcela_id, 'alteracao_data', v_parcela.data_vencimento, p_nova_data, trim(p_justificativa), now());`
-- `REVOKE ALL ON FUNCTION ... FROM PUBLIC, anon; GRANT EXECUTE ... TO authenticated;`
+- Valida `auth.uid()`, `p_mes 1..12`, `p_ano 2000..2100`.
+- `generate_series` do 1º ao último dia do mês.
+- Para cada dia: tipo (`passado` < hoje, `hoje` = hoje, `futuro` > hoje), valor (recebido se passado; saldo previsto se hoje/futuro), `qtd_movimentacoes`.
+- `hoje`: adicionar `ja_recebido_hoje` (soma de `parcelas_historico` com `data_pagamento::date = CURRENT_DATE` e `tipo_evento='pagamento'`).
+- Sempre retorna o dia mesmo com valor 0.
+- Totais: `recebido_mes`, `previsto_mes`, `qtd_recebimentos_mes`, `qtd_previstos_mes`.
+- Implementação com CTEs (`pagamentos_dia`, `previstos_dia`) agregando uma vez, depois `LEFT JOIN` na série de dias para evitar N+1.
+- `REVOKE ... FROM PUBLIC, anon; GRANT EXECUTE TO authenticated`.
 
-### Frontend `src/components/parcelas/EditarDataModal.tsx`
-- Adicionar `useEffect` que sincroniza `novaDataVencimento` com `parcela.data_vencimento` quando `parcela?.id` ou `isOpen` mudam (e reseta `justificativaAlteracao`). Remover o bloco `if (parcela && novaDataVencimento === "" && isOpen) setNovaDataVencimento(...)` da render (linha 41-43).
-- Substituir as duas chamadas `.update` + `.insert` por uma única:
-  ```ts
-  const { error } = await supabase.rpc('alterar_data_parcela', {
-    p_parcela_id: parcela.id,
-    p_nova_data: novaDataVencimento,
-    p_justificativa: justificativaAlteracao.trim(),
-  });
-  ```
-- Tratar erro (lança throw → catch existente exibe toast).
+**`calendario_dia_detalhes(p_data date) RETURNS jsonb`**
+- Validar auth.
+- `recebimentos[]`: `parcelas_historico JOIN parcelas JOIN contratos JOIN clientes` (ownership), `data_pagamento::date = p_data`, `tipo_evento='pagamento'`. Inclui `evento_id`, `parcela_id`, `contrato_id`, `cliente_nome`, `numero_parcela`, `total_parcelas` (= `c.numero_parcelas`), `data_vencimento_parcela`, `valor_pago`, `tipo_pagamento`, `observacao`, `data_pagamento`. Ordenar por `data_pagamento ASC`.
+- `previstos[]`: `parcelas` com `data_vencimento = p_data`, `status IN ('pendente','parcialmente_pago')`, ownership. `valor_previsto = COALESCE(valor_original, valor) - COALESCE(valor_pago, 0)`, `valor_ja_pago`, `dias_atraso = GREATEST(0, CURRENT_DATE - data_vencimento)`. Ordenar por `cliente_nome`.
+- Totais agregados.
+- `REVOKE/GRANT` padrão.
 
-## Parte 2 — `delete-user` edge function
+## 2) Frontend — `src/pages/Calendario.tsx`
 
-### `supabase/functions/delete-user/index.ts`
-- Substituir o count amostral por loop em batches de 100 acumulando o total real em `historicoCount`.
-- Atualizar a entrada do `inventory`: renomear chave `historico_estimado` → `historico` (refletindo que agora é exato). Atualizar consumidores: o objeto `counts` em `completedSteps` passa a ler `inventory.historico`.
-- Restringir CORS: trocar `"Access-Control-Allow-Origin": "*"` por validação contra lista permitida (origens preview/published do projeto + custom domain via env opcional `ALLOWED_ORIGINS`):
-  ```ts
-  const ALLOWED = [
-    "https://wsemprestimos.lovable.app",
-    "https://id-preview--967f0cd4-eadf-45c4-858f-a2848c1eef89.lovable.app",
-    ...(Deno.env.get("ALLOWED_ORIGINS")?.split(",").map(s => s.trim()) ?? []),
-  ];
-  const origin = req.headers.get("Origin") ?? "";
-  const allowOrigin = ALLOWED.includes(origin) ? origin : ALLOWED[0];
-  const corsHeaders = { "Access-Control-Allow-Origin": allowOrigin, ... };
-  ```
-  Mantém os mesmos `Access-Control-Allow-Headers`. Origens não listadas recebem o domínio publicado (preflight falha no browser, mantendo a função efetivamente bloqueada para origens externas).
+- `PageHeader` "Calendário".
+- Estado: `mesAtual` (Date), `dataSelecionada` (string|null), `isModalOpen`.
+- Navegação de mês: botões `<` `>` ao redor de `format(mesAtual, "MMMM yyyy", { locale: ptBR })` capitalizado, botão "Hoje".
+- 4 cards de resumo (mobile 2x2 / desktop 1x4): Recebido no mês (success), Previsto no mês (primary), Movimentações realizadas, Movimentações previstas.
+- Grid 7 colunas com cabeçalho D S T Q Q S S; renderizar 42 células (6 semanas) começando no domingo anterior ao dia 1.
+- Cada célula: altura mínima 70px mobile / 90px desktop, número no topo-esquerda, UM valor abaixo:
+  - `passado` valor>0 → texto verde (`text-success` via design tokens).
+  - `futuro` valor>0 → texto azul (`text-primary`).
+  - `hoje` → previsto azul + abaixo (se `ja_recebido_hoje > 0`) "✓ R$ X já" verde menor.
+  - valor=0 → célula vazia.
+- Hoje: `border-2 border-primary` + leve fundo.
+- Dias fora do mês: `text-muted-foreground/40`, sem valor, `disabled`.
+- Hover desktop: `hover:bg-muted/50`. Click → abre modal.
+- Acessibilidade: `<button>` com `aria-label` descritivo.
+- Helper `formatarCompacto(valor)` → "R$ 1.2k" para mobile (text-[10px]); desktop usa formato pt-BR completo.
+- Animação fade 200ms ao trocar mês; Skeleton em cada célula no loading; toast erro com retry.
+- React Query: `['calendario', ano, mes]` staleTime 60s.
+
+## 3) Frontend — `src/components/calendario/DetalheDiaModal.tsx`
+
+- Dialog do shadcn. Título: data por extenso capitalizada. Subtítulo badge "Hoje"/"Dia passado"/"Dia futuro".
+- Seção **Recebimentos** (se houver): por item — cliente (negrito), "Parcela N/T", badge tipo (Total/Juros/Parcial), valor verde, observação. Se `data_vencimento_parcela ≠ p_data`: badge "Pagamento antecipado" (venc futuro) ou "Pagamento atrasado" (venc passado). Botão "Ver contrato" → `navigate('/contratos')`. Footer "Total recebido".
+- Seção **Previstos** (se houver): cliente, "Parcela N/T", valor azul. `dias_atraso > 0` → badge destrutiva. `valor_ja_pago > 0` → "Já pago: R$ Y · Falta: R$ Z". Botão "Baixar" → abre `PagamentoModal` existente passando a parcela.
+- Estado vazio: ícone `CalendarOff` + "Nenhuma movimentação neste dia".
+- Footer: botão Fechar.
+- React Query: `['calendario-dia', dataSelecionada]`, `enabled: !!dataSelecionada && isModalOpen`.
+- Após pagar/estornar via PagamentoModal: `queryClient.invalidateQueries({ queryKey: ['calendario'] })` e `['calendario-dia']` + invalidar queries de parcelas/dashboard já existentes.
+
+## 4) Navegação e rota
+
+- `src/components/Layout.tsx`: importar `CalendarDays`, adicionar `{ name: "Calendário", href: "/calendario", icon: CalendarDays }` ao `baseNavigation` entre Parcelas e (Perfil/Admin). Bottom nav mobile passa para 5 itens — ajustar padding/`text-[9px]` se necessário pra caber.
+- `src/App.tsx`: importar `Calendario` e adicionar `<Route path="/calendario" element={<ProtectedRoute><Calendario /></ProtectedRoute>} />` acima do `*`.
+
+## 5) Design system
+
+Usar exclusivamente tokens HSL (`text-success`, `text-primary`, `text-destructive`, `text-muted-foreground`, `bg-muted`). Verificar se `--success` existe em `index.css`; se não, adicionar variável de cor verde no design system antes de usar.
 
 ## Critério de aceite
-- Alterar data: 1 transação, 1 linha em `parcelas_historico`. Sem warning React (setState durante render eliminado).
-- Deletar usuário com >100 parcelas: `audit_logs.details.inventory.historico` mostra contagem exata; CORS responde apenas para origens conhecidas.
+
+Conforme descrito no prompt: 4 cards corretos, 1 valor por dia (verde passado / azul hoje-futuro), navegação de mês, modal com seções condicionais, "Baixar" abre PagamentoModal e invalida cache, "Ver contrato" navega, mobile sem quebra, dias fora do mês atenuados e não clicáveis, sábado/domingo sem destaque diferente.
