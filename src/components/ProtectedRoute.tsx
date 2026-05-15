@@ -2,13 +2,15 @@ import { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useUserRole } from '@/hooks/useUserRole';
 import { DashboardSkeleton } from '@/components/LoadingSkeletons';
+import Layout from '@/components/Layout';
 
 interface ProtectedRouteProps {
   children: ReactNode;
   requireAdmin?: boolean;
+  withLayout?: boolean;
 }
 
-export default function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
+export default function ProtectedRoute({ children, requireAdmin = false, withLayout = true }: ProtectedRouteProps) {
   const { isAdmin, isLoading, role } = useUserRole();
 
   if (isLoading) {
@@ -23,5 +25,5 @@ export default function ProtectedRoute({ children, requireAdmin = false }: Prote
     return <Navigate to="/" replace />;
   }
 
-  return <>{children}</>;
+  return withLayout ? <Layout>{children}</Layout> : <>{children}</>;
 }

@@ -40,23 +40,17 @@ export default function Layout({ children }: LayoutProps) {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      (_event, session) => {
         setUser(session?.user ?? null);
-        if (!session) {
-          navigate('/auth');
-        }
       }
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
-      if (!session) {
-        navigate('/auth');
-      }
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, []);
 
   // Update ultimo_acesso on mount
   useEffect(() => {
@@ -89,10 +83,6 @@ export default function Layout({ children }: LayoutProps) {
       navigate('/auth');
     }
   };
-
-  if (!user) {
-    return null;
-  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">

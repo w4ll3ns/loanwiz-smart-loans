@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserRole } from '@/hooks/useUserRole';
-import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -142,12 +141,6 @@ export default function Admin() {
       setLoadingAudit(false);
     }
   };
-
-  useEffect(() => {
-    if (!roleLoading && !isAdmin) {
-      navigate('/');
-    }
-  }, [isAdmin, roleLoading, navigate]);
 
   useEffect(() => {
     if (isAdmin) {
@@ -468,11 +461,9 @@ export default function Admin() {
 
   if (roleLoading || loading) {
     return (
-      <Layout>
-        <div className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">Carregando...</p>
-        </div>
-      </Layout>
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">Carregando...</p>
+      </div>
     );
   }
 
@@ -481,7 +472,7 @@ export default function Admin() {
   }
 
   return (
-    <Layout>
+    <>
       <div className="space-y-4 md:space-y-6">
         {/* Header */}
         <div>
@@ -1034,6 +1025,6 @@ export default function Admin() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Layout>
+    </>
   );
 }
