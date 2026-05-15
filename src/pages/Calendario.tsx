@@ -103,7 +103,7 @@ export default function Calendario() {
   const totais = data?.totais;
 
   return (
-    <Layout>
+    <>
       <div className="flex flex-col gap-4 md:gap-6">
         <PageHeader title="Calendário" description="Recebimentos e previsões por dia" />
 
@@ -276,6 +276,6 @@ export default function Calendario() {
         onOpenChange={setIsModalOpen}
         data={dataSelecionada}
       />
-    </Layout>
+    </>
   );
 }
