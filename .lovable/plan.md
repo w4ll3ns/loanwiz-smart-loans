@@ -1,73 +1,62 @@
 ## Objetivo
 
-Tornar a exclusão de eventos do histórico atômica e consistente: uma única RPC server-side recalcula `valor_pago`, ajusta `status` da parcela e reabre o contrato se necessário.
+Permitir o status `parcialmente_pago` em `parcelas` (já esperado pela UI e por `dashboard_stats`) e fazer com que a RPC `registrar_pagamento_parcela` o emita automaticamente em pagamentos de juros/parciais — auto-promovendo para `pago` quando o acumulado atinge o valor original.
 
-## 1. Nova migration: RPC `excluir_evento_historico(p_evento_id uuid)`
+## 1. Nova migration
 
-`SECURITY DEFINER`, `SET search_path = public`, retorna `jsonb`.
-
-Lógica:
-
-1. `auth.uid()` obrigatório → `RAISE EXCEPTION 'Not authenticated'`.
-2. Carregar evento + parcela + contrato com ownership e lock pessimista:
-   ```sql
-   SELECT h.id, h.tipo_evento,
-          p.id AS parcela_id, p.valor_original, p.valor,
-          c.id AS contrato_id, c.status AS contrato_status
-   FROM parcelas_historico h
-   JOIN parcelas  p  ON p.id = h.parcela_id
-   JOIN contratos c  ON c.id = p.contrato_id
-   JOIN clientes  cl ON cl.id = c.cliente_id
-   WHERE h.id = p_evento_id AND cl.user_id = auth.uid()
-   FOR UPDATE OF p, c;
-   ```
-   Se `NOT FOUND` → `RAISE EXCEPTION 'Evento não encontrado'`.
-3. `DELETE FROM parcelas_historico WHERE id = p_evento_id`.
-4. Se `tipo_evento = 'pagamento'`:
-   - `v_novo_pago := (SELECT COALESCE(SUM(valor_pago),0) FROM parcelas_historico WHERE parcela_id = v_parcela_id AND tipo_evento = 'pagamento')`.
-   - `v_valor_ref := COALESCE(valor_original, valor)`.
-   - `v_novo_status := CASE WHEN v_novo_pago >= v_valor_ref THEN 'pago' ELSE 'pendente' END`.
-   - `v_nova_data_pag := CASE WHEN v_novo_pago = 0 THEN NULL WHEN v_novo_status = 'pago' THEN CURRENT_DATE ELSE NULL END`. (Mantém a regra atual: só preenche `data_pagamento` se totalmente pago.)
-   - `UPDATE parcelas SET valor_pago = v_novo_pago, status = v_novo_status, data_pagamento = v_nova_data_pag, updated_at = now() WHERE id = v_parcela_id`.
-   - Se `v_novo_status = 'pendente'` E `contrato.status = 'quitado'`:
-     - `UPDATE contratos SET status = 'ativo', updated_at = now() WHERE id = v_contrato_id`.
-     - `v_contrato_reaberto := true`.
-5. Se `tipo_evento <> 'pagamento'` (ex. `alteracao_data`, `estorno`): não mexe em `parcelas`/`contratos`.
-6. `RETURN jsonb_build_object('parcela_status', v_novo_status, 'contrato_reaberto', COALESCE(v_contrato_reaberto, false));`
-
-Permissões:
+### 1.1 Constraint
 ```sql
-REVOKE ALL ON FUNCTION public.excluir_evento_historico(uuid) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.excluir_evento_historico(uuid) TO authenticated;
+ALTER TABLE public.parcelas DROP CONSTRAINT IF EXISTS parcelas_status_check;
+ALTER TABLE public.parcelas
+  ADD CONSTRAINT parcelas_status_check
+  CHECK (status IN ('pendente', 'pago', 'parcialmente_pago', 'vencido'));
 ```
 
-## 2. Frontend: `src/components/parcelas/HistoricoModal.tsx`
-
-Substituir todo o bloco de `handleExcluirPagamento` pelo seguinte fluxo:
-
-```ts
-const { data, error } = await supabase.rpc("excluir_evento_historico", { p_evento_id: registroId });
-if (error) throw error;
-
-toast({ title: "Registro excluído", description: "O registro foi removido do histórico." });
-if ((data as any)?.contrato_reaberto) {
-  toast({ title: "Contrato reaberto", description: "O contrato voltou para ativo." });
-}
-onHistoricoUpdated(parcela);
-onParcelasUpdated();
+### 1.2 Backfill (antes de recriar a função para evitar inconsistência)
+```sql
+UPDATE public.parcelas
+SET status = 'parcialmente_pago', updated_at = now()
+WHERE status = 'pendente'
+  AND COALESCE(valor_pago, 0) > 0
+  AND COALESCE(valor_pago, 0) < COALESCE(valor_original, valor);
 ```
 
-`catch` mantém toast destrutivo com a mensagem do servidor. Remover o import não utilizado de `getLocalDateString`.
+### 1.3 `registrar_pagamento_parcela` — `CREATE OR REPLACE`
+Manter assinatura e lógica atuais, alterando apenas o cálculo de `v_novo_status`:
 
-## 3. O que NÃO muda
+```plpgsql
+v_valor_ref := COALESCE(v_parcela.valor_original, v_parcela.valor);
+IF v_novo_valor_pago >= v_valor_ref THEN
+  v_novo_status := 'pago';
+ELSIF v_novo_valor_pago > 0 THEN
+  v_novo_status := 'parcialmente_pago';
+ELSE
+  v_novo_status := 'pendente';
+END IF;
+```
 
-- RLS atual de `parcelas_historico` continua válida (defesa em profundidade).
-- Sem mudanças em outros consumidores do histórico.
-- Sem alterações na lógica de exibição/filtro do modal.
+Isto cobre os 3 tipos (`total`, `juros`, `parcial`) e auto-promove para `pago` quando a soma dos parciais atinge o valor original. A verificação de "todas as parcelas pagas → contrato quitado" continua disparando quando `v_novo_status = 'pago'` (já existe).
 
-## Critério de aceite
+### 1.4 `estornar_pagamento_parcela` — `CREATE OR REPLACE`
+Continua resetando para `'pendente'` (correto: estorno apaga histórico de pagamentos, então `valor_pago` volta a 0).
 
-- Excluir o último pagamento de um contrato `quitado` → parcela vira `pendente`, contrato vira `ativo`, toast extra "Contrato reaberto".
-- Excluir um evento `alteracao_data` → `valor_pago`/`status` da parcela permanecem inalterados.
-- Excluir um pagamento parcial → `valor_pago` recalculado pela soma restante; status fica `pendente`; `data_pagamento = NULL` se zerou.
-- Falha (rede, permissão) → nenhum estado parcial graças à transação implícita da RPC.
+## 2. Frontend
+
+Sem alterações de código necessárias — as referências a `parcialmente_pago` já existem em:
+- `src/pages/Parcelas.tsx` (filtros, badges, agregações, opção do select)
+- `src/components/NotificacoesVencimento.tsx`
+- `src/components/contratos/RelatorioGenerator.tsx` (badge âmbar `#f59e0b`)
+- RPC `dashboard_stats` (pie chart bucket "Parciais", `total_receber`, `lucro`)
+
+## 3. Verificação pós-migration
+
+- Testar via UI:
+  1. Pagar "juros" numa parcela pendente → badge "Parcial" aparece, filtro "Parcial" mostra a linha.
+  2. Repetir 3 pagamentos parciais até atingir o valor original → status promove para "Pago" automaticamente; se for a última pendente do contrato, contrato vira `quitado`.
+- Conferir no Dashboard que a fatia "Parciais" do gráfico de status aparece com o número correto.
+
+## 4. O que NÃO muda
+
+- RLS, triggers e demais RPCs.
+- `parcelas_historico` continua armazenando cada evento (1 linha por pagamento parcial).
+- Lógica de `data_pagamento` permanece (só preenchida ao quitar a parcela).
