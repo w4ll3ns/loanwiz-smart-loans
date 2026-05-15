@@ -1,26 +1,78 @@
-# Corrigir bug de timezone em pagamentos noturnos
+# Calendário mobile: lista inline + pontos coloridos + RPC com atrasados
 
-## Problema
-Pagamentos registrados após ~21h BRT aparecem no dia seguinte no calendário. Causa: `registrar_pagamento_parcela` grava `now()` (UTC) em `parcelas_historico.data_pagamento` (timestamptz), e as RPCs de calendário fazem `AT TIME ZONE 'UTC'` ao agrupar por dia — somando dois erros.
+Reformular a UX do calendário **apenas em mobile** (< md). Desktop fica intocado. Aproveitar para corrigir bug da RPC `calendario_mensal` que omite atrasados.
 
-## Solução
-Migration única que:
+## 1. Migration: `calendario_mensal` com atrasados
 
-1. **`registrar_pagamento_parcela`**
-   - Valida `p_data_pagamento`: não-nulo e `<= CURRENT_DATE + 1`.
-   - No INSERT do histórico, troca `now()` por `(p_data_pagamento::timestamp AT TIME ZONE 'America/Sao_Paulo')` — grava meia-noite BRT do dia escolhido pelo usuário.
-   - Hora real da operação fica preservada em `created_at`.
+Nova migration que substitui apenas a função `calendario_mensal` (timezone já foi corrigido — manter `America/Sao_Paulo`).
 
-2. **`calendario_mensal` e `calendario_dia_detalhes`**
-   - Trocar todas as ocorrências de `(h.data_pagamento AT TIME ZONE 'UTC')::date` por `(h.data_pagamento AT TIME ZONE 'America/Sao_Paulo')::date`.
+Mudanças no CTE `computado` e no JSON:
 
-3. **`excluir_evento_historico`**: nenhuma alteração necessária (não grava data).
+- `valor` continua: recebido para passado, previsto para hoje/futuro.
+- Novos campos por dia:
+  - `valor_atrasado` numeric — `COALESCE(pr.valor, 0)` quando `dia < CURRENT_DATE`, senão 0.
+  - `qtd_atrasados` int — análogo com `pr.qtd`.
+- Sempre incluir os 6 campos no `jsonb_build_object` (drop o CASE hoje vs resto; manter `ja_recebido_hoje` zerado quando não for hoje).
+- Novos totais: `total_atrasado_mes`, `qtd_atrasados_mes` (somar somente quando `tipo = 'passado'`).
 
-4. **Coluna `data_pagamento`**: permanece `timestamptz` (sem ALTER TYPE).
+Permissões: `REVOKE ALL ... FROM PUBLIC; GRANT EXECUTE ... TO authenticated;`.
 
-5. **Sem backfill**. Comentário no final da migration com query de diagnóstico para o usuário rodar manualmente no SQL Editor e decidir caso a caso.
+## 2. Frontend
 
-## Critério de aceite
-- Pagamento às 22h BRT com data de hoje → aparece no card do dia correto.
-- Data 1 ano no futuro → erro "Data do pagamento não pode ser no futuro".
-- Histórico antigo intocado.
+### 2.1 `src/components/calendario/MobileCalendarioView.tsx` (novo)
+
+Props: `dias`, `mesAtual`, `dataSelecionada`, `onSelectDia`, `onAbrirModal`, `isLoading`.
+
+- Header sticky com "D S T Q Q S S".
+- Grid 7 col, 6 semanas. Dias fora do mês = `<div aria-hidden />` vazio.
+- Cada dia do mês: `<button>` `aspect-square min-h-[44px] flex flex-col items-center justify-center`:
+  - Número centralizado.
+  - Linha de até 3 pontos (`h-1.5 w-1.5 rounded-full gap-0.5`):
+    - verde (`bg-success`) — recebimento (`valor>0 && tipo='passado'`) ou (`tipo='hoje' && ja_recebido_hoje>0`).
+    - azul (`bg-primary`) — previsto (`valor>0 && tipo!='passado'`).
+    - laranja (`bg-destructive`) — `valor_atrasado>0`.
+  - Hoje: `border-2 border-primary font-bold`.
+  - Selecionado: `bg-muted font-semibold`.
+  - Hoje + selecionado: ambos.
+  - `aria-label`, `aria-selected`, `aria-current="date"`.
+- Loading: skeletons pulsando.
+
+Bloco de detalhes abaixo do grid:
+
+- Header: "Quinta-feira, 15 de Maio" (capitalizado, ptBR) + botão ghost "Ver tudo" com `ExternalLink` → `onAbrirModal`.
+- Linhas de totais (omitir as zeradas):
+  - `Check` verde — Recebido: valor + (qtd).
+  - `Clock` azul — Previsto: valor + (qtd).
+  - `AlertTriangle` laranja — Atrasados: valor + (qtd).
+- Lista das movimentações: `useQuery(['calendario-dia', dataSelecionada], rpc calendario_dia_detalhes)`, `enabled: !!dataSelecionada`.
+  - Seção Recebimentos: cards compactos (cliente bold, "Parcela X/Y" + badge tipo, antecipado/atrasado, valor verde à direita). Sem botão "Ver contrato" inline.
+  - Seção Previstos: cards com cliente, parcela, badge atraso, valor azul, e dois botões `flex-1`: "Baixar" (abre `PagamentoModal` local) e "Ver contrato" (`navigate(/contratos?open=...)`).
+  - Vazio: `CalendarOff` + "Nenhuma movimentação neste dia.".
+  - Loading: 2 skeletons.
+- Reaproveita `PagamentoModal`; `onPagamentoConfirmado` invalida `['calendario']`, `['calendario-dia']`, `['parcelas']`, `['dashboard-stats']` (mesmas keys do modal atual), sem fechar nada.
+
+### 2.2 `src/pages/Calendario.tsx`
+
+- Estender tipo `DiaCalendario` com `valor_atrasado: number` e `qtd_atrasados: number` (+ totais novos no `CalendarioMensal`).
+- Estado `dataSelecionada: string` (default = hoje em ISO local). Sincronizar ao trocar mês: hoje se for o mês atual, senão dia 1.
+- `onSelectDia(iso)` apenas atualiza estado (não abre modal).
+- Renderização condicional:
+  - `<div className="md:hidden">`: cards de resumo reduzidos a 2 (Recebido/Previsto, grid 2 col) + `<MobileCalendarioView/>`.
+  - `<div className="hidden md:block">`: 4 cards + grid atual exatamente como hoje (clique abre modal).
+- `DetalheDiaModal` continua sendo aberto:
+  - Em desktop: ao clicar célula (igual hoje).
+  - Em mobile: somente via "Ver tudo" do bloco mobile.
+
+## 3. Critérios de aceite
+
+- Mobile: pontos coloridos (sem R$), tap seleciona, lista atualiza inline, "Ver tudo" abre modal.
+- Parcela vencida e não paga aparece como ponto laranja no dia do vencimento; tocar mostra na lista de atrasados.
+- Hoje + selecionado mostra borda azul + fundo cinza.
+- Pagamento via "Baixar" inline atualiza lista sozinho.
+- Desktop idêntico ao atual.
+
+## Detalhes técnicos
+
+- Cache compartilhado: queryKey `['calendario-dia', data]` é a mesma usada pelo modal — ao abrir "Ver tudo" não há refetch.
+- Não criar nova RPC para a lista; usa `calendario_dia_detalhes`.
+- Não tocar em bottom nav, page header, navegação de mês, nem no `DetalheDiaModal`.
