@@ -1,38 +1,18 @@
-## Refator de `src/components/contratos/ContratoDetails.tsx`
+Simplificar a função PostgreSQL `gerar_parcelas` removendo o overload com 5 parâmetros.
 
-Mesma técnica usada em `Admin.tsx`: extrair lógica para hook e quebrar dialogs em arquivos próprios. Mantém comportamento 1:1, sem migrar para react-query nesta etapa.
+### Contexto
+A migration `20251210210012_41ded218-a764-4808-b30a-0779f1e01303.sql` define dois overloads:
+1. **Completa** (7 parâmetros): `gerar_parcelas(uuid, int, numeric, date, text, boolean DEFAULT true, boolean DEFAULT false)`
+2. **Curta** (5 parâmetros): `gerar_parcelas(uuid, int, numeric, date, text)` — apenas faz `PERFORM` na completa com valores padrão.
 
-### Nova estrutura
+### Verificação de callers
+Todas as chamadas no banco e no código usam a assinatura completa (7 argumentos):
+- `criar_contrato_com_parcelas` (migrations 20260414212311 e 20260515033859) passa os 7 argumentos explicitamente.
+- Nenhum código TypeScript chama `gerar_parcelas` diretamente (usa `criar_contrato_com_parcelas` RPC).
 
-```text
-src/components/contratos/
-  ContratoDetails.tsx              (orquestrador, ~150-180 linhas)
-  types.ts                         (interfaces Contrato e Parcela já exportadas hoje)
-  hooks/
-    useContratoDetails.ts          (estado + side effects + supabase calls)
-  dialogs/
-    PagamentoDialog.tsx            (registrar pagamento — total/parcial/juros)
-    EditarJurosDialog.tsx          (editar tipo/percentual + recalcular_contrato_parcelas)
-    ExcluirContratoDialog.tsx      (AlertDialog com excluir_contrato RPC)
-    HistoricoParcelaDialog.tsx     (já existe? se sim, só consumir)
-    EditarDataParcelaDialog.tsx    (idem)
-```
+### Ação
+Nova migration com:
+- `DROP FUNCTION IF EXISTS public.gerar_parcelas(uuid, integer, numeric, date, text);`
+- `CREATE OR REPLACE FUNCTION public.gerar_parcelas(...)` com a assinatura completa e os `DEFAULT` preservados.
 
-### `useContratoDetails.ts` concentra:
-- Estados: `isDeleteDialogOpen`, `isPagamentoDialogOpen`, `parcelaToPay`, `tipoPagamento`, `valorPagamento`, `dataPagamento`, `isEditDialogOpen`, `editFormData`, `isEditLoading`, `historicoModalOpen`, `parcelaHistorico`, `historicoData`, `editarDataOpen`, `parcelaEditarData`, `isEditingObs`, `obsText`, `isSavingObs`.
-- Efeitos: sync de `obsText` com `contrato.observacoes`; reset de campos quando abre pagamento.
-- Ações: `abrirPagamento`, `confirmarPagamento`, `abrirEditarJuros`, `salvarEditarJuros` (rpc `recalcular_contrato_parcelas`), `excluirContrato` (rpc `excluir_contrato`), `salvarObservacoes`, `abrirHistorico`, `abrirEditarData`.
-- Recebe `{ contrato, onUpdate, onClose }` e devolve `{ state, actions }`.
-
-### `ContratoDetails.tsx` (após o refator)
-- Importa o hook e os dialogs.
-- Renderiza apenas o `Dialog` principal com header/body (lista de parcelas, observações, botões) e monta os dialogs filhos passando estado/handlers do hook.
-- Sem chamadas `supabase.*` diretas e sem RPCs inline.
-
-### Validação
-- `bun run build` ao final (executado pela harness).
-- Checagem manual rápida de fluxos: registrar pagamento (total/parcial), editar juros, excluir contrato, editar observação, abrir histórico e editar data.
-
-### Fora de escopo
-- Migração para `react-query` (fica para uma próxima passada, igual fizemos com Dashboard).
-- Mudanças de UI/UX ou de regras de negócio.
+Nenhum impacto no runtime — o overload curto é apenas um wrapper sem uso real.
