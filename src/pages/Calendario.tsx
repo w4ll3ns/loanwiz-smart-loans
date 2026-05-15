@@ -89,14 +89,14 @@ export default function Calendario() {
 
   if (isError) {
     return (
-      <Layout>
+      <>
         <div className="flex flex-col items-center justify-center py-16 gap-4">
           <p className="text-muted-foreground">Erro ao carregar o calendário.</p>
           <Button onClick={() => { refetch(); toast({ title: "Recarregando..." }); }}>
             Tentar novamente
           </Button>
         </div>
-      </Layout>
+      </>
     );
   }
 
