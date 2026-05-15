@@ -396,6 +396,7 @@ export type Database = {
         }[]
       }
       admin_get_user_stats: { Args: { p_user_id: string }; Returns: Json }
+      admin_promote_user: { Args: { p_user_id: string }; Returns: undefined }
       ajustar_data_parcela: {
         Args: {
           p_data: string
