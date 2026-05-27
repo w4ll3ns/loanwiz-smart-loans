@@ -1,52 +1,57 @@
 
-## Objetivo
+## Decisão
 
-Alinhar os números do "Relatório por Usuário" (admin) com o que o próprio usuário vê no dashboard, e separar capital em circulação de histórico total.
+**A Receber = soma de `valor_original` das parcelas em aberto.** Pagamentos do tipo `juros` e `parcial` entram em "Recebido" (caixa) mas **não** abatem A Receber. Só `tipo='total'` quita parcela (status='pago') e tira do A Receber.
 
-## Problemas atuais em `admin_get_user_stats`
+Como na prática "parcela em aberto" = `status IN ('pendente','parcialmente_pago')`, e essas parcelas devem aparecer pelo valor cheio, a fórmula correta é:
 
-- `valor_emprestado`: soma todos os contratos (inclui `quitado`), divergindo do dashboard que conta só `ativo`.
-- `valor_a_receber`: usa `p.valor` (não `valor_original`) e filtra só `status = 'pendente'`, ignorando `parcialmente_pago`. Subestima o saldo devedor real.
+```sql
+SUM(COALESCE(valor_original, valor))
+WHERE status IN ('pendente','parcialmente_pago')
+```
+
+Isso é exatamente o que o dashboard **já faz hoje**. O ajuste que fizemos no admin foi conceitualmente errado.
 
 ## Mudanças
 
-### 1. Migration: atualizar `admin_get_user_stats`
+### 1. Migration: reverter `admin_get_user_stats.valor_a_receber`
 
-Novo JSON retornado:
-
-```
-{
-  total_clientes,
-  total_contratos,                 -- mantém (todos os contratos)
-  valor_emprestado_ativo,          -- NOVO: SUM(valor_emprestado) WHERE status='ativo'
-  valor_emprestado_total,          -- NOVO: SUM(valor_emprestado) de todos (substitui o antigo valor_emprestado)
-  valor_a_receber,                 -- AJUSTADO: SUM(COALESCE(valor_original, valor) - COALESCE(valor_pago,0))
-                                   --          WHERE status IN ('pendente','parcialmente_pago')
-  valor_recebido                   -- mantém
-}
+De:
+```sql
+SUM(COALESCE(valor_original, valor) - COALESCE(valor_pago, 0))
+WHERE status IN ('pendente','parcialmente_pago')
 ```
 
-Manter `valor_emprestado` como alias do `_total` por compatibilidade temporária (não obrigatório — pode remover já que só o admin consome).
+Para:
+```sql
+SUM(COALESCE(valor_original, valor))
+WHERE status IN ('pendente','parcialmente_pago')
+```
 
-### 2. Frontend: `UserReportPanel.tsx` + `types.ts`
+Demais campos (`valor_emprestado_ativo`, `valor_emprestado_total`, `valor_recebido` etc.) ficam como estão.
 
-- Adicionar `valor_emprestado_ativo` e `valor_emprestado_total` em `UserStats`.
-- No grid de KPIs, trocar o card único "Total Emprestado" por dois cards:
-  - **Em Circulação** → `valor_emprestado_ativo` (contratos ativos)
-  - **Histórico Total** → `valor_emprestado_total` (todos os contratos)
-- "A Receber" continua, agora refletindo saldo devedor real.
-- Grid passa de `lg:grid-cols-4` para `lg:grid-cols-5` (5 cards: Clientes, Contratos, Em Circulação, Histórico, A Receber). Em mobile mantém `grid-cols-2`.
+### 2. Dashboard
 
-### 3. Validação
+Nenhuma mudança — `dashboard_stats.total_receber` já está correto.
 
-Após aplicar, comparar para um usuário de teste:
-- "Em Circulação" do relatório admin == `total_emprestado` do dashboard daquele usuário.
-- "A Receber" do relatório admin == `total_receber` do dashboard daquele usuário.
+### 3. Frontend
 
-## Arquivos afetados
+Sem mudança no `UserReportPanel.tsx`. Só ajustar o sub-rótulo do card "A Receber" de "saldo devedor" para **"parcelas em aberto"** para não induzir leitura errada (juros pago não abate).
+
+### 4. Memória
+
+Atualizar `mem://billing/financial-metrics-definitions` para deixar explícito:
+
+> **A Receber** = SUM(valor_original) das parcelas com status `pendente` ou `parcialmente_pago`. Pagamentos do tipo `juros` e `parcial` **não abatem** A Receber — apenas entram em Recebido/Caixa. Apenas `tipo='total'` (status vira `pago`) tira a parcela do A Receber.
+
+## Validação
+
+Após aplicar:
+- Para usuário com parcela R$ 600 e R$ 100 de juros pago → A Receber mostra R$ 600 (não R$ 500).
+- Admin e dashboard mostram exatamente o mesmo valor de A Receber.
+
+## Arquivos
 
 - Nova migration alterando `admin_get_user_stats`.
-- `src/components/admin/types.ts` — campos novos em `UserStats`.
-- `src/components/admin/UserReportPanel.tsx` — layout dos cards.
-
-Sem mudança em RLS, grants ou outras telas.
+- Pequeno ajuste de label em `src/components/admin/UserReportPanel.tsx`.
+- Update em `mem://billing/financial-metrics-definitions`.
