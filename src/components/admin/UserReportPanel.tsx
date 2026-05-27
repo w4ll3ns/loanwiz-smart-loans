@@ -95,7 +95,7 @@ export function UserReportPanel({
                 <p className="text-lg font-bold">
                   {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(userStats.valor_a_receber)}
                 </p>
-                <p className="text-[10px] text-muted-foreground mt-1">saldo devedor</p>
+                <p className="text-[10px] text-muted-foreground mt-1">parcelas em aberto</p>
               </div>
             </div>
 
