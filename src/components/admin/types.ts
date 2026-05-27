@@ -32,6 +32,8 @@ export interface UserStats {
   total_clientes: number;
   total_contratos: number;
   valor_emprestado: number;
+  valor_emprestado_ativo: number;
+  valor_emprestado_total: number;
   valor_a_receber: number;
   valor_recebido: number;
 }

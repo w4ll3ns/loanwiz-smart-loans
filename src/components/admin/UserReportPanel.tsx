@@ -67,7 +67,7 @@ export function UserReportPanel({
 
         {!loadingReport && selectedReportUser && userStats && (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
               <div className="p-3 rounded-lg border bg-muted/50">
                 <p className="text-xs text-muted-foreground">Clientes</p>
                 <p className="text-lg font-bold">{userStats.total_clientes}</p>
@@ -77,16 +77,25 @@ export function UserReportPanel({
                 <p className="text-lg font-bold">{userStats.total_contratos}</p>
               </div>
               <div className="p-3 rounded-lg border bg-muted/50">
-                <p className="text-xs text-muted-foreground">Total Emprestado</p>
+                <p className="text-xs text-muted-foreground">Em Circulação</p>
                 <p className="text-lg font-bold">
-                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(userStats.valor_emprestado)}
+                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(userStats.valor_emprestado_ativo ?? 0)}
                 </p>
+                <p className="text-[10px] text-muted-foreground mt-1">contratos ativos</p>
+              </div>
+              <div className="p-3 rounded-lg border bg-muted/50">
+                <p className="text-xs text-muted-foreground">Histórico Total</p>
+                <p className="text-lg font-bold">
+                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(userStats.valor_emprestado_total ?? userStats.valor_emprestado ?? 0)}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-1">todos os contratos</p>
               </div>
               <div className="p-3 rounded-lg border bg-muted/50">
                 <p className="text-xs text-muted-foreground">A Receber</p>
                 <p className="text-lg font-bold">
                   {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(userStats.valor_a_receber)}
                 </p>
+                <p className="text-[10px] text-muted-foreground mt-1">saldo devedor</p>
               </div>
             </div>
 
