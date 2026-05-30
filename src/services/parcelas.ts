@@ -27,12 +27,20 @@ export async function registrarPagamento(params: RegistrarPagamentoParams): Prom
   return data as unknown as PagamentoResult;
 }
 
-export async function estornarPagamento(parcelaId: string): Promise<void> {
-  const { error } = await supabase.rpc("estornar_pagamento_parcela", {
+export interface EstornoResult {
+  valor_estornado: number;
+  valor_pago: number;
+  novo_status: string;
+  contrato_reaberto: boolean;
+}
+
+export async function estornarPagamento(parcelaId: string): Promise<EstornoResult> {
+  const { data, error } = await supabase.rpc("estornar_pagamento_parcela", {
     p_parcela_id: parcelaId,
   });
 
   if (error) throw error;
+  return data as unknown as EstornoResult;
 }
 
 export async function loadParcelasComContratos() {
