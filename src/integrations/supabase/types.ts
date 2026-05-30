@@ -457,7 +457,7 @@ export type Database = {
       dashboard_stats: { Args: never; Returns: Json }
       estornar_pagamento_parcela: {
         Args: { p_parcela_id: string }
-        Returns: undefined
+        Returns: Json
       }
       excluir_cliente: { Args: { p_cliente_id: string }; Returns: undefined }
       excluir_contrato: { Args: { p_contrato_id: string }; Returns: undefined }

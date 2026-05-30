@@ -181,12 +181,19 @@ export function useContratoDetails({
     if (!contrato) return;
     try {
       const { estornarPagamento } = await import("@/services/parcelas");
-      await estornarPagamento(parcelaId);
-      toast({ title: "Pagamentos desfeitos", description: "A parcela foi resetada." });
+      const result = await estornarPagamento(parcelaId);
+      toast({
+        title: "Último pagamento estornado",
+        description: `Revertido R$ ${Number(result.valor_estornado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}. Os demais pagamentos foram mantidos.`,
+      });
       onParcelasUpdated(contrato.id);
       onContratoUpdated();
     } catch (error: any) {
-      toast({ title: "Erro", description: "Não foi possível desfazer.", variant: "destructive" });
+      const msg = String(error?.message || "");
+      const description = msg.includes("Não há pagamentos")
+        ? "Esta parcela não possui pagamentos para estornar."
+        : "Não foi possível desfazer.";
+      toast({ title: "Erro", description, variant: "destructive" });
     }
   };
 
