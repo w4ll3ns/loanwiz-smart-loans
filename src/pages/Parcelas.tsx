@@ -191,11 +191,18 @@ export default function Parcelas() {
   const handleMarcarPendente = async (parcelaId: string) => {
     try {
       const { estornarPagamento } = await import("@/services/parcelas");
-      await estornarPagamento(parcelaId);
-      toast({ title: "Pagamentos desfeitos", description: "A parcela foi resetada para pendente." });
+      const result = await estornarPagamento(parcelaId);
+      toast({
+        title: "Último pagamento estornado",
+        description: `Revertido R$ ${Number(result.valor_estornado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}. Os demais pagamentos foram mantidos.`,
+      });
       loadParcelas();
     } catch (error: any) {
-      toast({ title: "Erro ao desfazer", description: "Não foi possível reverter o pagamento.", variant: "destructive" });
+      const msg = String(error?.message || "");
+      const description = msg.includes("Não há pagamentos")
+        ? "Esta parcela não possui pagamentos para estornar."
+        : "Não foi possível reverter o pagamento.";
+      toast({ title: "Erro ao desfazer", description, variant: "destructive" });
     }
   };
 
