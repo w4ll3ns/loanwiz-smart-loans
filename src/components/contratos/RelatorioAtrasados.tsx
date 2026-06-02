@@ -175,96 +175,56 @@ export function RelatorioAtrasados() {
   const title = getReportTitle(showPagas, showAtrasadas, showPendentes);
 
   const buildSummaryCards = (data: ContratoData[]) => {
-    const cards: { label: string; value: string; color: string }[] = [];
-    cards.push({ label: "Clientes", value: data.length.toString(), color: "#333" });
-    if (showPagas) cards.push({ label: "Parcelas Pagas", value: data.reduce((s, d) => s + d.parcPagas, 0).toString(), color: "#22c55e" });
+    const cards: { label: string; value: string; color: string; anchor?: boolean }[] = [];
+    cards.push({ label: "Clientes", value: data.length.toString(), color: "#15201b" });
+    if (showPagas) cards.push({ label: "Parcelas Pagas", value: data.reduce((s, d) => s + d.parcPagas, 0).toString(), color: "#1d7a55" });
     if (showAtrasadas) {
-      cards.push({ label: "Parcelas Atrasadas", value: data.reduce((s, d) => s + d.parcAtrasadas, 0).toString(), color: "#ef4444" });
-      cards.push({ label: "Valor Atrasado", value: `R$ ${data.reduce((s, d) => s + d.valorAtrasado, 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, color: "#ef4444" });
+      cards.push({ label: "Parcelas Atrasadas", value: data.reduce((s, d) => s + d.parcAtrasadas, 0).toString(), color: "#b0322a" });
+      cards.push({ label: "Valor Atrasado", value: `R$ ${data.reduce((s, d) => s + d.valorAtrasado, 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, color: "#b0322a", anchor: true });
     }
     if (showPendentes) {
-      cards.push({ label: "Parcelas Pendentes", value: data.reduce((s, d) => s + d.parcPendentes, 0).toString(), color: "#f59e0b" });
-      cards.push({ label: "Valor Pendente", value: `R$ ${data.reduce((s, d) => s + d.valorPendente, 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, color: "#f59e0b" });
+      cards.push({ label: "Parcelas Pendentes", value: data.reduce((s, d) => s + d.parcPendentes, 0).toString(), color: "#9a6310" });
+      cards.push({ label: "Valor Pendente", value: `R$ ${data.reduce((s, d) => s + d.valorPendente, 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, color: "#9a6310" });
     }
     return cards;
   };
 
   const buildHtml = () => {
     const cards = buildSummaryCards(selectedDados);
-    return `
-      <div style="text-align:center;margin-bottom:20px;border-bottom:3px solid #333;padding-bottom:15px;">
-        <h1 style="color:#1a1a1a;font-size:24px;margin:0 0 5px;font-weight:bold;">${escapeHtml(title)}</h1>
-        <p style="color:#666;font-size:12px;margin:0;">Gerado em ${format(new Date(), "dd/MM/yyyy HH:mm")}</p>
-      </div>
-      <div style="background:#fef2f2;padding:15px;border-radius:8px;margin-bottom:15px;display:grid;grid-template-columns:repeat(${cards.length},1fr);gap:10px;text-align:center;">
-        ${cards.map((c) => `<div><div style="font-size:11px;color:#666;">${c.label}</div><div style="font-size:18px;font-weight:bold;color:${c.color};">${c.value}</div></div>`).join("")}
-      </div>
-      <table style="width:100%;border-collapse:collapse;font-size:12px;">
-        <thead>
-          <tr style="background:#333;color:white;">
-            ${columns.map((c) => `<th style="padding:10px;text-align:${c.align};">${c.header}</th>`).join("")}
-          </tr>
-        </thead>
-        <tbody>
-          ${selectedDados.map((d, i) => `<tr style="background:${i % 2 === 0 ? "#f9f9f9" : "#ffffff"};border-bottom:1px solid #ddd;">
-            ${columns.map((c) => {
-              const val = c.key === "cliente" ? escapeHtml(getCellValue(d, c.key)) : getCellValue(d, c.key);
-              const color = c.color ? `color:${c.color};font-weight:bold;` : "";
-              return `<td style="padding:8px;text-align:${c.align};${color}">${val}</td>`;
-            }).join("")}
-          </tr>`).join("")}
-        </tbody>
-        <tfoot>
-          <tr style="background:#333;color:white;font-weight:bold;">
-            ${columns.map((c) => {
-              const val = c.key === "cliente" ? `TOTAL (${selectedDados.length} clientes)` : getTotalValue(selectedDados, c.key);
-              return `<td style="padding:10px;text-align:${c.align};">${val}</td>`;
-            }).join("")}
-          </tr>
-        </tfoot>
-      </table>
-    `;
+    const filtros: string[] = [];
+    if (showPagas) filtros.push("Pagas");
+    if (showAtrasadas) filtros.push("Atrasadas");
+    if (showPendentes) filtros.push("Pendentes");
+    const rows = selectedDados.map((d) => ({
+      cells: columns.map((c) => ({
+        value: getCellValue(d, c.key),
+        align: c.align,
+        color: c.color,
+      })),
+    }));
+    const totals = columns.map((c) => ({
+      value: c.key === "cliente" ? `TOTAL (${selectedDados.length} clientes)` : getTotalValue(selectedDados, c.key),
+      align: c.align,
+    }));
+    return buildRelatorioAtrasadosHtml({
+      title,
+      columns,
+      cards,
+      rows,
+      totals,
+      totalClientes: selectedDados.length,
+      filtros,
+    });
   };
+
+  const fileBase = () => `relatorio-atrasados-${format(new Date(), "dd-MM-yyyy")}`;
 
   const gerarImagem = async () => {
     if (selectedDados.length === 0) return;
     setGenerating(true);
     try {
-      const tempDiv = document.createElement("div");
-      tempDiv.style.cssText = "position:absolute;left:-9999px;width:800px;padding:40px;background:#ffffff;font-family:Arial,sans-serif;";
-      document.body.appendChild(tempDiv);
-      tempDiv.innerHTML = buildHtml();
-
-      const canvas = await html2canvas(tempDiv, { scale: 2, backgroundColor: "#ffffff", logging: false });
-      document.body.removeChild(tempDiv);
-
-      const fileName = `relatorio-${format(new Date(), "dd-MM-yyyy")}.png`;
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-
-      canvas.toBlob(async (blob) => {
-        if (!blob) return;
-        if (isIOS && navigator.share && navigator.canShare) {
-          const file = new File([blob], fileName, { type: "image/png" });
-          if (navigator.canShare({ files: [file] })) {
-            try {
-              await navigator.share({ files: [file], title: title });
-              toast({ title: "Imagem pronta!", description: "Escolha 'Salvar Imagem' para adicionar à galeria." });
-              return;
-            } catch (err: any) {
-              if (err.name === "AbortError") return;
-            }
-          }
-        }
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = fileName;
-        link.click();
-        URL.revokeObjectURL(url);
-        toast({ title: "Imagem gerada!", description: "O arquivo foi baixado." });
-      }, "image/png");
-    } catch {
-      toast({ title: "Erro ao gerar imagem", variant: "destructive" });
+      const { html, width } = buildHtml();
+      await exportarPng(html, width, `${fileBase()}.png`, title, toast);
     } finally {
       setGenerating(false);
     }
@@ -274,135 +234,8 @@ export function RelatorioAtrasados() {
     if (selectedDados.length === 0) return;
     setGenerating(true);
     try {
-      const pdf = new jsPDF("p", "mm", "a4");
-      const pw = pdf.internal.pageSize.getWidth();
-      const ph = pdf.internal.pageSize.getHeight();
-      const m = 15;
-      let y = 20;
-
-      // Header
-      pdf.setFontSize(16);
-      pdf.setFont("helvetica", "bold");
-      pdf.text(title, pw / 2, y, { align: "center" });
-      y += 6;
-      pdf.setFontSize(9);
-      pdf.setFont("helvetica", "normal");
-      pdf.setTextColor(120, 120, 120);
-      pdf.text(`Gerado em ${format(new Date(), "dd/MM/yyyy HH:mm")}`, pw / 2, y, { align: "center" });
-      pdf.setTextColor(0, 0, 0);
-      y += 4;
-      pdf.setLineWidth(0.8);
-      pdf.line(m, y, pw - m, y);
-      y += 10;
-
-      // Summary cards
-      const cards = buildSummaryCards(selectedDados);
-      pdf.setFillColor(254, 242, 242);
-      pdf.roundedRect(m, y - 4, pw - 2 * m, 18, 3, 3, "F");
-      const colW = (pw - 2 * m) / cards.length;
-      cards.forEach((c, i) => {
-        const x = m + colW * i + colW / 2;
-        pdf.setFontSize(7);
-        pdf.setTextColor(120, 120, 120);
-        pdf.text(c.label, x, y + 2, { align: "center" });
-        pdf.setFontSize(12);
-        pdf.setFont("helvetica", "bold");
-        const rgb = hexToRgb(c.color);
-        pdf.setTextColor(rgb.r, rgb.g, rgb.b);
-        pdf.text(c.value, x, y + 10, { align: "center" });
-      });
-      pdf.setTextColor(0, 0, 0);
-      pdf.setFont("helvetica", "normal");
-      y += 22;
-
-      // Dynamic column widths
-      const totalW = pw - 2 * m;
-      const numDataCols = columns.length - 1; // minus cliente
-      const clienteW = Math.min(70, totalW - numDataCols * 28);
-      const dataCW = (totalW - clienteW) / numDataCols;
-      const colWidths = columns.map((c) => c.key === "cliente" ? clienteW : dataCW);
-
-      // Table header
-      const drawHeader = () => {
-        pdf.setFillColor(50, 50, 50);
-        pdf.rect(m, y - 4, totalW, 7, "F");
-        pdf.setTextColor(255, 255, 255);
-        pdf.setFontSize(8);
-        pdf.setFont("helvetica", "bold");
-        let xP = m + 2;
-        columns.forEach((c, i) => {
-          const align = c.align === "right" ? "right" : undefined;
-          const xPos = c.align === "right" ? xP + colWidths[i] - 2 : xP;
-          pdf.text(c.header, xPos, y, align ? { align } : undefined);
-          xP += colWidths[i];
-        });
-        pdf.setTextColor(0, 0, 0);
-        y += 6;
-      };
-      drawHeader();
-
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(8);
-
-      selectedDados.forEach((d, idx) => {
-        if (y > ph - 25) {
-          pdf.setFontSize(7);
-          pdf.setTextColor(150, 150, 150);
-          pdf.text(`Gerado em ${format(new Date(), "dd/MM/yyyy HH:mm")}`, m, ph - 8);
-          pdf.setTextColor(0, 0, 0);
-          pdf.addPage();
-          y = 20;
-          drawHeader();
-          pdf.setFont("helvetica", "normal");
-          pdf.setFontSize(8);
-        }
-
-        if (idx % 2 === 0) {
-          pdf.setFillColor(248, 248, 248);
-          pdf.rect(m, y - 3.5, totalW, 5.5, "F");
-        }
-
-        let xP = m + 2;
-        columns.forEach((c, i) => {
-          const val = getCellValue(d, c.key);
-          if (c.color) {
-            const rgb = hexToRgb(c.color);
-            pdf.setTextColor(rgb.r, rgb.g, rgb.b);
-            pdf.setFont("helvetica", "bold");
-          }
-          const displayVal = c.key === "cliente" ? val.substring(0, 40) : val;
-          const align = c.align === "right" ? "right" : undefined;
-          const xPos = c.align === "right" ? xP + colWidths[i] - 2 : c.align === "center" ? xP + colWidths[i] / 2 : xP;
-          pdf.text(displayVal, xPos, y, align ? { align } : c.align === "center" ? { align: "center" } : undefined);
-          if (c.color) {
-            pdf.setTextColor(0, 0, 0);
-            pdf.setFont("helvetica", "normal");
-          }
-          xP += colWidths[i];
-        });
-        y += 5.5;
-      });
-
-      // Footer totals
-      pdf.setFillColor(50, 50, 50);
-      pdf.rect(m, y - 3.5, totalW, 7, "F");
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(8);
-      let xP = m + 2;
-      columns.forEach((c, i) => {
-        const val = c.key === "cliente" ? `TOTAL (${selectedDados.length} clientes)` : getTotalValue(selectedDados, c.key);
-        const align = c.align === "right" ? "right" : undefined;
-        const xPos = c.align === "right" ? xP + colWidths[i] - 2 : c.align === "center" ? xP + colWidths[i] / 2 : xP;
-        pdf.text(val, xPos, y, align ? { align } : c.align === "center" ? { align: "center" } : undefined);
-        xP += colWidths[i];
-      });
-      pdf.setTextColor(0, 0, 0);
-
-      pdf.save(`relatorio-${format(new Date(), "dd-MM-yyyy")}.pdf`);
-      toast({ title: "PDF gerado!", description: "O relatório foi baixado." });
-    } catch {
-      toast({ title: "Erro ao gerar PDF", variant: "destructive" });
+      const { html, width } = buildHtml();
+      await exportarPdf(html, width, `${fileBase()}.pdf`, toast);
     } finally {
       setGenerating(false);
     }
