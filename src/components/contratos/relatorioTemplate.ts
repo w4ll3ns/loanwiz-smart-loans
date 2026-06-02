@@ -142,10 +142,10 @@ export function buildRelatorioHtml(
   const cardsGridCols = simplificado ? "1.4fr 1fr 1fr 1.2fr" : "1.4fr 1fr 1fr 1fr 1fr 1.2fr";
 
   const proxVencHtml = proxima
-    ? `${fmtDate(proxima.data_vencimento)} · ${fmtMoney(proxima.valor)}${
-        proximaAtrasada ? ` <span class="tag">Em atraso</span>` : ""
-      }`
+    ? `${fmtDate(proxima.data_vencimento)} · ${fmtMoney(proxima.valor)}`
     : "—";
+  const proxTagHtml =
+    proxima && proximaAtrasada ? `<span class="tag">Em atraso</span>` : "";
 
   const styles = `
     *{box-sizing:border-box;margin:0;padding:0}
