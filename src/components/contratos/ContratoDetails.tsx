@@ -22,6 +22,7 @@ import {
 import { Calendar as CalendarIcon, Check, History, Pencil, RefreshCw, Trash2, Undo2, X } from "lucide-react";
 import { getLabelTipoJuros } from "@/lib/calculos";
 import { RelatorioGenerator } from "./RelatorioGenerator";
+import { RelatorioSimplificadoGenerator } from "./RelatorioSimplificadoGenerator";
 import { HistoricoModal, EditarDataModal } from "@/components/parcelas";
 import type { Contrato, Parcela } from "./types";
 import { useContratoDetails } from "./hooks/useContratoDetails";
@@ -145,6 +146,7 @@ export function ContratoDetails({
 
               <div className="flex flex-wrap gap-2">
                 <RelatorioGenerator contrato={contrato} parcelas={parcelas} />
+                <RelatorioSimplificadoGenerator contrato={contrato} parcelas={parcelas} />
                 {contrato.status !== "quitado" && (
                   <Button variant="outline" size="sm" onClick={c.abrirModalEdicao}>
                     <Pencil className="h-3.5 w-3.5 mr-1.5" />
