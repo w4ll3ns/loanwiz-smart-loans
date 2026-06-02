@@ -19,6 +19,8 @@ const actionLabels: Record<string, string> = {
   delete_user: 'Excluir Usuário',
   change_plan: 'Alterar Plano',
   reset_password: 'Redefinir Senha',
+  estorno_pagamento: 'Estorno de Pagamento',
+  recalculo_contrato: 'Recálculo de Juros',
 };
 
 export function AuditLogsPanel({ auditLogs, loadingAudit, profiles, onLoad }: Props) {
@@ -50,6 +52,7 @@ export function AuditLogsPanel({ auditLogs, loadingAudit, profiles, onLoad }: Pr
                 <TableRow>
                   <TableHead className="min-w-[140px] pl-4">Data</TableHead>
                   <TableHead>Ação</TableHead>
+                <TableHead className="hidden md:table-cell">Executado por</TableHead>
                   <TableHead className="hidden md:table-cell">Usuário Alvo</TableHead>
                   <TableHead className="hidden lg:table-cell">Detalhes</TableHead>
                 </TableRow>
@@ -57,6 +60,7 @@ export function AuditLogsPanel({ auditLogs, loadingAudit, profiles, onLoad }: Pr
               <TableBody>
                 {auditLogs.map((log) => {
                   const targetProfile = profiles.find((p) => p.id === log.target_user_id);
+                const actorProfile = profiles.find((p) => p.id === log.user_id);
                   return (
                     <TableRow key={log.id}>
                       <TableCell className="pl-4 text-sm">
@@ -67,6 +71,9 @@ export function AuditLogsPanel({ auditLogs, loadingAudit, profiles, onLoad }: Pr
                           {actionLabels[log.action] || log.action}
                         </Badge>
                       </TableCell>
+                    <TableCell className="hidden md:table-cell text-sm">
+                      {actorProfile?.nome || actorProfile?.email || log.user_id || '-'}
+                    </TableCell>
                       <TableCell className="hidden md:table-cell text-sm">
                         {targetProfile?.nome || targetProfile?.email || log.target_user_id || '-'}
                       </TableCell>
