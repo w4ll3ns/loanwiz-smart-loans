@@ -1,70 +1,48 @@
 ## Objetivo
 
-Aplicar a identidade visual formal/corporativa do HTML aprovado (`relatorio-simplificado-v2-formal.html`) aos **dois** relatórios da tela de detalhes do contrato, sem mudar os dados de cada um:
+Corrigir dois problemas visuais no CSS do template compartilhado (`src/components/contratos/relatorioTemplate.ts`), refletindo automaticamente nos dois relatórios (detalhado e simplificado). Nenhuma mudança de dados, cálculos ou markup além do necessário.
 
-- **Detalhado** (`RelatorioGenerator.tsx`): todos os dados, inclusive sensíveis (valor emprestado, percentual/juros, resumo completo).
-- **Simplificado** (`RelatorioSimplificadoGenerator.tsx`): sem dados sensíveis.
+## Arquivo único: `src/components/contratos/relatorioTemplate.ts`
 
-Ambos passam a usar **um template HTML compartilhado** e os **mesmos utilitários de exportação** (PNG + PDF gerados do mesmo HTML via html2canvas). A única diferença é o flag `simplificado`.
+Todas as alterações são no bloco `styles` (CSS embutido). O markup já gera a célula de status com `<span class="dot r"></span>Atrasado` e a faixa com `.strip .cell`, `.k`, `.v` e o selo `.tag` dentro de `.next` — então só o CSS precisa mudar.
 
-## Arquivos
+### Problema 1 — Linha atrasada com fundo vermelho sólido
 
-### 1. `index.html` (alterar)
-Trocar o `<link>` atual de fontes (Fraunces + Hanken Grotesk) pelo do novo design — Archivo + Libre Franklin:
-```
-family=Archivo:wght@500;600;700;800&family=Libre+Franklin:wght@400;500;600;700&display=swap
-```
-(mantendo os `preconnect`). As fontes antigas não são mais usadas por nenhum relatório.
-
-### 2. `src/components/contratos/relatorioTemplate.ts` (novo)
-Exporta `buildRelatorioHtml(contrato, parcelas, { simplificado }): { html: string; width: number }`.
-
-Centraliza toda a lógica:
-- **Totais**: `totalPago = Σ valor_pago`, `saldoRestante = valor_total − totalPago`, `pctQuitado` e fração "X de N parcelas".
-- **Contadores**: pagas / atrasadas / pendentes (parcial conta como pendente nos contadores, mantendo `getStatusInfo`).
-- **Próximo vencimento**: 1ª parcela não paga (menor `numero_parcela`); marca selo vermelho "Em atraso" se vencida.
-- **`getStatusInfo(p)`** → `{ texto, classe }` com classes `g`/`a`/`r` (Pago=g, Pendente/Parcial=a, Atrasado=r), aplicando a paleta fixa em hex.
-- **`escapeHtml`** para o nome do cliente.
-- **Colunas dinâmicas**: `numero_parcelas <= 12` → 1 col (≈720px), `13–40` → 2 col (≈1040px), `>40` → 3 col (≈1380px). Distribuição uniforme em ordem (`Math.ceil(n/cols)` por coluna), cada coluna uma `<table>` própria com seu `<thead>`. Retorna `width` para o div temporário.
-- **Markup**: replica fielmente o HTML aprovado — faixa de acento, header (marca + título + "Gerado em…" + bloco Contrato/Situação à direita), bloco Cliente, cards de resumo, strip de metadados (próximo vencimento âmbar + selo), seção parcelas com contadores e grid de colunas, rodapé. Todo CSS embutido inline ou em `<style>` dentro do HTML retornado, com cores em **hex fixo** (paleta do anexo), `font-variant-numeric: tabular-nums` nos valores/datas, e linha atrasada com `box-shadow: inset 3px 0 0 #b0322a`.
-
-**Diferença pelo flag `simplificado`:**
-
+Hoje o CSS tem:
 ```text
-Bloco                                   Detalhado   Simplificado
-Card "Valor emprestado"                    sim          não
-Card "Juros (%) + tipo"                    sim          não
-Card "Valor total devido" (escuro)         sim          sim
-Cards "Total pago" / "Saldo restante"      sim          sim
-Card "Quitação" + barra                    sim          sim
-Strip (próx. venc., data, parcelas,        sim          sim
-  periodicidade, valor parcela)
-Tabela de parcelas (6 colunas)             sim          sim
+tbody tr.late td{box-shadow:inset 3px 0 0 #b0322a}
 ```
-No detalhado os cards extras entram na mesma fileira (grid ajustado para ~6 cards, mantendo o card escuro como âncora). No simplificado, mantém os 4 cards do anexo.
+Já não há background vermelho na linha — mas para garantir e atender ao critério, ajustar/confirmar para:
+```text
+tbody tr.late td { box-shadow: inset 3px 0 0 #b0322a; }
+tbody tr.late:nth-child(even) { background: #f7f8f7; }
+.st.r { color: #b0322a; font-weight: 600; }
+.dot.r { background: #b0322a; }
+```
+Isso mantém zebra normal, faixa vermelha só na borda esquerda e o status `● Atrasado` legível, com Valor / Pago em / Valor pago visíveis.
 
-### 3. `src/components/contratos/relatorioExport.ts` (novo)
-- `exportarPng(html, width, fileName, titulo, toast)`: cria div temporário (`position:absolute; left:-9999px; background:#fff; width`), injeta o HTML, `await document.fonts.ready`, `html2canvas(div, { scale: 2, backgroundColor: '#ffffff', logging: false })`, remove o div, `canvas.toBlob` → download + fluxo iOS (`navigator.share`/`navigator.canShare`) idêntico ao atual.
-- `exportarPdf(html, width, fileName, toast)`: mesmo canvas → `jsPDF('p','mm','a4')` com o fatiamento multipágina do briefing.
-- Função interna `gerarCanvas(html, width)` compartilhada entre os dois.
+### Problema 2 — Faixa de metadados desalinhada
 
-### 4. `src/components/contratos/RelatorioGenerator.tsx` (reescrever, fino)
-Remove todo o HTML/PDF manual. Monta `fileName = contrato-${slug}-${dd-MM-yyyy}`, chama `buildRelatorioHtml(contrato, parcelas, { simplificado: false })` e usa `exportarPng`/`exportarPdf`. Botões mantidos: "Baixar Imagem" / "Baixar PDF".
-
-### 5. `src/components/contratos/RelatorioSimplificadoGenerator.tsx` (reescrever, fino)
-Igual, com `{ simplificado: true }`, `fileName = relatorio-simplificado-${slug}-${dd-MM-yyyy}`. Botões mantidos: "Imagem (simplificado)" / "PDF (simplificado)".
-
-Nenhuma mudança em `ContratoDetails.tsx` (já renderiza os dois) nem em `index.ts`.
+Ajustar o grid da faixa para dar mais largura à primeira célula e tornar cada célula uma coluna flex com baseline única:
+```text
+.strip { grid-template-columns: 1.7fr 1fr 1fr 1fr 1fr; }
+.strip .cell { display: flex; flex-direction: column; }
+.strip .k { min-height: 2.4em; line-height: 1.2; }
+.strip .v { margin-top: auto; }
+.strip .next .v { white-space: nowrap; }
+.strip .next .tag {
+  display: inline-block; margin-top: 6px;
+  font-size: 9.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  background: #b0322a; color: #fff; padding: 2px 8px; border-radius: 4px;
+}
+```
+Os rótulos não são renomeados nem encurtados; o alinhamento é resolvido só por `min-height` + `margin-top:auto`. O selo "EM ATRASO" passa a ficar em bloco controlado abaixo do valor.
 
 ## Critérios de aceitação
-- Os dois relatórios continuam na tela do contrato com seus botões atuais.
-- Ambos usam o layout formal (Archivo + Libre Franklin, fundo branco, números tabulares, status com bolinhas, cards, próximo vencimento com selo, contadores, rodapé).
-- Detalhado mostra dados sensíveis; simplificado não.
-- Tabela em 1/2/3 colunas conforme quantidade, distribuída uniformemente em ordem.
-- Linha atrasada destacada; próximo vencimento sinalizado.
-- PNG e PDF de cada relatório saem idênticos (mesmo HTML); PDF A4 multipágina.
-- `document.fonts.ready` aguardado; fluxo iOS preservado no PNG.
-- Cálculos/status/dados inalterados — só layout e exportação.
+- Parcela atrasada: fundo zebra normal, faixa vermelha só na borda esquerda, `● Atrasado` legível, todos os valores visíveis.
+- Valores da faixa alinhados na mesma base mesmo com rótulo em 2 linhas.
+- Selo "EM ATRASO" abaixo do valor do próximo vencimento, sem quebra acidental.
+- Vale para os dois relatórios; nenhum outro layout/dado/cálculo alterado.
 
 ## QA
-Após implementar, gero PNG/PDF de exemplo num script headless (1, 20 e 45 parcelas) para validar colunas, fontes, cores, badges, selo de atraso e multipágina antes de concluir.
+Gerar PNG headless de exemplo (com 1 parcela atrasada e rótulos de tamanhos diferentes) para validar borda vermelha, legibilidade do status e alinhamento da faixa antes de concluir.

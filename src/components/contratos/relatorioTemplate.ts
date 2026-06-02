@@ -180,15 +180,15 @@ export function buildRelatorioHtml(
     .qrow .frac{font-size:11.5px;color:${PAL.muted};font-weight:500}
     .bar{height:7px;background:#e6ebe8;border-radius:99px;overflow:hidden;margin-top:9px}
     .bar>span{display:block;height:100%;background:${PAL.brand};border-radius:99px}
-    .strip{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr 1fr;gap:0;margin-top:14px;border:1px solid ${PAL.line};border-radius:8px;overflow:hidden}
-    .strip .cell{padding:13px 16px;border-right:1px solid ${PAL.line}}
+    .strip{display:grid;grid-template-columns:1.7fr 1fr 1fr 1fr 1fr;gap:0;margin-top:14px;border:1px solid ${PAL.line};border-radius:8px;overflow:hidden}
+    .strip .cell{padding:13px 16px;border-right:1px solid ${PAL.line};display:flex;flex-direction:column}
     .strip .cell:last-child{border-right:none}
-    .strip .k{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:${PAL.muted};font-weight:600}
-    .strip .v{font-family:"Archivo";font-weight:700;font-size:15px;margin-top:4px;text-transform:capitalize}
+    .strip .k{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:${PAL.muted};font-weight:600;min-height:2.4em;line-height:1.2}
+    .strip .v{font-family:"Archivo";font-weight:700;font-size:15px;margin-top:auto;text-transform:capitalize}
     .strip .next{background:${PAL.amberBg}}
     .strip .next .k{color:${PAL.amber}}
-    .strip .next .v{color:${PAL.amber};text-transform:none}
-    .strip .next .tag{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:${PAL.red};color:#fff;padding:1px 7px;border-radius:4px;margin-left:7px;vertical-align:middle}
+    .strip .next .v{color:${PAL.amber};text-transform:none;white-space:nowrap}
+    .strip .next .tag{display:inline-block;margin-top:6px;font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:${PAL.red};color:#fff;padding:2px 8px;border-radius:4px}
     .sec{display:flex;align-items:center;justify-content:space-between;margin:26px 0 12px}
     .sec h2{font-family:"Archivo";font-weight:700;font-size:17px}
     .counts{font-size:12px;color:${PAL.ink2};display:flex;gap:16px;font-weight:500}
@@ -202,9 +202,10 @@ export function buildRelatorioHtml(
     tbody td{padding:8.5px 8px;border-bottom:1px solid ${PAL.line}}
     tbody tr:nth-child(even){background:${PAL.zebra}}
     tbody tr.late td{box-shadow:inset 3px 0 0 ${PAL.red}}
+    tbody tr.late:nth-child(even){background:${PAL.zebra}}
     .pn{font-weight:700;color:${PAL.ink2}}
     .st{font-weight:600;white-space:nowrap}
-    .st.g{color:${PAL.green}} .st.a{color:${PAL.amber}} .st.r{color:${PAL.red}}
+    .st.g{color:${PAL.green}} .st.a{color:${PAL.amber}} .st.r{color:${PAL.red};font-weight:600}
     .dash{color:#b7bdb9}
     .foot{display:flex;justify-content:space-between;align-items:center;padding:18px 40px 24px;margin-top:16px;border-top:1px solid ${PAL.line};font-size:11px;color:${PAL.muted}}
     .foot .id{font-variant-numeric:tabular-nums}
