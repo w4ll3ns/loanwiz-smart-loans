@@ -10,8 +10,8 @@ import {
 import { AlertTriangle, Download, Image } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
+import { exportarPng, exportarPdf } from "./relatorioExport";
+import { buildRelatorioAtrasadosHtml } from "./relatorioAtrasadosTemplate";
 
 interface ContratoData {
   contratoId: string;
@@ -24,9 +24,6 @@ interface ContratoData {
   totalParcelas: number;
 }
 
-const escapeHtml = (text: string): string =>
-  text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-
 function getReportTitle(showPagas: boolean, showAtrasadas: boolean, showPendentes: boolean): string {
   if (showAtrasadas && showPendentes) return "RELATÓRIO DE CONTRATOS EM ABERTO";
   if (showAtrasadas && !showPendentes) return "RELATÓRIO DE CONTRATOS ATRASADOS";
@@ -38,9 +35,9 @@ function getReportTitle(showPagas: boolean, showAtrasadas: boolean, showPendente
 function buildDynamicColumns(showPagas: boolean, showAtrasadas: boolean, showPendentes: boolean) {
   const cols: { key: string; header: string; align: string; color?: string }[] = [];
   cols.push({ key: "cliente", header: "Cliente", align: "left" });
-  if (showPagas) cols.push({ key: "pagas", header: "Pagas", align: "center", color: "#22c55e" });
-  if (showAtrasadas) cols.push({ key: "atrasadas", header: "Atrasadas", align: "center", color: "#ef4444" });
-  if (showPendentes) cols.push({ key: "pendentes", header: "Pendentes", align: "center", color: "#f59e0b" });
+  if (showPagas) cols.push({ key: "pagas", header: "Pagas", align: "center", color: "#1d7a55" });
+  if (showAtrasadas) cols.push({ key: "atrasadas", header: "Atrasadas", align: "center", color: "#b0322a" });
+  if (showPendentes) cols.push({ key: "pendentes", header: "Pendentes", align: "center", color: "#9a6310" });
   if (showAtrasadas) cols.push({ key: "valorAtrasado", header: "Valor Atrasado", align: "right" });
   if (showPendentes) cols.push({ key: "valorPendente", header: "Valor Pendente", align: "right" });
   return cols;
