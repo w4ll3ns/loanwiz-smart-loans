@@ -253,6 +253,7 @@ export function buildRelatorioHtml(
           <div class="cell next">
             <div class="k">Próximo vencimento</div>
             <div class="v num">${proxVencHtml}</div>
+            ${proxTagHtml}
           </div>
           <div class="cell"><div class="k">Data do empréstimo</div><div class="v num">${fmtDate(contrato.data_emprestimo)}</div></div>
           <div class="cell"><div class="k">Parcelas</div><div class="v num">${contrato.numero_parcelas}</div></div>
