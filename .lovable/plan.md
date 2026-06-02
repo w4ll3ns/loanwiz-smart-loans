@@ -1,48 +1,48 @@
 ## Objetivo
 
-Corrigir dois problemas visuais no CSS do template compartilhado (`src/components/contratos/relatorioTemplate.ts`), refletindo automaticamente nos dois relatórios (detalhado e simplificado). Nenhuma mudança de dados, cálculos ou markup além do necessário.
+Aplicar a identidade visual/corporativa dos relatórios por contrato ao **Relatório de Atrasados** e unificar a exportação (PNG e PDF gerados a partir do mesmo HTML via `relatorioExport.ts`), sem alterar nenhuma consulta Supabase ou cálculo de agregação/totais.
 
-## Arquivo único: `src/components/contratos/relatorioTemplate.ts`
+## 1. Novo arquivo: `relatorioStyles.ts` (tokens compartilhados)
 
-Todas as alterações são no bloco `styles` (CSS embutido). O markup já gera a célula de status com `<span class="dot r"></span>Atrasado` e a faixa com `.strip .cell`, `.k`, `.v` e o selo `.tag` dentro de `.next` — então só o CSS precisa mudar.
+Extrair a paleta e helpers comuns para um módulo reutilizado pelos dois templates:
 
-### Problema 1 — Linha atrasada com fundo vermelho sólido
+- `PAL` (tinta `#15201b`, tinta-2 `#3d4a44`, muted `#7a857f`, linha `#e3e7e4`, lineStrong `#c8cfcb`, marca `#0f6b4f`/escuro `#0a4f3a`, pago `#1d7a55`, atrasado `#b0322a`, pendente `#9a6310`, zebra `#f7f8f7`).
+- `escapeHtml`.
+- CSS comuns: faixa de acento verde no topo (`accent-top`), `.num` (tabular-nums), cabeçalho estilo extrato (`head`, `brand`, `head h1`, `.gen`, `.right`), rodapé (`foot`), reset base e fonte (`Libre Franklin`/`Archivo`).
+- `relatorioTemplate.ts` passa a importar `PAL`/`escapeHtml`/blocos de CSS deste módulo (refactor leve — mesmo visual de hoje).
 
-Hoje o CSS tem:
-```text
-tbody tr.late td{box-shadow:inset 3px 0 0 #b0322a}
-```
-Já não há background vermelho na linha — mas para garantir e atender ao critério, ajustar/confirmar para:
-```text
-tbody tr.late td { box-shadow: inset 3px 0 0 #b0322a; }
-tbody tr.late:nth-child(even) { background: #f7f8f7; }
-.st.r { color: #b0322a; font-weight: 600; }
-.dot.r { background: #b0322a; }
-```
-Isso mantém zebra normal, faixa vermelha só na borda esquerda e o status `● Atrasado` legível, com Valor / Pago em / Valor pago visíveis.
+## 2. Novo arquivo: `relatorioAtrasadosTemplate.ts`
 
-### Problema 2 — Faixa de metadados desalinhada
+Exporta `buildRelatorioAtrasadosHtml(args)` recebendo os dados já calculados pelo componente (selectedDados, columns, cards, title, contadores) — **sem refazer agregação**. Gera HTML com:
 
-Ajustar o grid da faixa para dar mais largura à primeira célula e tornar cada célula uma coluna flex com baseline única:
-```text
-.strip { grid-template-columns: 1.7fr 1fr 1fr 1fr 1fr; }
-.strip .cell { display: flex; flex-direction: column; }
-.strip .k { min-height: 2.4em; line-height: 1.2; }
-.strip .v { margin-top: auto; }
-.strip .next .v { white-space: nowrap; }
-.strip .next .tag {
-  display: inline-block; margin-top: 6px;
-  font-size: 9.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
-  background: #b0322a; color: #fff; padding: 2px 8px; border-radius: 4px;
-}
-```
-Os rótulos não são renomeados nem encurtados; o alinhamento é resolvido só por `min-height` + `margin-top:auto`. O selo "EM ATRASO" passa a ficar em bloco controlado abaixo do valor.
+- `width` ~960px.
+- Faixa de acento verde + cabeçalho: esquerda "● WS Empréstimos" + título em **Title Case** (converter o resultado de `getReportTitle`, hoje em MAIÚSCULAS) + "Gerado em dd/MM/yyyy às HH:mm". Direita: resumo do filtro ativo (chips "Pagas"/"Atrasadas"/"Pendentes" conforme switches) e "Clientes: N".
+- Cards de resumo no padrão novo (cards brancos, borda `#e3e7e4`, rótulo muted maiúsculo, valor Archivo bold). Card "Valor Atrasado" como âncora (card escuro `#15201b`/texto branco). Mantém exatamente os cards que `buildSummaryCards` decide.
+- Tabela única: thead borda inferior `1.5px solid #15201b`, rótulos muted maiúsculos; linhas zebra `#f7f8f7`; numéricas à direita, contagens centralizadas e coloridas por status (texto colorido, sem fundo); cliente à esquerda.
+- `tfoot`: linha âncora `#15201b` texto branco, "TOTAL (N clientes)" + totais por coluna.
+- Rodapé discreto + data.
+
+## 3. Refatorar `RelatorioAtrasados.tsx`
+
+PRESERVAR intacto: modal, switches, seleção/checkboxes, contadores, `loadDados`, agregação, `filteredDados`, `selectedDados`, `buildDynamicColumns`, `getCellValue`, `getTotalValue`, `getReportTitle`, `buildSummaryCards`, linha de totais e filtros.
+
+Mudanças:
+- Remover imports `jsPDF`/`html2canvas` locais e a função `hexToRgb`.
+- Remover a função `gerarPDF` (desenho manual) e o `buildHtml` antigo + `gerarImagem` manual.
+- Ajustar cores das colunas/cards (`buildDynamicColumns`, `buildSummaryCards`) para a paleta nova (`#1d7a55`/`#b0322a`/`#9a6310`, e `#15201b` no lugar de `#333`) — apenas valores de cor, sem mudar a lógica de quais aparecem.
+- `gerarImagem`/`gerarPDF` passam a montar HTML via `buildRelatorioAtrasadosHtml(...)` e chamar `exportarPng`/`exportarPdf` de `relatorioExport.ts` (que já aguarda `document.fonts.ready` e preserva fluxo iOS).
+- Nome do arquivo: `relatorio-atrasados-${dd-MM-yyyy}.png|.pdf`.
+- Botões "Baixar Imagem" / "Baixar PDF" e ícones mantidos.
 
 ## Critérios de aceitação
-- Parcela atrasada: fundo zebra normal, faixa vermelha só na borda esquerda, `● Atrasado` legível, todos os valores visíveis.
-- Valores da faixa alinhados na mesma base mesmo com rótulo em 2 linhas.
-- Selo "EM ATRASO" abaixo do valor do próximo vencimento, sem quebra acidental.
-- Vale para os dois relatórios; nenhum outro layout/dado/cálculo alterado.
+
+- Modal, filtros, seleção, colunas dinâmicas e totais funcionam como antes.
+- Relatório (imagem e PDF) usa Archivo + Libre Franklin, fundo branco, faixa de acento verde, números tabulares, paleta nova, cards/cabeçalho/rodapé no padrão dos outros relatórios.
+- PNG e PDF visualmente idênticos (mesmo HTML via html2canvas); PDF A4 multipágina.
+- `gerarPDF` manual e `hexToRgb` removidos.
+- Cores antigas (`#22c55e`, `#ef4444`, `#f59e0b`, `#333`, `#fef2f2`) não aparecem mais.
+- Nenhuma consulta Supabase nem cálculo alterado.
 
 ## QA
-Gerar PNG headless de exemplo (com 1 parcela atrasada e rótulos de tamanhos diferentes) para validar borda vermelha, legibilidade do status e alinhamento da faixa antes de concluir.
+
+Gerar PNG headless de exemplo (vários clientes, filtros variados) para validar faixa verde, cabeçalho, cards âncora, zebra, contagens coloridas e tfoot antes de concluir.

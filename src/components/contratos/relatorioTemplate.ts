@@ -1,22 +1,6 @@
 import { format } from "date-fns";
 import type { Contrato, Parcela } from "./ContratoDetails";
-
-const PAL = {
-  ink: "#15201b",
-  ink2: "#3d4a44",
-  muted: "#7a857f",
-  line: "#e3e7e4",
-  lineStrong: "#c8cfcb",
-  brand: "#0f6b4f",
-  brandD: "#0a4f3a",
-  green: "#1d7a55",
-  greenBg: "#eaf4ee",
-  amber: "#9a6310",
-  amberBg: "#f7eedb",
-  red: "#b0322a",
-  redBg: "#f6e3e1",
-  zebra: "#f7f8f7",
-};
+import { PAL, escapeHtml } from "./relatorioStyles";
 
 const periodicidadeLabel: Record<string, string> = {
   diario: "Diário",
@@ -29,14 +13,6 @@ const tipoJurosLabel: Record<string, string> = {
   simples: "Simples",
   composto: "Composto",
 };
-
-export function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
 
 const fmtMoney = (v: number) =>
   `R$ ${Number(v || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
