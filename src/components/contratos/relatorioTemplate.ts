@@ -167,8 +167,8 @@ export function buildRelatorioHtml(
     .cards{display:grid;grid-template-columns:${cardsGridCols};gap:12px;margin-top:20px}
     .card{border:1px solid ${PAL.line};border-radius:8px;padding:16px 18px;background:#fff}
     .card .lbl{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:${PAL.muted};font-weight:600}
-    .card .big{font-family:"Archivo";font-weight:800;font-size:27px;margin-top:8px;line-height:1}
-    .card .big.sm{font-size:21px}
+    .card .big{font-family:"Archivo";font-weight:800;font-size:27px;margin-top:8px;line-height:1.05;white-space:nowrap}
+    .card .big.sm{font-size:18px}
     .card .card-sub{font-size:11px;color:${PAL.muted};margin-top:5px}
     .card.dark{background:${PAL.ink};border-color:${PAL.ink}}
     .card.dark .lbl{color:#9fb0a8}
