@@ -1,47 +1,70 @@
 ## Objetivo
 
-Adicionar um segundo relatório — **"Relatório Simplificado"** — na tela de detalhes do contrato, sem alterar o `RelatorioGenerator` existente. A nova versão é limpa, bonita e omite dados sensíveis (principal, percentual, tipo de juros e o resumo financeiro), adequada para compartilhar com o cliente.
+Aplicar a identidade visual formal/corporativa do HTML aprovado (`relatorio-simplificado-v2-formal.html`) aos **dois** relatórios da tela de detalhes do contrato, sem mudar os dados de cada um:
 
-## Arquivos alterados
+- **Detalhado** (`RelatorioGenerator.tsx`): todos os dados, inclusive sensíveis (valor emprestado, percentual/juros, resumo completo).
+- **Simplificado** (`RelatorioSimplificadoGenerator.tsx`): sem dados sensíveis.
 
-### 1. `index.html` (novo)
-Adicionar no `<head>` os links das Google Fonts Fraunces + Hanken Grotesk (com `preconnect`), para o layout renderizar com a tipografia aprovada.
+Ambos passam a usar **um template HTML compartilhado** e os **mesmos utilitários de exportação** (PNG + PDF gerados do mesmo HTML via html2canvas). A única diferença é o flag `simplificado`.
 
-### 2. `src/components/contratos/RelatorioSimplificadoGenerator.tsx` (novo)
-Componente com props `{ contrato: Contrato; parcelas: Parcela[] }` (tipos importados de `./ContratoDetails`) e dois botões:
-- **"Imagem (simplificado)"** → PNG
-- **"PDF (simplificado)"** → PDF A4 multipágina
+## Arquivos
 
-Estrutura interna:
-- `escapeHtml` e `getStatusInfo` reaproveitados do componente atual (status: pago / parcialmente_pago→Parcial / vencida e não paga→Atrasado / Pendente), porém mapeando para as cores de badge do novo design.
-- Função única `montarHtml()` que monta o markup aprovado num `div` temporário fora da tela (`position:absolute; left:-9999px; width:800px; background:#fff`), com cores fixas em hex e fontes Fraunces (títulos/valores) e Hanken Grotesk (corpo).
-- Campos exibidos **somente**: nome do cliente, valor total devido (destaque), data do empréstimo, quantidade de parcelas, periodicidade, status, e a barra de quitação em % (`soma(valor_pago)/valor_total`). **Não** renderiza `valor_emprestado`, `percentual`, `tipo_juros` nem resumo "Emprestado/Saldo/Quitado em R$".
-- Tabela de parcelas com colunas: Nº · Vencimento · Valor · Status (badge arredondado colorido) · Pagamento · Valor Pago.
-- Geração: `await document.fonts.ready` → `html2canvas(tempDiv, { scale: 2, backgroundColor: '#ffffff', logging: false })` → remover o `tempDiv`. PNG e PDF partem do **mesmo canvas**.
-  - **PNG**: `canvas.toBlob` reaproveitando o fluxo de download e o caminho iOS (`navigator.share`/`navigator.canShare`) idêntico ao componente atual.
-  - **PDF**: A4 retrato, fatiamento multipágina conforme o trecho fornecido na tarefa.
-- Nomes dos arquivos: `relatorio-simplificado-${nome.replace(/\s+/g,'-')}-${format(new Date(),'dd-MM-yyyy')}.png|.pdf`.
-- `useToast` para feedback de sucesso/erro.
-
-Cores dos badges (a partir do `getStatusInfo`):
-```text
-Pago     → fundo #e7f1ec, texto #0f6b4f
-Pendente → fundo #fbf0db, texto #b87514
-Parcial  → fundo #fbf0db, texto #b87514
-Atrasado → fundo #f7e4e2, texto #b3261e
+### 1. `index.html` (alterar)
+Trocar o `<link>` atual de fontes (Fraunces + Hanken Grotesk) pelo do novo design — Archivo + Libre Franklin:
 ```
+family=Archivo:wght@500;600;700;800&family=Libre+Franklin:wght@400;500;600;700&display=swap
+```
+(mantendo os `preconnect`). As fontes antigas não são mais usadas por nenhum relatório.
 
-### 3. `src/components/contratos/index.ts` (alterado)
-Adicionar `export { RelatorioSimplificadoGenerator } from './RelatorioSimplificadoGenerator';`.
+### 2. `src/components/contratos/relatorioTemplate.ts` (novo)
+Exporta `buildRelatorioHtml(contrato, parcelas, { simplificado }): { html: string; width: number }`.
 
-### 4. `src/components/contratos/ContratoDetails.tsx` (alterado)
-Importar o novo componente e renderizá-lo logo após `<RelatorioGenerator ... />` (linha ~147), dentro da mesma `div.flex.flex-wrap.gap-2`, mantendo o detalhado intacto.
+Centraliza toda a lógica:
+- **Totais**: `totalPago = Σ valor_pago`, `saldoRestante = valor_total − totalPago`, `pctQuitado` e fração "X de N parcelas".
+- **Contadores**: pagas / atrasadas / pendentes (parcial conta como pendente nos contadores, mantendo `getStatusInfo`).
+- **Próximo vencimento**: 1ª parcela não paga (menor `numero_parcela`); marca selo vermelho "Em atraso" se vencida.
+- **`getStatusInfo(p)`** → `{ texto, classe }` com classes `g`/`a`/`r` (Pago=g, Pendente/Parcial=a, Atrasado=r), aplicando a paleta fixa em hex.
+- **`escapeHtml`** para o nome do cliente.
+- **Colunas dinâmicas**: `numero_parcelas <= 12` → 1 col (≈720px), `13–40` → 2 col (≈1040px), `>40` → 3 col (≈1380px). Distribuição uniforme em ordem (`Math.ceil(n/cols)` por coluna), cada coluna uma `<table>` própria com seu `<thead>`. Retorna `width` para o div temporário.
+- **Markup**: replica fielmente o HTML aprovado — faixa de acento, header (marca + título + "Gerado em…" + bloco Contrato/Situação à direita), bloco Cliente, cards de resumo, strip de metadados (próximo vencimento âmbar + selo), seção parcelas com contadores e grid de colunas, rodapé. Todo CSS embutido inline ou em `<style>` dentro do HTML retornado, com cores em **hex fixo** (paleta do anexo), `font-variant-numeric: tabular-nums` nos valores/datas, e linha atrasada com `box-shadow: inset 3px 0 0 #b0322a`.
 
-## Critérios de aceitação (resumo)
-- Relatório detalhado atual segue funcionando sem alteração.
-- Novo gerador aparece ao lado dos botões existentes na tela do contrato.
-- Simplificado mostra só os campos não sensíveis + barra de quitação + tabela completa.
-- PNG e PDF saem do mesmo HTML via html2canvas; PDF em A4 multipágina; fontes e cores corretas; `document.fonts.ready` aguardado; fluxo iOS reaproveitado no PNG.
+**Diferença pelo flag `simplificado`:**
+
+```text
+Bloco                                   Detalhado   Simplificado
+Card "Valor emprestado"                    sim          não
+Card "Juros (%) + tipo"                    sim          não
+Card "Valor total devido" (escuro)         sim          sim
+Cards "Total pago" / "Saldo restante"      sim          sim
+Card "Quitação" + barra                    sim          sim
+Strip (próx. venc., data, parcelas,        sim          sim
+  periodicidade, valor parcela)
+Tabela de parcelas (6 colunas)             sim          sim
+```
+No detalhado os cards extras entram na mesma fileira (grid ajustado para ~6 cards, mantendo o card escuro como âncora). No simplificado, mantém os 4 cards do anexo.
+
+### 3. `src/components/contratos/relatorioExport.ts` (novo)
+- `exportarPng(html, width, fileName, titulo, toast)`: cria div temporário (`position:absolute; left:-9999px; background:#fff; width`), injeta o HTML, `await document.fonts.ready`, `html2canvas(div, { scale: 2, backgroundColor: '#ffffff', logging: false })`, remove o div, `canvas.toBlob` → download + fluxo iOS (`navigator.share`/`navigator.canShare`) idêntico ao atual.
+- `exportarPdf(html, width, fileName, toast)`: mesmo canvas → `jsPDF('p','mm','a4')` com o fatiamento multipágina do briefing.
+- Função interna `gerarCanvas(html, width)` compartilhada entre os dois.
+
+### 4. `src/components/contratos/RelatorioGenerator.tsx` (reescrever, fino)
+Remove todo o HTML/PDF manual. Monta `fileName = contrato-${slug}-${dd-MM-yyyy}`, chama `buildRelatorioHtml(contrato, parcelas, { simplificado: false })` e usa `exportarPng`/`exportarPdf`. Botões mantidos: "Baixar Imagem" / "Baixar PDF".
+
+### 5. `src/components/contratos/RelatorioSimplificadoGenerator.tsx` (reescrever, fino)
+Igual, com `{ simplificado: true }`, `fileName = relatorio-simplificado-${slug}-${dd-MM-yyyy}`. Botões mantidos: "Imagem (simplificado)" / "PDF (simplificado)".
+
+Nenhuma mudança em `ContratoDetails.tsx` (já renderiza os dois) nem em `index.ts`.
+
+## Critérios de aceitação
+- Os dois relatórios continuam na tela do contrato com seus botões atuais.
+- Ambos usam o layout formal (Archivo + Libre Franklin, fundo branco, números tabulares, status com bolinhas, cards, próximo vencimento com selo, contadores, rodapé).
+- Detalhado mostra dados sensíveis; simplificado não.
+- Tabela em 1/2/3 colunas conforme quantidade, distribuída uniformemente em ordem.
+- Linha atrasada destacada; próximo vencimento sinalizado.
+- PNG e PDF de cada relatório saem idênticos (mesmo HTML); PDF A4 multipágina.
+- `document.fonts.ready` aguardado; fluxo iOS preservado no PNG.
+- Cálculos/status/dados inalterados — só layout e exportação.
 
 ## QA
-Após implementar, gero a imagem/PDF localmente em um script de teste com dados de exemplo, converto para imagem e inspeciono visualmente (overflow, cores, fontes, badges, multipágina) antes de concluir.
+Após implementar, gero PNG/PDF de exemplo num script headless (1, 20 e 45 parcelas) para validar colunas, fontes, cores, badges, selo de atraso e multipágina antes de concluir.
