@@ -281,6 +281,7 @@ export function ContratoDetails({
                             <Button
                               size="sm"
                               variant="outline"
+                              disabled={c.estornandoId === parcela.id}
                               onClick={() => c.handleDesfazerPagamento(parcela.id)}
                               className="w-full h-9 text-warning hover:bg-warning hover:text-warning-foreground"
                             >
