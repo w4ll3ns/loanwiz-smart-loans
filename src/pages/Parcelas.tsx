@@ -190,6 +190,8 @@ export default function Parcelas() {
   };
 
   const handleMarcarPendente = async (parcelaId: string) => {
+    if (estornandoId) return;
+    setEstornandoId(parcelaId);
     try {
       const { estornarPagamento } = await import("@/services/parcelas");
       const result = await estornarPagamento(parcelaId);
@@ -204,6 +206,8 @@ export default function Parcelas() {
         ? "Esta parcela não possui pagamentos para estornar."
         : "Não foi possível reverter o pagamento.";
       toast({ title: "Erro ao desfazer", description, variant: "destructive" });
+    } finally {
+      setEstornandoId(null);
     }
   };
 
