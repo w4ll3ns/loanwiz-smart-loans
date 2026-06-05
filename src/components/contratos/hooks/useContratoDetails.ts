@@ -182,6 +182,8 @@ export function useContratoDetails({
 
   const handleDesfazerPagamento = async (parcelaId: string) => {
     if (!contrato) return;
+    if (estornandoId) return;
+    setEstornandoId(parcelaId);
     try {
       const { estornarPagamento } = await import("@/services/parcelas");
       const result = await estornarPagamento(parcelaId);
@@ -197,6 +199,8 @@ export function useContratoDetails({
         ? "Esta parcela não possui pagamentos para estornar."
         : "Não foi possível desfazer.";
       toast({ title: "Erro", description, variant: "destructive" });
+    } finally {
+      setEstornandoId(null);
     }
   };
 
