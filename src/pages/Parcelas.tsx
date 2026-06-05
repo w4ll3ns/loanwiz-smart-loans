@@ -502,7 +502,7 @@ export default function Parcelas() {
                             <Check className="h-3.5 w-3.5 mr-1" />Baixar
                           </Button>
                         ) : (
-                          <Button variant="outline" size="sm" onClick={() => handleMarcarPendente(parcela.id)} className="flex-1 text-warning hover:bg-warning hover:text-warning-foreground h-9 text-xs px-2">
+                          <Button variant="outline" size="sm" disabled={estornandoId === parcela.id} onClick={() => handleMarcarPendente(parcela.id)} className="flex-1 text-warning hover:bg-warning hover:text-warning-foreground h-9 text-xs px-2">
                             <Undo2 className="h-3.5 w-3.5 mr-1" />Desfazer
                           </Button>
                         )}
