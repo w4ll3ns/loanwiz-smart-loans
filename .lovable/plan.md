@@ -1,48 +1,59 @@
-## Objetivo
+## Avaliação encontrada
 
-Aplicar a identidade visual/corporativa dos relatórios por contrato ao **Relatório de Atrasados** e unificar a exportação (PNG e PDF gerados a partir do mesmo HTML via `relatorioExport.ts`), sem alterar nenhuma consulta Supabase ou cálculo de agregação/totais.
+- Usuário: **Italo Bruno C Silva** (`italobruno820@gmail.com`).
+- Cliente do print: **Taiza Campelo Almeida**.
+- Parcela afetada: **Parcela 1**, vencimento **05/06/2026**, valor original **R$ 960,00**.
+- Estado atual: **Pago**, com **R$ 1.440,00** pago.
+- O histórico atual mantém:
+  - pagamento parcial inicial de **R$ 960,00**;
+  - três pagamentos de juros de **R$ 160,00**;
+  - alterações de vencimento até **05/06/2026**.
+- Os logs mostram dois estornos em sequência hoje:
+  - primeiro removeu um juros de **R$ 160,00**, baixando de **R$ 1.760,00** para **R$ 1.600,00**;
+  - segundo removeu outro juros de **R$ 160,00**, baixando de **R$ 1.600,00** para **R$ 1.440,00**.
 
-## 1. Novo arquivo: `relatorioStyles.ts` (tokens compartilhados)
+## O que provavelmente aconteceu
 
-Extrair a paleta e helpers comuns para um módulo reutilizado pelos dois templates:
+O botão **Desfazer** da tela de parcelas já chama a função segura `estornar_pagamento_parcela`, que remove somente o último pagamento. O estranho aqui é que ele foi acionado mais de uma vez, ou houve tentativa pelo histórico/fluxo antigo.
 
-- `PAL` (tinta `#15201b`, tinta-2 `#3d4a44`, muted `#7a857f`, linha `#e3e7e4`, lineStrong `#c8cfcb`, marca `#0f6b4f`/escuro `#0a4f3a`, pago `#1d7a55`, atrasado `#b0322a`, pendente `#9a6310`, zebra `#f7f8f7`).
-- `escapeHtml`.
-- CSS comuns: faixa de acento verde no topo (`accent-top`), `.num` (tabular-nums), cabeçalho estilo extrato (`head`, `brand`, `head h1`, `.gen`, `.right`), rodapé (`foot`), reset base e fonte (`Libre Franklin`/`Archivo`).
-- `relatorioTemplate.ts` passa a importar `PAL`/`escapeHtml`/blocos de CSS deste módulo (refactor leve — mesmo visual de hoje).
+Além disso, existe uma função antiga no banco, `excluir_evento_historico`, usada pelo modal de histórico, que recalcula status de forma mais frágil: quando ainda existe pagamento parcial, ela pode voltar a parcela para `pendente` em vez de `parcialmente_pago`, e usa `CURRENT_DATE` para data de pagamento. Ela não parece ter sido a operação registrada nesses logs, mas é um ponto de risco para confusão/perda visual de histórico.
 
-## 2. Novo arquivo: `relatorioAtrasadosTemplate.ts`
+## Plano para corrigir os dados da cliente
 
-Exporta `buildRelatorioAtrasadosHtml(args)` recebendo os dados já calculados pelo componente (selectedDados, columns, cards, title, contadores) — **sem refazer agregação**. Gera HTML com:
+1. **Restaurar o estado anterior aos dois estornos indevidos**
+   - Recriar os dois pagamentos de juros de **R$ 160,00** removidos:
+     - um com data de pagamento **05/06/2026**;
+     - outro com data de lançamento original **06/05/2026 22:29:57.956967+00**.
+   - Ajustar a parcela para:
+     - `valor_pago = 1760.00`;
+     - `status = 'pago'`;
+     - `data_pagamento = '2026-06-05'`.
+   - Manter o contrato como `quitado`.
 
-- `width` ~960px.
-- Faixa de acento verde + cabeçalho: esquerda "● WS Empréstimos" + título em **Title Case** (converter o resultado de `getReportTitle`, hoje em MAIÚSCULAS) + "Gerado em dd/MM/yyyy às HH:mm". Direita: resumo do filtro ativo (chips "Pagas"/"Atrasadas"/"Pendentes" conforme switches) e "Clientes: N".
-- Cards de resumo no padrão novo (cards brancos, borda `#e3e7e4`, rótulo muted maiúsculo, valor Archivo bold). Card "Valor Atrasado" como âncora (card escuro `#15201b`/texto branco). Mantém exatamente os cards que `buildSummaryCards` decide.
-- Tabela única: thead borda inferior `1.5px solid #15201b`, rótulos muted maiúsculos; linhas zebra `#f7f8f7`; numéricas à direita, contagens centralizadas e coloridas por status (texto colorido, sem fundo); cliente à esquerda.
-- `tfoot`: linha âncora `#15201b` texto branco, "TOTAL (N clientes)" + totais por coluna.
-- Rodapé discreto + data.
+2. **Desfazer somente a última baixa, como solicitado**
+   - Depois de restaurar, remover apenas a última baixa que ele precisa refazer.
+   - Resultado esperado final:
+     - `valor_pago = 1600.00`;
+     - `status = 'pago'`;
+     - histórico preservado com o pagamento parcial e os juros anteriores;
+     - apenas o último pagamento de juros de **R$ 160,00** removido.
 
-## 3. Refatorar `RelatorioAtrasados.tsx`
+3. **Registrar a intervenção com segurança**
+   - Fazer a correção por SQL de dados, sem alterar estrutura do banco.
+   - Inserir um registro em `audit_logs` descrevendo a restauração manual e o estorno único aplicado.
 
-PRESERVAR intacto: modal, switches, seleção/checkboxes, contadores, `loadDados`, agregação, `filteredDados`, `selectedDados`, `buildDynamicColumns`, `getCellValue`, `getTotalValue`, `getReportTitle`, `buildSummaryCards`, linha de totais e filtros.
+## Plano para evitar recorrência
 
-Mudanças:
-- Remover imports `jsPDF`/`html2canvas` locais e a função `hexToRgb`.
-- Remover a função `gerarPDF` (desenho manual) e o `buildHtml` antigo + `gerarImagem` manual.
-- Ajustar cores das colunas/cards (`buildDynamicColumns`, `buildSummaryCards`) para a paleta nova (`#1d7a55`/`#b0322a`/`#9a6310`, e `#15201b` no lugar de `#333`) — apenas valores de cor, sem mudar a lógica de quais aparecem.
-- `gerarImagem`/`gerarPDF` passam a montar HTML via `buildRelatorioAtrasadosHtml(...)` e chamar `exportarPng`/`exportarPdf` de `relatorioExport.ts` (que já aguarda `document.fonts.ready` e preserva fluxo iOS).
-- Nome do arquivo: `relatorio-atrasados-${dd-MM-yyyy}.png|.pdf`.
-- Botões "Baixar Imagem" / "Baixar PDF" e ícones mantidos.
+1. **Adicionar proteção contra duplo clique no botão Desfazer**
+   - Nas telas que têm `Desfazer`, bloquear o botão enquanto a operação estiver em andamento.
+   - Isso evita dois estornos seguidos por toque duplo, rede lenta ou repetição de clique.
 
-## Critérios de aceitação
+2. **Corrigir a função antiga do histórico**
+   - Atualizar `excluir_evento_historico` para usar a mesma regra da função segura:
+     - se soma paga >= valor da parcela: `pago`;
+     - se soma paga > 0: `parcialmente_pago`;
+     - se soma paga = 0: `pendente`.
+   - Evitar que exclusão manual pelo histórico deixe status incorreto.
 
-- Modal, filtros, seleção, colunas dinâmicas e totais funcionam como antes.
-- Relatório (imagem e PDF) usa Archivo + Libre Franklin, fundo branco, faixa de acento verde, números tabulares, paleta nova, cards/cabeçalho/rodapé no padrão dos outros relatórios.
-- PNG e PDF visualmente idênticos (mesmo HTML via html2canvas); PDF A4 multipágina.
-- `gerarPDF` manual e `hexToRgb` removidos.
-- Cores antigas (`#22c55e`, `#ef4444`, `#f59e0b`, `#333`, `#fef2f2`) não aparecem mais.
-- Nenhuma consulta Supabase nem cálculo alterado.
-
-## QA
-
-Gerar PNG headless de exemplo (vários clientes, filtros variados) para validar faixa verde, cabeçalho, cards âncora, zebra, contagens coloridas e tfoot antes de concluir.
+3. **Sem alterar cálculos de agregação ou regras de negócio existentes**
+   - A mudança fica restrita ao fluxo de estorno/exclusão de histórico e à proteção visual/estado de carregamento.
