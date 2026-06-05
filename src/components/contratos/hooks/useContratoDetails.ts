@@ -293,6 +293,7 @@ export function useContratoDetails({
     dataPagamento, setDataPagamento,
     abrirModalPagamento, handleConfirmarPagamento,
     handleDesfazerPagamento,
+    estornandoId,
     calcularJuros,
     // editar juros
     isEditDialogOpen, setIsEditDialogOpen,
