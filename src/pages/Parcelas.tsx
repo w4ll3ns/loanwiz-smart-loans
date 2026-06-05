@@ -563,7 +563,7 @@ export default function Parcelas() {
                               <Check className="h-3.5 w-3.5" />
                             </Button>
                           ) : (
-                            <Button variant="outline" size="sm" onClick={() => handleMarcarPendente(parcela.id)} className="h-8 w-8 p-0 text-warning hover:bg-warning hover:text-warning-foreground" title="Desfazer">
+                            <Button variant="outline" size="sm" disabled={estornandoId === parcela.id} onClick={() => handleMarcarPendente(parcela.id)} className="h-8 w-8 p-0 text-warning hover:bg-warning hover:text-warning-foreground" title="Desfazer">
                               <Undo2 className="h-3.5 w-3.5" />
                             </Button>
                           )}
