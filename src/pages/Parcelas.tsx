@@ -82,6 +82,7 @@ export default function Parcelas() {
   const [pagamentosHoje, setPagamentosHoje] = useState<number>(0);
   const [parcelasRecebidoHojeIds, setParcelasRecebidoHojeIds] = useState<string[]>([]);
   const [cardFilter, setCardFilter] = useState<"recebido_hoje" | "vencido" | null>(null);
+  const [estornandoId, setEstornandoId] = useState<string | null>(null);
   const { toast } = useToast();
   const { canCreate, userEmail } = useUserRole();
 
@@ -189,6 +190,8 @@ export default function Parcelas() {
   };
 
   const handleMarcarPendente = async (parcelaId: string) => {
+    if (estornandoId) return;
+    setEstornandoId(parcelaId);
     try {
       const { estornarPagamento } = await import("@/services/parcelas");
       const result = await estornarPagamento(parcelaId);
@@ -203,6 +206,8 @@ export default function Parcelas() {
         ? "Esta parcela não possui pagamentos para estornar."
         : "Não foi possível reverter o pagamento.";
       toast({ title: "Erro ao desfazer", description, variant: "destructive" });
+    } finally {
+      setEstornandoId(null);
     }
   };
 
@@ -497,7 +502,7 @@ export default function Parcelas() {
                             <Check className="h-3.5 w-3.5 mr-1" />Baixar
                           </Button>
                         ) : (
-                          <Button variant="outline" size="sm" onClick={() => handleMarcarPendente(parcela.id)} className="flex-1 text-warning hover:bg-warning hover:text-warning-foreground h-9 text-xs px-2">
+                          <Button variant="outline" size="sm" disabled={estornandoId === parcela.id} onClick={() => handleMarcarPendente(parcela.id)} className="flex-1 text-warning hover:bg-warning hover:text-warning-foreground h-9 text-xs px-2">
                             <Undo2 className="h-3.5 w-3.5 mr-1" />Desfazer
                           </Button>
                         )}
@@ -558,7 +563,7 @@ export default function Parcelas() {
                               <Check className="h-3.5 w-3.5" />
                             </Button>
                           ) : (
-                            <Button variant="outline" size="sm" onClick={() => handleMarcarPendente(parcela.id)} className="h-8 w-8 p-0 text-warning hover:bg-warning hover:text-warning-foreground" title="Desfazer">
+                            <Button variant="outline" size="sm" disabled={estornandoId === parcela.id} onClick={() => handleMarcarPendente(parcela.id)} className="h-8 w-8 p-0 text-warning hover:bg-warning hover:text-warning-foreground" title="Desfazer">
                               <Undo2 className="h-3.5 w-3.5" />
                             </Button>
                           )}

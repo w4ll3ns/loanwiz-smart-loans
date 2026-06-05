@@ -49,6 +49,9 @@ export function useContratoDetails({
   const [editarDataOpen, setEditarDataOpen] = useState(false);
   const [parcelaEditarData, setParcelaEditarData] = useState<any>(null);
 
+  // Estorno em andamento (proteção contra duplo clique)
+  const [estornandoId, setEstornandoId] = useState<string | null>(null);
+
   // Observações
   const [isEditingObs, setIsEditingObs] = useState(false);
   const [obsText, setObsText] = useState(contrato?.observacoes || "");
@@ -179,6 +182,8 @@ export function useContratoDetails({
 
   const handleDesfazerPagamento = async (parcelaId: string) => {
     if (!contrato) return;
+    if (estornandoId) return;
+    setEstornandoId(parcelaId);
     try {
       const { estornarPagamento } = await import("@/services/parcelas");
       const result = await estornarPagamento(parcelaId);
@@ -194,6 +199,8 @@ export function useContratoDetails({
         ? "Esta parcela não possui pagamentos para estornar."
         : "Não foi possível desfazer.";
       toast({ title: "Erro", description, variant: "destructive" });
+    } finally {
+      setEstornandoId(null);
     }
   };
 
@@ -286,6 +293,7 @@ export function useContratoDetails({
     dataPagamento, setDataPagamento,
     abrirModalPagamento, handleConfirmarPagamento,
     handleDesfazerPagamento,
+    estornandoId,
     calcularJuros,
     // editar juros
     isEditDialogOpen, setIsEditDialogOpen,
