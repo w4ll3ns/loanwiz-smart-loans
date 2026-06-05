@@ -49,6 +49,9 @@ export function useContratoDetails({
   const [editarDataOpen, setEditarDataOpen] = useState(false);
   const [parcelaEditarData, setParcelaEditarData] = useState<any>(null);
 
+  // Estorno em andamento (proteção contra duplo clique)
+  const [estornandoId, setEstornandoId] = useState<string | null>(null);
+
   // Observações
   const [isEditingObs, setIsEditingObs] = useState(false);
   const [obsText, setObsText] = useState(contrato?.observacoes || "");
