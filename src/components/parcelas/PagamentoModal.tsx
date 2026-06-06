@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +16,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { getLocalDateString } from "@/lib/utils";
 import { calcularJurosParcela } from "@/lib/calculos";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Parcela {
   id: string;
@@ -48,7 +49,14 @@ export function PagamentoModal({ isOpen, onOpenChange, parcela, onPagamentoConfi
   const [valorPagamento, setValorPagamento] = useState<string>("");
   const [observacaoPagamento, setObservacaoPagamento] = useState<string>("");
   const [dataPagamento, setDataPagamento] = useState<string>(getLocalDateString());
+  const [novaDataVencimento, setNovaDataVencimento] = useState<string>("");
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (isOpen && parcela) {
+      setNovaDataVencimento(parcela.data_vencimento);
+    }
+  }, [isOpen, parcela?.id, parcela?.data_vencimento]);
 
   const calcularJuros = (p: Parcela) => {
     return calcularJurosParcela(
@@ -85,6 +93,25 @@ export function PagamentoModal({ isOpen, onOpenChange, parcela, onPagamentoConfi
         dataPagamento: dataPagamento,
         observacao: observacaoPagamento.trim() || undefined,
       });
+
+      // Em pagamentos de juros / valor personalizado, permite empurrar o vencimento
+      if ((tipoPagamento === "juros" || tipoPagamento === "personalizado") &&
+          novaDataVencimento && novaDataVencimento !== parcela.data_vencimento) {
+        const { error: dataError } = await supabase.rpc("alterar_data_parcela", {
+          p_parcela_id: parcela.id,
+          p_nova_data: novaDataVencimento,
+          p_justificativa: tipoPagamento === "juros"
+            ? "Nova data definida ao registrar pagamento de juros"
+            : "Nova data definida ao registrar pagamento de valor personalizado",
+        });
+        if (dataError) {
+          toast({
+            title: "Pagamento registrado, mas o vencimento não foi alterado",
+            description: "Use o botão de alterar vencimento para ajustar a data.",
+            variant: "destructive",
+          });
+        }
+      }
 
       toast({
         title: result.novo_status === "pago" ? "Parcela quitada!" : "Pagamento parcial registrado",
