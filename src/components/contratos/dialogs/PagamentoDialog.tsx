@@ -25,6 +25,8 @@ interface Props {
   setValorPagamento: (v: string) => void;
   dataPagamento: string;
   setDataPagamento: (v: string) => void;
+  novaDataVencimento: string;
+  setNovaDataVencimento: (v: string) => void;
   calcularJuros: (p: Parcela) => number;
   onConfirmar: () => void;
 }
@@ -40,6 +42,8 @@ export function PagamentoDialog({
   setValorPagamento,
   dataPagamento,
   setDataPagamento,
+  novaDataVencimento,
+  setNovaDataVencimento,
   calcularJuros,
   onConfirmar,
 }: Props) {
@@ -98,6 +102,21 @@ export function PagamentoDialog({
                   onChange={(e) => setValorPagamento(e.target.value)}
                   placeholder="0,00"
                 />
+              </div>
+            )}
+
+            {(tipoPagamento === "juros" || tipoPagamento === "personalizado") && (
+              <div className="space-y-1.5">
+                <Label htmlFor="det-nova-data-venc" className="text-xs">
+                  Nova data de vencimento <span className="text-muted-foreground font-normal">(opcional)</span>
+                </Label>
+                <Input
+                  id="det-nova-data-venc"
+                  type="date"
+                  value={novaDataVencimento}
+                  onChange={(e) => setNovaDataVencimento(e.target.value)}
+                />
+                <p className="text-[11px] text-muted-foreground">Deixe a data atual para não alterar o vencimento.</p>
               </div>
             )}
 
