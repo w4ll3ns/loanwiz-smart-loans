@@ -7,12 +7,13 @@ import { Input } from "@/components/ui/input";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Upload, Search, Download, FileText, DollarSign, CheckCircle2, AlertTriangle, Clock, Info } from "lucide-react";
+import { Upload, Search, Download, FileText, DollarSign, CheckCircle2, AlertTriangle, Clock, Info, FileSpreadsheet, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { getLocalDateString } from "@/lib/utils";
 import { removerAcentos, calcularDiasAtraso } from "@/lib/calculos";
 import { exportarCsv } from "@/lib/exportCsv";
+import { exportarPlanilhaCompleta } from "@/components/contratos/exportPlanilhaCompleta";
 import { useUserRole } from "@/hooks/useUserRole";
 import { AccessRestrictedModal } from "@/components/AccessRestrictedModal";
 import { ContratoForm, ContratoDetails, ImportComprovante, RelatorioAtrasados } from "@/components/contratos";
@@ -43,6 +44,7 @@ export default function Contratos() {
   const [statusFilter, setStatusFilter] = useState<"ativos" | "quitados" | "todos">("ativos");
   const [searchTerm, setSearchTerm] = useState("");
   const [initialFormData, setInitialFormData] = useState<Partial<ContratoFormData> | undefined>(undefined);
+  const [isExportandoPlanilha, setIsExportandoPlanilha] = useState(false);
   const { toast } = useToast();
   const { canCreate, userEmail } = useUserRole();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -212,6 +214,32 @@ export default function Contratos() {
     }
   };
 
+  const handleExportarPlanilha = async () => {
+    if (contratosFiltrados.length === 0) {
+      toast({
+        title: "Nada para exportar",
+        description: "Não há contratos na lista atual.",
+      });
+      return;
+    }
+    try {
+      setIsExportandoPlanilha(true);
+      await exportarPlanilhaCompleta(contratosFiltrados);
+      toast({
+        title: "Planilha gerada",
+        description: "O download da planilha foi iniciado.",
+      });
+    } catch (error) {
+      toast({
+        title: "Não foi possível gerar a planilha",
+        description: "Verifique sua conexão e tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExportandoPlanilha(false);
+    }
+  };
+
   return (
     <div className="space-y-4 md:space-y-5">
       <PageHeader
@@ -357,6 +385,14 @@ export default function Contratos() {
                 }}>
                   <Download className="h-3 w-3 mr-1" />
                   CSV
+                </Button>
+                <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground flex-shrink-0" onClick={handleExportarPlanilha} disabled={isExportandoPlanilha}>
+                  {isExportandoPlanilha ? (
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  ) : (
+                    <FileSpreadsheet className="h-3 w-3 mr-1" />
+                  )}
+                  {isExportandoPlanilha ? "Gerando..." : "Planilha"}
                 </Button>
               </div>
               <div className="overflow-x-auto -mx-1 px-1">
