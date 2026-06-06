@@ -44,6 +44,7 @@ export default function Contratos() {
   const [statusFilter, setStatusFilter] = useState<"ativos" | "quitados" | "todos">("ativos");
   const [searchTerm, setSearchTerm] = useState("");
   const [initialFormData, setInitialFormData] = useState<Partial<ContratoFormData> | undefined>(undefined);
+  const [isExportandoPlanilha, setIsExportandoPlanilha] = useState(false);
   const { toast } = useToast();
   const { canCreate, userEmail } = useUserRole();
   const [searchParams, setSearchParams] = useSearchParams();
