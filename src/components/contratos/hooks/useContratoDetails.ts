@@ -312,6 +312,7 @@ export function useContratoDetails({
     parcelaToPay, tipoPagamento, setTipoPagamento,
     valorPagamento, setValorPagamento,
     dataPagamento, setDataPagamento,
+    novaDataVencimento, setNovaDataVencimento,
     abrirModalPagamento, handleConfirmarPagamento,
     handleDesfazerPagamento,
     estornandoId,
