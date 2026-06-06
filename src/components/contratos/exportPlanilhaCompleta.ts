@@ -99,6 +99,13 @@ export async function exportarPlanilhaCompleta(contratos: Contrato[]) {
   const numeroParcelaPorId = new Map(parcelas.map((p) => [p.id, p.numero_parcela]));
   const contratoPorParcela = new Map(parcelas.map((p) => [p.id, p.contrato_id]));
 
+  // Ordena parcelas: cliente → contrato → número da parcela
+  parcelas.sort((a, b) => {
+    const cmp = ordenarPorCliente(a.contrato_id, b.contrato_id);
+    if (cmp !== 0) return cmp;
+    return a.numero_parcela - b.numero_parcela;
+  });
+
   // Busca histórico em lotes
   const historico: HistoricoRow[] = [];
   for (let i = 0; i < parcelaIds.length; i += 200) {
@@ -112,6 +119,15 @@ export async function exportarPlanilhaCompleta(contratos: Contrato[]) {
     if (error) throw error;
     historico.push(...((data || []) as HistoricoRow[]));
   }
+
+  // Ordena histórico: cliente → contrato → número da parcela → data do evento
+  historico.sort((a, b) => {
+    const cmp = ordenarPorCliente(contratoPorParcela.get(a.parcela_id), contratoPorParcela.get(b.parcela_id));
+    if (cmp !== 0) return cmp;
+    const np = (numeroParcelaPorId.get(a.parcela_id) ?? 0) - (numeroParcelaPorId.get(b.parcela_id) ?? 0);
+    if (np !== 0) return np;
+    return new Date(a.data_pagamento).getTime() - new Date(b.data_pagamento).getTime();
+  });
 
   // Aba Contratos
   const abaContratos: PlanilhaAba = {
