@@ -72,6 +72,15 @@ interface HistoricoRow {
 export async function exportarPlanilhaCompleta(contratos: Contrato[]) {
   const contratoIds = contratos.map((c) => c.id);
   const nomePorContrato = new Map(contratos.map((c) => [c.id, c.clientes?.nome || ""]));
+  // Ordem dos contratos para manter parcelas do mesmo contrato agrupadas
+  const ordemContrato = new Map(contratos.map((c, i) => [c.id, i]));
+  const chaveCliente = (contratoId: string | undefined) =>
+    removerAcentos((nomePorContrato.get(contratoId || "") || "").toLowerCase());
+  const ordenarPorCliente = (aId: string | undefined, bId: string | undefined) => {
+    const cmp = chaveCliente(aId).localeCompare(chaveCliente(bId));
+    if (cmp !== 0) return cmp;
+    return (ordemContrato.get(aId || "") ?? 0) - (ordemContrato.get(bId || "") ?? 0);
+  };
 
   // Busca parcelas (em lotes para respeitar o limite do .in)
   const parcelas: ParcelaRow[] = [];
