@@ -386,6 +386,14 @@ export default function Contratos() {
                   <Download className="h-3 w-3 mr-1" />
                   CSV
                 </Button>
+                <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground flex-shrink-0" onClick={handleExportarPlanilha} disabled={isExportandoPlanilha}>
+                  {isExportandoPlanilha ? (
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  ) : (
+                    <FileSpreadsheet className="h-3 w-3 mr-1" />
+                  )}
+                  {isExportandoPlanilha ? "Gerando..." : "Planilha"}
+                </Button>
               </div>
               <div className="overflow-x-auto -mx-1 px-1">
                 <div className="filter-toggle-group w-full">
