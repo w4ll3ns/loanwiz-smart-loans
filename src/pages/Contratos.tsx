@@ -7,12 +7,13 @@ import { Input } from "@/components/ui/input";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Upload, Search, Download, FileText, DollarSign, CheckCircle2, AlertTriangle, Clock, Info } from "lucide-react";
+import { Upload, Search, Download, FileText, DollarSign, CheckCircle2, AlertTriangle, Clock, Info, FileSpreadsheet, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { getLocalDateString } from "@/lib/utils";
 import { removerAcentos, calcularDiasAtraso } from "@/lib/calculos";
 import { exportarCsv } from "@/lib/exportCsv";
+import { exportarPlanilhaCompleta } from "@/components/contratos/exportPlanilhaCompleta";
 import { useUserRole } from "@/hooks/useUserRole";
 import { AccessRestrictedModal } from "@/components/AccessRestrictedModal";
 import { ContratoForm, ContratoDetails, ImportComprovante, RelatorioAtrasados } from "@/components/contratos";
