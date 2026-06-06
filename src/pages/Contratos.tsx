@@ -214,6 +214,32 @@ export default function Contratos() {
     }
   };
 
+  const handleExportarPlanilha = async () => {
+    if (contratosFiltrados.length === 0) {
+      toast({
+        title: "Nada para exportar",
+        description: "Não há contratos na lista atual.",
+      });
+      return;
+    }
+    try {
+      setIsExportandoPlanilha(true);
+      await exportarPlanilhaCompleta(contratosFiltrados);
+      toast({
+        title: "Planilha gerada",
+        description: "O download da planilha foi iniciado.",
+      });
+    } catch (error) {
+      toast({
+        title: "Não foi possível gerar a planilha",
+        description: "Verifique sua conexão e tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExportandoPlanilha(false);
+    }
+  };
+
   return (
     <div className="space-y-4 md:space-y-5">
       <PageHeader
