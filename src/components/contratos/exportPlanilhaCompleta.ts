@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { exportarXlsx, type PlanilhaAba } from "@/lib/exportXlsx";
+import { removerAcentos } from "@/lib/calculos";
 import type { Contrato } from "./types";
 
 const fmtMoeda = (v: number | null | undefined) =>
