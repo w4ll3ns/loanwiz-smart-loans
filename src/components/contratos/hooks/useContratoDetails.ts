@@ -31,6 +31,7 @@ export function useContratoDetails({
   const [tipoPagamento, setTipoPagamento] = useState<string>("total");
   const [valorPagamento, setValorPagamento] = useState<string>("");
   const [dataPagamento, setDataPagamento] = useState<string>("");
+  const [novaDataVencimento, setNovaDataVencimento] = useState<string>("");
 
   // Editar juros
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -127,6 +128,7 @@ export function useContratoDetails({
     setTipoPagamento("total");
     setValorPagamento(parcela.valor.toString());
     setDataPagamento(getLocalDateString());
+    setNovaDataVencimento(parcela.data_vencimento);
     setIsPagamentoDialogOpen(true);
   };
 
@@ -155,6 +157,25 @@ export function useContratoDetails({
         valor,
         dataPagamento,
       });
+
+      // Em pagamentos de juros / valor personalizado, permite empurrar o vencimento
+      if ((tipoPagamento === "juros" || tipoPagamento === "personalizado") &&
+          novaDataVencimento && novaDataVencimento !== parcelaToPay.data_vencimento) {
+        const { error: dataError } = await supabase.rpc("alterar_data_parcela", {
+          p_parcela_id: parcelaToPay.id,
+          p_nova_data: novaDataVencimento,
+          p_justificativa: tipoPagamento === "juros"
+            ? "Nova data definida ao registrar pagamento de juros"
+            : "Nova data definida ao registrar pagamento de valor personalizado",
+        });
+        if (dataError) {
+          toast({
+            title: "Pagamento registrado, mas o vencimento não foi alterado",
+            description: "Use o botão de alterar vencimento para ajustar a data.",
+            variant: "destructive",
+          });
+        }
+      }
 
       toast({
         title: result.novo_status === "pago" ? "Parcela quitada!" : "Pagamento parcial registrado",
@@ -291,6 +312,7 @@ export function useContratoDetails({
     parcelaToPay, tipoPagamento, setTipoPagamento,
     valorPagamento, setValorPagamento,
     dataPagamento, setDataPagamento,
+    novaDataVencimento, setNovaDataVencimento,
     abrirModalPagamento, handleConfirmarPagamento,
     handleDesfazerPagamento,
     estornandoId,

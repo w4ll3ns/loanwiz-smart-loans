@@ -338,6 +338,8 @@ export function ContratoDetails({
         setValorPagamento={c.setValorPagamento}
         dataPagamento={c.dataPagamento}
         setDataPagamento={c.setDataPagamento}
+        novaDataVencimento={c.novaDataVencimento}
+        setNovaDataVencimento={c.setNovaDataVencimento}
         calcularJuros={c.calcularJuros}
         onConfirmar={c.handleConfirmarPagamento}
       />
