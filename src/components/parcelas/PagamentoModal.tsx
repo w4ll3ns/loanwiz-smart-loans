@@ -200,6 +200,16 @@ export function PagamentoModal({ isOpen, onOpenChange, parcela, onPagamentoConfi
               </div>
             )}
 
+            {(tipoPagamento === "juros" || tipoPagamento === "personalizado") && (
+              <div className="space-y-1.5">
+                <Label htmlFor="nova-data-venc" className="text-xs">
+                  Nova data de vencimento <span className="text-muted-foreground font-normal">(opcional)</span>
+                </Label>
+                <Input id="nova-data-venc" type="date" value={novaDataVencimento} onChange={(e) => setNovaDataVencimento(e.target.value)} />
+                <p className="text-[11px] text-muted-foreground">Deixe a data atual para não alterar o vencimento.</p>
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <Label htmlFor="data-pagamento" className="text-xs">Data do pagamento</Label>
               <Input id="data-pagamento" type="date" value={dataPagamento} onChange={(e) => setDataPagamento(e.target.value)} max={getLocalDateString()} />
