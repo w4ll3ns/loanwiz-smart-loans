@@ -28,6 +28,7 @@ import { exportarCsv } from "@/lib/exportCsv";
 import { PagamentoModal, HistoricoModal, EditarDataModal } from "@/components/parcelas";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface Parcela {
   id: string;
