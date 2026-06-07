@@ -287,20 +287,44 @@ export default function Parcelas() {
 
   const totalPendente = dashboardParcelas.filter(p => p.status !== "pago").reduce((acc, p) => acc + Number(p.valor_original || p.valor), 0);
   const totalPago = dashboardParcelas.reduce((acc, p) => acc + (Number(p.valor_pago) || 0), 0);
+  const mapaParcela = new Map(dashboardParcelas.map(p => [p.id, p]));
   const idsDashboard = new Set(dashboardParcelas.map(p => p.id));
-  const mapaContrato = new Map(dashboardParcelas.map(p => [p.id, p.contratos]));
-  const totalJurosRecebido = (historicoPagamentos || [])
+  const lucroDoEvento = (
+    e: { tipo_pagamento: string | null; valor_pago: number | null },
+    parcela?: Parcela,
+  ) => {
+    const valor = Number(e.valor_pago) || 0;
+    if (e.tipo_pagamento === 'juros' || e.tipo_pagamento === 'parcial') return valor;
+    if (e.tipo_pagamento === 'total') {
+      const c = parcela?.contratos;
+      const principal = Number(c?.valor_emprestado || 0) / (c?.numero_parcelas || 1);
+      return Math.max(valor - principal, 0);
+    }
+    return 0;
+  };
+  const detalhesLucro = (historicoPagamentos || [])
     .filter(e => idsDashboard.has(e.parcela_id))
-    .reduce((acc, e) => {
-      const valor = Number(e.valor_pago) || 0;
-      if (e.tipo_pagamento === 'juros' || e.tipo_pagamento === 'parcial') return acc + valor;
-      if (e.tipo_pagamento === 'total') {
-        const c = mapaContrato.get(e.parcela_id);
-        const principal = Number(c?.valor_emprestado || 0) / (c?.numero_parcelas || 1);
-        return acc + Math.max(valor - principal, 0);
-      }
-      return acc;
-    }, 0);
+    .map(e => {
+      const parcela = mapaParcela.get(e.parcela_id);
+      const c = parcela?.contratos;
+      const principal = Number(c?.valor_emprestado || 0) / (c?.numero_parcelas || 1);
+      return {
+        id: e.id,
+        data: e.data_pagamento,
+        cliente: c?.clientes?.nome || 'Cliente',
+        numeroParcela: parcela?.numero_parcela ?? null,
+        tipo: e.tipo_pagamento,
+        valorPago: Number(e.valor_pago) || 0,
+        principal,
+        lucro: lucroDoEvento(e, parcela),
+      };
+    })
+    .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+  const totalJurosRecebido = detalhesLucro.reduce((acc, d) => acc + d.lucro, 0);
+  const lucroJuros = detalhesLucro.filter(d => d.tipo === 'juros').reduce((acc, d) => acc + d.lucro, 0);
+  const lucroParcial = detalhesLucro.filter(d => d.tipo === 'parcial').reduce((acc, d) => acc + d.lucro, 0);
+  const lucroTotal = detalhesLucro.filter(d => d.tipo === 'total').reduce((acc, d) => acc + d.lucro, 0);
+  const fmtMoeda = (v: number) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
   const totalVencido = dashboardParcelas
     .filter(p => (p.status === "pendente" || p.status === "parcialmente_pago") && calcularDiasAtraso(p.data_vencimento) > 0)
     .reduce((acc, p) => acc + Number(p.valor_original || p.valor), 0);
