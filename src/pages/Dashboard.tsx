@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, ResponsiveContainer, ComposedChart, Line, Legend, ReferenceLine } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -15,10 +15,10 @@ import {
   PieChart as PieChartIcon,
   ArrowRight,
   Clock,
-  Plus
+  Plus,
+  Percent
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
 import { DashboardSkeleton } from "@/components/LoadingSkeletons";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
@@ -60,8 +60,6 @@ interface CapitalMensal {
 }
 
 export default function Dashboard() {
-  const { toast } = useToast();
-
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
@@ -122,6 +120,21 @@ export default function Dashboard() {
   const statusDistribuicao = data!.statusDistribuicao;
   const capitalMensal = data!.capitalMensal;
 
+  const capitalComSaldo = capitalMensal.map(c => ({
+    ...c,
+    saldo: Number((c.recebido - c.emprestado).toFixed(2)),
+  }));
+
+  const inadimplencia = stats.totalReceber > 0
+    ? (stats.valorVencido / stats.totalReceber) * 100
+    : 0;
+  const inadimplenciaColor =
+    inadimplencia < 10
+      ? "text-success"
+      : inadimplencia <= 25
+      ? "text-warning"
+      : "text-destructive";
+
   const vencidosHoje = proximosVencimentos.filter(p => p.status === "vence_hoje");
   const vencidos = proximosVencimentos.filter(p => p.status === "vencido");
   const proximos = proximosVencimentos.filter(p => p.status === "proximo");
@@ -176,18 +189,6 @@ export default function Dashboard() {
                   <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
                 </Link>
               )}
-              {stats.contratosAtivos > 0 && (
-                <Link to="/contratos" className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors group">
-                  <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <FileText className="h-4 w-4 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">{stats.contratosAtivos} contrato{stats.contratosAtivos > 1 ? 's' : ''} ativo{stats.contratosAtivos > 1 ? 's' : ''}</p>
-                    <p className="text-xs text-muted-foreground">Em andamento</p>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
-                </Link>
-              )}
             </div>
           </CardContent>
         </Card>
@@ -198,7 +199,7 @@ export default function Dashboard() {
         <Card className="stat-card-accent border-l-primary">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-muted-foreground">Capital em Circulação</span>
+              <span className="text-xs font-medium text-muted-foreground">Capital aplicado</span>
               <DollarSign className="h-4 w-4 text-primary" />
             </div>
             <p className="text-lg md:text-2xl font-bold tracking-tight tabular-nums truncate">
@@ -239,6 +240,36 @@ export default function Dashboard() {
             </div>
             <p className={`text-lg md:text-2xl font-bold tracking-tight tabular-nums truncate ${stats.lucro >= 0 ? 'text-success' : 'text-destructive'}`}>
               R$ {stats.lucro.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* KPIs de saúde da carteira */}
+      <div className="grid gap-3 grid-cols-2">
+        <Card className="stat-card-accent border-l-destructive">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-muted-foreground">Em atraso</span>
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+            </div>
+            <p className="text-lg md:text-2xl font-bold tracking-tight text-destructive tabular-nums truncate">
+              R$ {stats.valorVencido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {stats.parcelasVencidas} parcela{stats.parcelasVencidas !== 1 ? 's' : ''}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className={`stat-card-accent ${inadimplencia < 10 ? 'border-l-success' : inadimplencia <= 25 ? 'border-l-warning' : 'border-l-destructive'}`}>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-muted-foreground">Inadimplência</span>
+              <Percent className={`h-4 w-4 ${inadimplenciaColor}`} />
+            </div>
+            <p className={`text-lg md:text-2xl font-bold tracking-tight tabular-nums truncate ${inadimplenciaColor}`}>
+              {inadimplencia.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
             </p>
           </CardContent>
         </Card>
@@ -297,7 +328,7 @@ export default function Dashboard() {
               />
             ) : (
               proximosVencimentos.map((parcela, index) => (
-                <Link to="/parcelas" key={index} className="flex items-center justify-between p-2.5 rounded-lg border hover:bg-muted/50 transition-colors group">
+                <Link to="/parcelas" key={`${parcela.cliente}-${parcela.data}-${index}`} className="flex items-center justify-between p-2.5 rounded-lg border hover:bg-muted/50 transition-colors group">
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">{parcela.cliente}</p>
                     <p className="text-xs text-muted-foreground tabular-nums">
@@ -416,23 +447,33 @@ export default function Dashboard() {
                 config={{
                   emprestado: { label: "Emprestado", color: "hsl(var(--primary))" },
                   recebido: { label: "Recebido", color: "hsl(var(--success))" },
+                  saldo: { label: "Saldo do mês", color: "hsl(var(--foreground))" },
                 }}
                 className="aspect-[2/1] w-full"
               >
-                <BarChart data={capitalMensal} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
+                <ComposedChart data={capitalComSaldo} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
                   <XAxis dataKey="mes" tick={{ fontSize: 11 }} className="fill-muted-foreground" />
                   <YAxis tick={{ fontSize: 11 }} className="fill-muted-foreground" tickFormatter={(v) => `R$${v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}`} />
+                  <ReferenceLine y={0} stroke="hsl(var(--border))" />
                   <ChartTooltip
                     content={
                       <ChartTooltipContent
-                        formatter={(value) => `R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                        formatter={(value, name) => {
+                          const v = Number(value);
+                          if (name === "saldo") {
+                            return `${v >= 0 ? "+" : "−"}R$ ${Math.abs(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+                          }
+                          return `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+                        }}
                       />
                     }
                   />
                   <Bar dataKey="emprestado" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="recebido" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
-                </BarChart>
+                  <Line type="monotone" dataKey="saldo" name="Saldo do mês" stroke="hsl(var(--foreground))" strokeWidth={2} dot />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                </ComposedChart>
               </ChartContainer>
             </CardContent>
           </Card>
