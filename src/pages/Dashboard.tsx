@@ -189,18 +189,6 @@ export default function Dashboard() {
                   <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
                 </Link>
               )}
-              {stats.contratosAtivos > 0 && (
-                <Link to="/contratos" className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors group">
-                  <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <FileText className="h-4 w-4 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">{stats.contratosAtivos} contrato{stats.contratosAtivos > 1 ? 's' : ''} ativo{stats.contratosAtivos > 1 ? 's' : ''}</p>
-                    <p className="text-xs text-muted-foreground">Em andamento</p>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
-                </Link>
-              )}
             </div>
           </CardContent>
         </Card>
