@@ -18,6 +18,8 @@ import {
   Plus,
   Percent
 } from "lucide-react";
+import { HelpCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { Link } from "react-router-dom";
 import { DashboardSkeleton } from "@/components/LoadingSkeletons";
 import { PageHeader } from "@/components/PageHeader";
