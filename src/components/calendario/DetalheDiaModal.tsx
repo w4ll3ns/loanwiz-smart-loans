@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarOff, ExternalLink, Wallet } from "lucide-react";
+import { ArrowDown, CalendarOff, ExternalLink, Wallet } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -52,16 +52,29 @@ type Previsto = {
   contrato_numero_parcelas: number;
 };
 
+type Emprestimo = {
+  contrato_id: string;
+  cliente_nome: string;
+  valor_emprestado: number;
+  numero_parcelas: number;
+  percentual: number;
+  periodicidade: string;
+  data_emprestimo: string;
+};
+
 type DiaDetalhes = {
   data: string;
   tipo: "passado" | "hoje" | "futuro";
   recebimentos: Recebimento[];
   previstos: Previsto[];
+  emprestimos: Emprestimo[];
   totais: {
     total_recebido: number;
     total_previsto: number;
     qtd_recebimentos: number;
     qtd_previstos: number;
+    total_emprestado?: number;
+    qtd_emprestimos?: number;
   };
 };
 
