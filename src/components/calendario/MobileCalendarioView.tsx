@@ -283,7 +283,7 @@ export function MobileCalendarioView({
           </Button>
         </div>
 
-        {(totRec > 0 || totPrev > 0 || totAtr > 0) && (
+        {(totRec > 0 || totPrev > 0 || totAtr > 0 || totEmp > 0) && (
           <div className="px-3 py-2 border-b space-y-1.5 text-sm">
             {totRec > 0 && (
               <div className="flex items-center justify-between gap-2">
@@ -312,6 +312,16 @@ export function MobileCalendarioView({
                 </span>
                 <span className="font-semibold text-destructive">
                   {formatBRL(totAtr)} <span className="text-xs text-muted-foreground">({qtdAtr})</span>
+                </span>
+              </div>
+            )}
+            {totEmp > 0 && (
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-2 text-muted-foreground">
+                  <ArrowDown className="h-4 w-4 text-destructive" /> Emprestado
+                </span>
+                <span className="font-semibold text-destructive">
+                  {formatBRL(totEmp)} <span className="text-xs text-muted-foreground">({qtdEmp})</span>
                 </span>
               </div>
             )}
