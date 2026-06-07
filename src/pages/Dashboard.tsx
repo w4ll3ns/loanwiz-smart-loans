@@ -328,7 +328,7 @@ export default function Dashboard() {
               />
             ) : (
               proximosVencimentos.map((parcela, index) => (
-                <Link to="/parcelas" key={index} className="flex items-center justify-between p-2.5 rounded-lg border hover:bg-muted/50 transition-colors group">
+                <Link to="/parcelas" key={`${parcela.cliente}-${parcela.data}-${index}`} className="flex items-center justify-between p-2.5 rounded-lg border hover:bg-muted/50 transition-colors group">
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">{parcela.cliente}</p>
                     <p className="text-xs text-muted-foreground tabular-nums">
