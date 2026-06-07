@@ -1,42 +1,30 @@
-# Ajustes no Dashboard
+## Objetivo
 
-Todas as mudanças são em `src/pages/Dashboard.tsx`. Sem alterações em RPC, serviços ou lógica de dados.
+Atualizar `public.dashboard_stats` via nova migration aditiva (`CREATE OR REPLACE FUNCTION`), mantendo toda a estrutura e os demais blocos idênticos. Apenas três ajustes pontuais.
 
-## 1. Gráfico "Fluxo de Capital Mensal" → barras + linha de saldo
-- Atualizar import do `recharts` para incluir `ComposedChart`, `Line`, `Legend`, `ReferenceLine` (mantendo `Bar`, `XAxis`, `YAxis`, `CartesianGrid`, etc.).
-- Antes do render do gráfico, derivar:
-  ```ts
-  const capitalComSaldo = capitalMensal.map(c => ({
-    ...c,
-    saldo: Number((c.recebido - c.emprestado).toFixed(2)),
-  }));
-  ```
-- Substituir `BarChart` por `ComposedChart` usando `capitalComSaldo` como `data`.
-- Manter as 2 barras: `emprestado` em `hsl(var(--primary))` e `recebido` em `hsl(var(--success))`, ambas `radius={[4,4,0,0]}`.
-- Adicionar `<ReferenceLine y={0} stroke="hsl(var(--border))" />`.
-- Adicionar `<Line type="monotone" dataKey="saldo" stroke="hsl(var(--foreground))" strokeWidth={2} dot name="Saldo do mês" />`.
-- Adicionar `<Legend>` com `fontSize: 11`.
-- Tooltip: formatar os 3 valores em R$ (pt-BR); para `saldo` mostrar sinal `+` se positivo e `−` se negativo. Adicionar `saldo` ao `config` do `ChartContainer`.
-- Cores propositais: `emprestado` permanece azul (primary), não vermelho.
+## Mudanças
 
-## 2. Nova fileira de KPIs de saúde da carteira
-Inserida logo após a fileira de KPIs financeiros atual, antes dos gráficos. Reaproveitando estilo `stat-card-accent`, em `grid grid-cols-2`:
-- **Em atraso**: `R$ {stats.valorVencido}` em pt-BR, cor `hsl(var(--destructive))`, ícone `AlertTriangle`. Subtítulo: `{stats.parcelasVencidas} parcela(s)`.
-- **Inadimplência**: percentual = `stats.totalReceber > 0 ? (stats.valorVencido / stats.totalReceber * 100) : 0`, exibido com 1 casa decimal + `%`. Cor condicional: success se `< 10`, warning se `10–25`, destructive se `> 25`. Ícone `Percent`.
+### 1) Lucro mensal — isolamento por usuário robusto
+No bloco `-- Lucro mensal`, o subselect já filtra o usuário, mas será reescrito conforme o padrão solicitado para garantir o pré-filtro antes do LEFT JOIN com a série de meses, renomeando o alias para `pp` e calculando `lucro_parcela` com guarda de divisão:
 
-## 3. Renomear KPI
-- "Capital em Circulação" → "Capital aplicado".
+- Subquery interna passa a expor `GREATEST(COALESCE(p.valor_pago,0) - (c.valor_emprestado / NULLIF(c.numero_parcelas, 0)), 0) AS lucro_parcela`, com `JOIN contratos`/`JOIN clientes` e `WHERE cl.user_id = v_user_id AND p.status IN ('pago','parcialmente_pago') AND COALESCE(p.valor_pago,0) > 0`.
+- LEFT JOIN da série de meses `m(mes)` contra `pp` por `pp.data_pagamento >= m.mes::date AND pp.data_pagamento < (m.mes + interval '1 month')::date`, com `GROUP BY m.mes`.
+- O SELECT do lucro do mês passa a `COALESCE(SUM(pp.lucro_parcela), 0) as lucro`.
 
-## 4. Limpeza
-- Remover o terceiro `Link` ("contratos ativos / Em andamento") do bloco "Ações pendentes".
-- Remover import de `useToast` e a linha `const { toast } = useToast();`.
-- Em "Próximos vencimentos", trocar `key={index}` por `key={`${parcela.cliente}-${parcela.data}-${index}`}`.
+### 2) "A Receber" desconta o já pago
+No bloco `-- Totais de parcelas`, `total_receber` passa a:
+```
+'total_receber', COALESCE(SUM(CASE
+    WHEN p.status IN ('pendente','parcialmente_pago')
+    THEN COALESCE(p.valor_original, p.valor) - COALESCE(p.valor_pago, 0)
+    ELSE 0 END), 0),
+```
 
-## 5. Preservar
-- Sem mudanças em lógica de dados, RPC ou outros cards.
-- Manter responsividade (`grid-cols-2` no mobile) e tema claro/escuro.
+### 3) Guarda de divisão no KPI "lucro"
+No bloco `-- Totais de parcelas`, trocar `(c.valor_emprestado / c.numero_parcelas)` por `(c.valor_emprestado / NULLIF(c.numero_parcelas, 0))`.
 
-## Detalhes técnicos
-- Importar `Percent` de `lucide-react` (e remover `useToast` de `@/hooks/use-toast`).
-- O `config` do `ChartContainer` do fluxo de capital ganha a chave `saldo` (label "Saldo do mês", color `hsl(var(--foreground))`).
-- Helper de formatação do saldo no tooltip: `(v >= 0 ? "+" : "−") + "R$ " + Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:2})`.
+## Não alterado
+KPIs principais, próximos vencimentos, distribuição de status e capital mensal permanecem idênticos. Nenhuma mudança no frontend é necessária — o `Dashboard.tsx` e `services/dashboard.ts` já consomem as mesmas chaves.
+
+## Entrega
+Um único arquivo de migration novo com `CREATE OR REPLACE FUNCTION public.dashboard_stats()` contendo a definição completa atual com as três alterações aplicadas.
