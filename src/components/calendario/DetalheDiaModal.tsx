@@ -159,7 +159,10 @@ export function DetalheDiaModal({ isOpen, onOpenChange, data }: DetalheDiaModalP
   };
 
   const temConteudo =
-    !!detalhes && (detalhes.recebimentos.length > 0 || detalhes.previstos.length > 0);
+    !!detalhes &&
+    (detalhes.recebimentos.length > 0 ||
+      detalhes.previstos.length > 0 ||
+      (detalhes.emprestimos?.length ?? 0) > 0);
 
   return (
     <>
