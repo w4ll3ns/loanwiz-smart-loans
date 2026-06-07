@@ -1,6 +1,14 @@
-Criar uma migration aditiva com `CREATE OR REPLACE FUNCTION public.dashboard_stats()` que adiciona a nova chave `valor_vencido` ao jsonb_build_object do bloco "-- Totais de parcelas". Todo o restante da função permanece idêntico.
+## Plano: Adicionar campo `valor_vencido` ao Dashboard
 
-**Detalhe técnico:**
-A nova chave calcula o somatório do valor restante (valor_original - valor_pago) de todas as parcelas com status pendente ou parcialmente_pago cuja data_vencimento já passou (vencidas). Aproveita o mesmo FROM/JOIN/WHERE do bloco existente, portanto não há alteração de escopo ou performance adicional.
+Alterar apenas 2 arquivos para conectar a nova chave `valor_vencido` retornada pela função `dashboard_stats` (já migrada no banco).
 
-A migration não cria/altera tabelas nem policies — apenas substitui a definição da função existente de forma aditiva.
+### Alterações
+
+1. **src/services/dashboard.ts**
+   - Adicionar `valor_vencido: number;` à interface `DashboardData`.
+
+2. **src/pages/Dashboard.tsx**
+   - Adicionar `valorVencido: number;` à interface `DashboardStats`.
+   - No objeto `stats` montado dentro do `queryFn`, adicionar `valorVencido: Number(raw.valor_vencido) || 0,`.
+
+Nenhuma outra mudança será feita.
