@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, CalendarCheck, TrendingUp, Activity } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarCheck, TrendingUp, Activity, ArrowDownCircle, ArrowDown } from "lucide-react";
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useQuery } from "@tanstack/react-query";
@@ -21,6 +21,8 @@ type DiaCalendario = {
   ja_recebido_hoje?: number;
   valor_atrasado?: number;
   qtd_atrasados?: number;
+  valor_saida?: number;
+  qtd_saidas?: number;
 };
 
 type CalendarioMensal = {
@@ -32,6 +34,8 @@ type CalendarioMensal = {
     qtd_previstos_mes: number;
     total_atrasado_mes?: number;
     qtd_atrasados_mes?: number;
+    total_emprestado_mes?: number;
+    qtd_emprestimos_mes?: number;
   };
 };
 
