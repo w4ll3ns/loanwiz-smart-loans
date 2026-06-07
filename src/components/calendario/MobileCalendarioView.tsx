@@ -440,6 +440,49 @@ export function MobileCalendarioView({
               </div>
             </section>
           )}
+
+          {!isLoadingDetalhes && detalhes && (detalhes.emprestimos?.length ?? 0) > 0 && (
+            <section className="space-y-2">
+              <h4 className="text-xs font-semibold text-destructive uppercase tracking-wide">
+                Empréstimos do dia
+              </h4>
+              <div className="space-y-2">
+                {detalhes.emprestimos.map((e) => (
+                  <div key={e.contrato_id} className="border rounded-md p-2.5 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-sm truncate">{e.cliente_nome}</p>
+                        <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                          <span className="text-[11px] text-muted-foreground">
+                            {e.numero_parcelas}x · {Number(e.percentual).toFixed(2)}%
+                          </span>
+                        </div>
+                      </div>
+                      <span className="font-bold text-destructive whitespace-nowrap text-sm flex items-center gap-0.5">
+                        <ArrowDown className="h-3.5 w-3.5" />
+                        {formatBRL(e.valor_emprestado)}
+                      </span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleVerContrato(e.contrato_id)}
+                      className="w-full h-9 text-xs"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                      Ver contrato
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-end pt-1">
+                <p className="text-xs">
+                  Total emprestado:{" "}
+                  <span className="font-bold text-destructive">{formatBRL(totEmp)}</span>
+                </p>
+              </div>
+            </section>
+          )}
         </div>
       </Card>
 
