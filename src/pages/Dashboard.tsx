@@ -362,6 +362,18 @@ export default function Dashboard() {
             <CardTitle className="text-sm md:text-base font-semibold flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
               Evolução do Lucro Mensal
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" className="cursor-help text-muted-foreground" aria-label="Sobre o lucro mensal">
+                      <HelpCircle className="h-3.5 w-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-[260px]">
+                    Mostra apenas o lucro (juros recebidos) de cada mês — o valor pago menos a parte do principal de cada parcela. Não inclui a devolução do capital emprestado.
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -442,6 +454,18 @@ export default function Dashboard() {
               <CardTitle className="text-sm md:text-base font-semibold flex items-center gap-2">
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
                 Fluxo de Capital Mensal
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button type="button" className="cursor-help text-muted-foreground" aria-label="Sobre o fluxo de capital mensal">
+                        <HelpCircle className="h-3.5 w-3.5" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-[260px]">
+                      Mostra o movimento de caixa do mês: total recebido (principal + juros) menos o total emprestado. O "Saldo do mês" pode ser negativo se você emprestou mais do que recebeu — por isso difere do Lucro Mensal.
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </CardTitle>
             </CardHeader>
             <CardContent>
