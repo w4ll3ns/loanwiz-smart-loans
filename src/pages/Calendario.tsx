@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, CalendarCheck, TrendingUp, Activity } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarCheck, TrendingUp, Activity, ArrowDownCircle, ArrowDown } from "lucide-react";
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useQuery } from "@tanstack/react-query";
@@ -21,6 +21,8 @@ type DiaCalendario = {
   ja_recebido_hoje?: number;
   valor_atrasado?: number;
   qtd_atrasados?: number;
+  valor_saida?: number;
+  qtd_saidas?: number;
 };
 
 type CalendarioMensal = {
@@ -32,6 +34,8 @@ type CalendarioMensal = {
     qtd_previstos_mes: number;
     total_atrasado_mes?: number;
     qtd_atrasados_mes?: number;
+    total_emprestado_mes?: number;
+    qtd_emprestimos_mes?: number;
   };
 };
 
@@ -146,8 +150,8 @@ export default function Calendario() {
           </Button>
         </div>
 
-        {/* Cards de resumo - desktop (4 cards) */}
-        <div className="hidden md:grid grid-cols-4 gap-3">
+        {/* Cards de resumo - desktop (5 cards) */}
+        <div className="hidden md:grid grid-cols-5 gap-3">
           <Card className="p-3 md:p-4">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <CalendarCheck className="h-3.5 w-3.5 text-success" />
@@ -165,6 +169,20 @@ export default function Calendario() {
             <div className="text-lg md:text-2xl font-bold text-primary mt-1 truncate">
               {isLoading ? <Skeleton className="h-7 w-24" /> : formatBRL(totais?.previsto_mes ?? 0)}
             </div>
+          </Card>
+          <Card className="p-3 md:p-4">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <ArrowDownCircle className="h-3.5 w-3.5 text-destructive" />
+              Emprestado no mês
+            </div>
+            <div className="text-lg md:text-2xl font-bold text-destructive mt-1 truncate">
+              {isLoading ? <Skeleton className="h-7 w-24" /> : formatBRL(totais?.total_emprestado_mes ?? 0)}
+            </div>
+            {!isLoading && (
+              <div className="text-xs text-muted-foreground mt-0.5">
+                {totais?.qtd_emprestimos_mes ?? 0} empréstimo(s)
+              </div>
+            )}
           </Card>
           <Card className="p-3 md:p-4">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -186,7 +204,7 @@ export default function Calendario() {
           </Card>
         </div>
 
-        {/* Cards de resumo - mobile (2 cards) */}
+        {/* Cards de resumo - mobile (3 cards) */}
         <div className="grid grid-cols-2 gap-3 md:hidden">
           <Card className="p-3">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -204,6 +222,20 @@ export default function Calendario() {
             </div>
             <div className="text-lg font-bold text-primary mt-1 truncate">
               {isLoading ? <Skeleton className="h-7 w-24" /> : formatBRL(totais?.previsto_mes ?? 0)}
+            </div>
+          </Card>
+          <Card className="p-3 col-span-2">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <ArrowDownCircle className="h-3.5 w-3.5 text-destructive" />
+              Emprestado no mês
+            </div>
+            <div className="text-lg font-bold text-destructive mt-1 truncate">
+              {isLoading ? <Skeleton className="h-7 w-24" /> : formatBRL(totais?.total_emprestado_mes ?? 0)}
+              {!isLoading && (
+                <span className="text-xs font-normal text-muted-foreground ml-1">
+                  ({totais?.qtd_emprestimos_mes ?? 0})
+                </span>
+              )}
             </div>
           </Card>
         </div>
@@ -249,6 +281,7 @@ export default function Calendario() {
               const valor = info?.valor ?? 0;
               const tipo = info?.tipo;
               const jaRecebido = info?.ja_recebido_hoje ?? 0;
+              const valorSaida = info?.valor_saida ?? 0;
 
               if (!noMes) {
                 return (
@@ -278,9 +311,11 @@ export default function Calendario() {
 
               const aria = (() => {
                 const dataLabel = format(dia, "d 'de' MMMM", { locale: ptBR });
-                if (!info || valor === 0) return `${dataLabel}, sem movimentações`;
-                if (tipo === "passado") return `${dataLabel}, recebido ${formatBRL(valor)}, ${info.qtd_movimentacoes} movimentações`;
-                return `${dataLabel}, previsto ${formatBRL(valor)}, ${info.qtd_movimentacoes} movimentações`;
+                if (!info || (valor === 0 && valorSaida === 0)) return `${dataLabel}, sem movimentações`;
+                const partes: string[] = [dataLabel];
+                if (valor > 0) partes.push(tipo === "passado" ? `recebido ${formatBRL(valor)}` : `previsto ${formatBRL(valor)}`);
+                if (valorSaida > 0) partes.push(`emprestado ${formatBRL(valorSaida)}`);
+                return partes.join(", ");
               })();
 
               return (
@@ -311,6 +346,13 @@ export default function Calendario() {
                     >
                       <span className="md:hidden">{formatarCompacto(valor)}</span>
                       <span className="hidden md:inline">{formatBRL(valor)}</span>
+                    </span>
+                  )}
+                  {valorSaida > 0 && (
+                    <span className="font-semibold text-[10px] md:text-sm leading-tight truncate text-destructive flex items-center gap-0.5 mt-auto">
+                      <ArrowDown className="h-3 w-3 shrink-0" />
+                      <span className="md:hidden">{formatarCompacto(valorSaida)}</span>
+                      <span className="hidden md:inline">{formatBRL(valorSaida)}</span>
                     </span>
                   )}
                   {tipo === "hoje" && jaRecebido > 0 && (

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarOff, ExternalLink, Wallet } from "lucide-react";
+import { ArrowDown, CalendarOff, ExternalLink, Wallet } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -52,16 +52,29 @@ type Previsto = {
   contrato_numero_parcelas: number;
 };
 
+type Emprestimo = {
+  contrato_id: string;
+  cliente_nome: string;
+  valor_emprestado: number;
+  numero_parcelas: number;
+  percentual: number;
+  periodicidade: string;
+  data_emprestimo: string;
+};
+
 type DiaDetalhes = {
   data: string;
   tipo: "passado" | "hoje" | "futuro";
   recebimentos: Recebimento[];
   previstos: Previsto[];
+  emprestimos: Emprestimo[];
   totais: {
     total_recebido: number;
     total_previsto: number;
     qtd_recebimentos: number;
     qtd_previstos: number;
+    total_emprestado?: number;
+    qtd_emprestimos?: number;
   };
 };
 
@@ -146,7 +159,10 @@ export function DetalheDiaModal({ isOpen, onOpenChange, data }: DetalheDiaModalP
   };
 
   const temConteudo =
-    !!detalhes && (detalhes.recebimentos.length > 0 || detalhes.previstos.length > 0);
+    !!detalhes &&
+    (detalhes.recebimentos.length > 0 ||
+      detalhes.previstos.length > 0 ||
+      (detalhes.emprestimos?.length ?? 0) > 0);
 
   return (
     <>
@@ -316,6 +332,57 @@ export function DetalheDiaModal({ isOpen, onOpenChange, data }: DetalheDiaModalP
                     Total previsto:{" "}
                     <span className="font-bold text-primary">
                       {formatBRL(detalhes.totais.total_previsto)}
+                    </span>
+                  </p>
+                </div>
+              </section>
+            )}
+
+            {/* Empréstimos do dia */}
+            {!isLoading && detalhes && (detalhes.emprestimos?.length ?? 0) > 0 && (
+              <section className="space-y-2">
+                <h3 className="text-sm font-semibold text-destructive uppercase tracking-wide">
+                  Empréstimos do dia
+                </h3>
+                <div className="space-y-2">
+                  {detalhes.emprestimos.map((e) => (
+                    <div key={e.contrato_id} className="border rounded-md p-3 space-y-1.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-semibold truncate">{e.cliente_nome}</p>
+                          <div className="flex items-center gap-2 flex-wrap mt-1">
+                            <span className="text-xs text-muted-foreground">
+                              {e.numero_parcelas} parcela(s)
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {Number(e.percentual).toFixed(2)}%
+                            </span>
+                          </div>
+                        </div>
+                        <span className="font-bold text-destructive whitespace-nowrap flex items-center gap-1">
+                          <ArrowDown className="h-4 w-4" />
+                          {formatBRL(e.valor_emprestado)}
+                        </span>
+                      </div>
+                      <div className="flex justify-end">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleVerContrato(e.contrato_id)}
+                          className="h-7 text-xs"
+                        >
+                          <ExternalLink className="h-3 w-3 mr-1" />
+                          Ver contrato
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex justify-end pt-2 border-t">
+                  <p className="text-sm">
+                    Total emprestado:{" "}
+                    <span className="font-bold text-destructive">
+                      {formatBRL(detalhes.totais.total_emprestado ?? 0)}
                     </span>
                   </p>
                 </div>

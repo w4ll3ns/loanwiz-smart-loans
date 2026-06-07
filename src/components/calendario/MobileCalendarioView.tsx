@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, parseISO, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { AlertTriangle, CalendarOff, Check, Clock, ExternalLink, Wallet } from "lucide-react";
+import { AlertTriangle, ArrowDown, CalendarOff, Check, Clock, ExternalLink, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -20,6 +20,8 @@ type DiaCalendario = {
   ja_recebido_hoje?: number;
   valor_atrasado?: number;
   qtd_atrasados?: number;
+  valor_saida?: number;
+  qtd_saidas?: number;
 };
 
 type Recebimento = {
@@ -55,16 +57,29 @@ type Previsto = {
   contrato_numero_parcelas: number;
 };
 
+type Emprestimo = {
+  contrato_id: string;
+  cliente_nome: string;
+  valor_emprestado: number;
+  numero_parcelas: number;
+  percentual: number;
+  periodicidade: string;
+  data_emprestimo: string;
+};
+
 type DiaDetalhes = {
   data: string;
   tipo: "passado" | "hoje" | "futuro";
   recebimentos: Recebimento[];
   previstos: Previsto[];
+  emprestimos: Emprestimo[];
   totais: {
     total_recebido: number;
     total_previsto: number;
     qtd_recebimentos: number;
     qtd_previstos: number;
+    total_emprestado?: number;
+    qtd_emprestimos?: number;
   };
 };
 
@@ -167,12 +182,14 @@ export function MobileCalendarioView({
   const totPrev = detalhes?.totais.total_previsto ?? 0;
   const qtdRec = detalhes?.totais.qtd_recebimentos ?? 0;
   const qtdPrev = detalhes?.totais.qtd_previstos ?? 0;
+  const totEmp = detalhes?.totais.total_emprestado ?? 0;
+  const qtdEmp = detalhes?.totais.qtd_emprestimos ?? 0;
   // Atrasados: previstos cujo data_vencimento < data selecionada
   const previstosAtrasados = detalhes?.previstos.filter((p) => p.dias_atraso > 0) ?? [];
   const totAtr = previstosAtrasados.reduce((s, p) => s + Math.max(0, p.valor_previsto), 0);
   const qtdAtr = previstosAtrasados.length;
 
-  const temConteudo = !!detalhes && (detalhes.recebimentos.length > 0 || detalhes.previstos.length > 0);
+  const temConteudo = !!detalhes && (detalhes.recebimentos.length > 0 || detalhes.previstos.length > 0 || (detalhes.emprestimos?.length ?? 0) > 0);
 
   return (
     <>
@@ -209,10 +226,12 @@ export function MobileCalendarioView({
             const tipo = info?.tipo;
             const jaRecebido = info?.ja_recebido_hoje ?? 0;
             const valorAtrasado = info?.valor_atrasado ?? 0;
+            const valorSaida = info?.valor_saida ?? 0;
 
             const showVerde = (valor > 0 && tipo === "passado") || (tipo === "hoje" && jaRecebido > 0);
             const showAzul = valor > 0 && tipo !== "passado";
             const showLaranja = valorAtrasado > 0;
+            const showSaida = valorSaida > 0;
 
             const aria = (() => {
               const dataLabel = format(dia, "d 'de' MMMM", { locale: ptBR });
@@ -220,6 +239,7 @@ export function MobileCalendarioView({
               if (showVerde) partes.push(`recebido ${formatBRL(tipo === "hoje" ? jaRecebido : valor)}`);
               if (showAzul) partes.push(`previsto ${formatBRL(valor)}`);
               if (showLaranja) partes.push(`atrasado ${formatBRL(valorAtrasado)}`);
+              if (showSaida) partes.push(`emprestado ${formatBRL(valorSaida)}`);
               if (partes.length === 1) partes.push("sem movimentações");
               return partes.join(", ");
             })();
@@ -239,11 +259,12 @@ export function MobileCalendarioView({
                 )}
               >
                 <span>{dia.getDate()}</span>
-                {(showVerde || showAzul || showLaranja) && (
+                {(showVerde || showAzul || showLaranja || showSaida) && (
                   <div className="flex gap-0.5">
                     {showVerde && <span className="h-1.5 w-1.5 rounded-full bg-success" />}
                     {showAzul && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
                     {showLaranja && <span className="h-1.5 w-1.5 rounded-full bg-destructive" />}
+                    {showSaida && <ArrowDown className="h-2.5 w-2.5 text-destructive" strokeWidth={3} />}
                   </div>
                 )}
               </button>
@@ -262,7 +283,7 @@ export function MobileCalendarioView({
           </Button>
         </div>
 
-        {(totRec > 0 || totPrev > 0 || totAtr > 0) && (
+        {(totRec > 0 || totPrev > 0 || totAtr > 0 || totEmp > 0) && (
           <div className="px-3 py-2 border-b space-y-1.5 text-sm">
             {totRec > 0 && (
               <div className="flex items-center justify-between gap-2">
@@ -291,6 +312,16 @@ export function MobileCalendarioView({
                 </span>
                 <span className="font-semibold text-destructive">
                   {formatBRL(totAtr)} <span className="text-xs text-muted-foreground">({qtdAtr})</span>
+                </span>
+              </div>
+            )}
+            {totEmp > 0 && (
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-2 text-muted-foreground">
+                  <ArrowDown className="h-4 w-4 text-destructive" /> Emprestado
+                </span>
+                <span className="font-semibold text-destructive">
+                  {formatBRL(totEmp)} <span className="text-xs text-muted-foreground">({qtdEmp})</span>
                 </span>
               </div>
             )}
@@ -406,6 +437,49 @@ export function MobileCalendarioView({
                     </div>
                   </div>
                 ))}
+              </div>
+            </section>
+          )}
+
+          {!isLoadingDetalhes && detalhes && (detalhes.emprestimos?.length ?? 0) > 0 && (
+            <section className="space-y-2">
+              <h4 className="text-xs font-semibold text-destructive uppercase tracking-wide">
+                Empréstimos do dia
+              </h4>
+              <div className="space-y-2">
+                {detalhes.emprestimos.map((e) => (
+                  <div key={e.contrato_id} className="border rounded-md p-2.5 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-sm truncate">{e.cliente_nome}</p>
+                        <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                          <span className="text-[11px] text-muted-foreground">
+                            {e.numero_parcelas}x · {Number(e.percentual).toFixed(2)}%
+                          </span>
+                        </div>
+                      </div>
+                      <span className="font-bold text-destructive whitespace-nowrap text-sm flex items-center gap-0.5">
+                        <ArrowDown className="h-3.5 w-3.5" />
+                        {formatBRL(e.valor_emprestado)}
+                      </span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleVerContrato(e.contrato_id)}
+                      className="w-full h-9 text-xs"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                      Ver contrato
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-end pt-1">
+                <p className="text-xs">
+                  Total emprestado:{" "}
+                  <span className="font-bold text-destructive">{formatBRL(totEmp)}</span>
+                </p>
               </div>
             </section>
           )}
