@@ -84,7 +84,8 @@ export default function Parcelas() {
   const [parcelasRecebidoHojeIds, setParcelasRecebidoHojeIds] = useState<string[]>([]);
   const [cardFilter, setCardFilter] = useState<"recebido_hoje" | "vencido" | null>(null);
   const [estornandoId, setEstornandoId] = useState<string | null>(null);
-  const [historicoPagamentos, setHistoricoPagamentos] = useState<{ parcela_id: string; tipo_pagamento: string | null; valor_pago: number | null }[]>([]);
+  const [historicoPagamentos, setHistoricoPagamentos] = useState<{ id: string; parcela_id: string; tipo_pagamento: string | null; valor_pago: number | null; data_pagamento: string }[]>([]);
+  const [lucroModalAberto, setLucroModalAberto] = useState(false);
   const { toast } = useToast();
   const { canCreate, userEmail } = useUserRole();
 
