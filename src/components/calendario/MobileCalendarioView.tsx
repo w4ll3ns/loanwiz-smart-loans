@@ -226,10 +226,12 @@ export function MobileCalendarioView({
             const tipo = info?.tipo;
             const jaRecebido = info?.ja_recebido_hoje ?? 0;
             const valorAtrasado = info?.valor_atrasado ?? 0;
+            const valorSaida = info?.valor_saida ?? 0;
 
             const showVerde = (valor > 0 && tipo === "passado") || (tipo === "hoje" && jaRecebido > 0);
             const showAzul = valor > 0 && tipo !== "passado";
             const showLaranja = valorAtrasado > 0;
+            const showSaida = valorSaida > 0;
 
             const aria = (() => {
               const dataLabel = format(dia, "d 'de' MMMM", { locale: ptBR });
@@ -237,6 +239,7 @@ export function MobileCalendarioView({
               if (showVerde) partes.push(`recebido ${formatBRL(tipo === "hoje" ? jaRecebido : valor)}`);
               if (showAzul) partes.push(`previsto ${formatBRL(valor)}`);
               if (showLaranja) partes.push(`atrasado ${formatBRL(valorAtrasado)}`);
+              if (showSaida) partes.push(`emprestado ${formatBRL(valorSaida)}`);
               if (partes.length === 1) partes.push("sem movimentações");
               return partes.join(", ");
             })();
@@ -256,11 +259,12 @@ export function MobileCalendarioView({
                 )}
               >
                 <span>{dia.getDate()}</span>
-                {(showVerde || showAzul || showLaranja) && (
+                {(showVerde || showAzul || showLaranja || showSaida) && (
                   <div className="flex gap-0.5">
                     {showVerde && <span className="h-1.5 w-1.5 rounded-full bg-success" />}
                     {showAzul && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
                     {showLaranja && <span className="h-1.5 w-1.5 rounded-full bg-destructive" />}
+                    {showSaida && <ArrowDown className="h-2.5 w-2.5 text-destructive" strokeWidth={3} />}
                   </div>
                 )}
               </button>
