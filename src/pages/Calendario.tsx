@@ -150,8 +150,8 @@ export default function Calendario() {
           </Button>
         </div>
 
-        {/* Cards de resumo - desktop (4 cards) */}
-        <div className="hidden md:grid grid-cols-4 gap-3">
+        {/* Cards de resumo - desktop (5 cards) */}
+        <div className="hidden md:grid grid-cols-5 gap-3">
           <Card className="p-3 md:p-4">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <CalendarCheck className="h-3.5 w-3.5 text-success" />
@@ -169,6 +169,20 @@ export default function Calendario() {
             <div className="text-lg md:text-2xl font-bold text-primary mt-1 truncate">
               {isLoading ? <Skeleton className="h-7 w-24" /> : formatBRL(totais?.previsto_mes ?? 0)}
             </div>
+          </Card>
+          <Card className="p-3 md:p-4">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <ArrowDownCircle className="h-3.5 w-3.5 text-destructive" />
+              Emprestado no mês
+            </div>
+            <div className="text-lg md:text-2xl font-bold text-destructive mt-1 truncate">
+              {isLoading ? <Skeleton className="h-7 w-24" /> : formatBRL(totais?.total_emprestado_mes ?? 0)}
+            </div>
+            {!isLoading && (
+              <div className="text-xs text-muted-foreground mt-0.5">
+                {totais?.qtd_emprestimos_mes ?? 0} empréstimo(s)
+              </div>
+            )}
           </Card>
           <Card className="p-3 md:p-4">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -190,7 +204,7 @@ export default function Calendario() {
           </Card>
         </div>
 
-        {/* Cards de resumo - mobile (2 cards) */}
+        {/* Cards de resumo - mobile (3 cards) */}
         <div className="grid grid-cols-2 gap-3 md:hidden">
           <Card className="p-3">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -208,6 +222,20 @@ export default function Calendario() {
             </div>
             <div className="text-lg font-bold text-primary mt-1 truncate">
               {isLoading ? <Skeleton className="h-7 w-24" /> : formatBRL(totais?.previsto_mes ?? 0)}
+            </div>
+          </Card>
+          <Card className="p-3 col-span-2">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <ArrowDownCircle className="h-3.5 w-3.5 text-destructive" />
+              Emprestado no mês
+            </div>
+            <div className="text-lg font-bold text-destructive mt-1 truncate">
+              {isLoading ? <Skeleton className="h-7 w-24" /> : formatBRL(totais?.total_emprestado_mes ?? 0)}
+              {!isLoading && (
+                <span className="text-xs font-normal text-muted-foreground ml-1">
+                  ({totais?.qtd_emprestimos_mes ?? 0})
+                </span>
+              )}
             </div>
           </Card>
         </div>
