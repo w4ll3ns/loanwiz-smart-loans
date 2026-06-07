@@ -8,6 +8,7 @@ export interface DashboardData {
   clientes_ativos: number;
   contratos_ativos: number;
   parcelas_vencidas: number;
+  valor_vencido: number;
   proximos_vencimentos: Array<{
     cliente: string;
     valor: number;

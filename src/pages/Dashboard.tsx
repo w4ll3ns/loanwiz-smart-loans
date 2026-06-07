@@ -32,6 +32,7 @@ interface DashboardStats {
   clientesAtivos: number;
   contratosAtivos: number;
   parcelasVencidas: number;
+  valorVencido: number;
 }
 
 interface ProximoVencimento {
@@ -74,6 +75,7 @@ export default function Dashboard() {
         clientesAtivos: Number(raw.clientes_ativos) || 0,
         contratosAtivos: Number(raw.contratos_ativos) || 0,
         parcelasVencidas: Number(raw.parcelas_vencidas) || 0,
+        valorVencido: Number(raw.valor_vencido) || 0,
       };
 
       const proximosVencimentos: ProximoVencimento[] = (raw.proximos_vencimentos || []).map((p: any) => ({
