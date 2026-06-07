@@ -1,50 +1,51 @@
 ## Objetivo
+Corrigir o card "Total Juros Recebido" em `src/pages/Parcelas.tsx` para o modelo de juros, usando o tipo de pagamento registrado em `parcelas_historico` (juros/parcial = 100% lucro; total = apenas o juro embutido, descontando o principal da parcela).
 
-Corrigir o cálculo do **lucro** (total e mensal) na RPC `public.dashboard_stats` para usar o **modelo de juros** lido de `parcelas_historico`, manter `valor_vencido`/`total_receber` com **valor cheio** (juros/parcial não abatem a parcela) e eliminar um **vazamento entre usuários** no bloco de lucro mensal.
+## Mudanças em `src/pages/Parcelas.tsx`
 
-Tudo via `CREATE OR REPLACE FUNCTION` numa **nova migration aditiva** (não destrutiva). Nenhuma mudança de frontend.
-
-## Mudanças na função (apenas estes blocos)
-
-### (A) Bloco "-- Totais de parcelas"
-- `total_recebido`, `parcelas_vencidas` e `total_receber`: **mantidos como estão** (`total_receber` continua valor cheio, sem subtrair `valor_pago`).
-- `valor_vencido`: passa a usar **valor cheio**, sem subtrair `valor_pago`:
-  ```sql
-  'valor_vencido', COALESCE(SUM(CASE
-     WHEN p.status IN ('pendente','parcialmente_pago') AND p.data_vencimento < CURRENT_DATE
-     THEN COALESCE(p.valor_original, p.valor) ELSE 0 END), 0),
-  ```
-- A chave `'lucro'` é **removida** deste `jsonb_build_object` (passa a ser calculada em B).
-
-### (B) Recálculo do lucro total pelo modelo de juros (novo bloco logo após A)
-Lê `parcelas_historico` (apenas `tipo_evento = 'pagamento'`):
-- `juros` e `parcial` = 100% lucro;
-- `total` = `valor_pago - (valor_emprestado / numero_parcelas)` (juro embutido).
-```sql
-SELECT v_stats || jsonb_build_object('lucro', COALESCE((
-  SELECT SUM(CASE
-    WHEN h.tipo_pagamento IN ('juros','parcial') THEN COALESCE(h.valor_pago,0)
-    WHEN h.tipo_pagamento = 'total' THEN COALESCE(h.valor_pago,0) - (c.valor_emprestado / NULLIF(c.numero_parcelas,0))
-    ELSE 0 END)
-  FROM parcelas_historico h
-  JOIN parcelas p ON p.id = h.parcela_id
-  JOIN contratos c ON p.contrato_id = c.id
-  JOIN clientes cl ON c.cliente_id = cl.id
-  WHERE cl.user_id = v_user_id AND h.tipo_evento = 'pagamento'
-), 0)) INTO v_stats;
+1. **Novo estado** (junto aos demais `useState`, ~linha 85):
+```ts
+const [historicoPagamentos, setHistoricoPagamentos] = useState<
+  { parcela_id: string; tipo_pagamento: string | null; valor_pago: number | null }[]
+>([]);
 ```
 
-### (C) Substituir todo o bloco "-- Lucro mensal"
-Mesmo modelo de juros do histórico, com o filtro de `user_id` aplicado dentro de subconsulta pré-filtrada (corrige o vazamento que existia no `LEFT JOIN`). Agrupa por mês nos últimos 6 meses usando `h.data_pagamento::date`.
+2. **Carregar eventos de pagamento** dentro de `loadParcelas`, logo após `setParcelas(data || [])`:
+```ts
+const ids = (data || []).map(p => p.id);
+if (ids.length > 0) {
+  const { data: eventos } = await supabase
+    .from('parcelas_historico')
+    .select('parcela_id, tipo_pagamento, valor_pago')
+    .eq('tipo_evento', 'pagamento')
+    .in('parcela_id', ids);
+  setHistoricoPagamentos(eventos || []);
+} else {
+  setHistoricoPagamentos([]);
+}
+```
 
-### Blocos NÃO alterados
-KPIs principais, próximos vencimentos, distribuição de status e capital mensal permanecem idênticos.
+3. **Substituir o cálculo** de `totalJurosRecebido` (linhas 275-283) por:
+```ts
+const idsDashboard = new Set(dashboardParcelas.map(p => p.id));
+const mapaContrato = new Map(dashboardParcelas.map(p => [p.id, p.contratos]));
+const totalJurosRecebido = (historicoPagamentos || [])
+  .filter(e => idsDashboard.has(e.parcela_id))
+  .reduce((acc, e) => {
+    const valor = Number(e.valor_pago) || 0;
+    if (e.tipo_pagamento === 'juros' || e.tipo_pagamento === 'parcial') return acc + valor;
+    if (e.tipo_pagamento === 'total') {
+      const c = mapaContrato.get(e.parcela_id);
+      const principal = Number(c?.valor_emprestado || 0) / (c?.numero_parcelas || 1);
+      return acc + Math.max(valor - principal, 0);
+    }
+    return acc;
+  }, 0);
+```
 
-## Detalhes técnicos
-- A migration será um único `CREATE OR REPLACE FUNCTION public.dashboard_stats()` reescrevendo a função completa com os blocos A/B/C ajustados e os demais preservados literalmente.
-- Mantém `SECURITY DEFINER`, `SET search_path = public`, assinatura e tipo de retorno (`jsonb`).
-- Sem alteração de schema, grants ou RLS.
+4. **Não alterar** `totalVencido`, `totalPendente` nem `totalPago` — já corretos pela regra de valor cheio.
 
-## Verificação
-- Conferir que a migration aplica sem erro.
-- Validar via `dashboard_stats()` que `lucro`, `lucro_mensal` e `valor_vencido` retornam valores coerentes e que o lucro mensal não mistura dados de outros usuários.
+## Observações técnicas
+- `parcelas_historico` já é consultado em `loadRecebidoHoje`, e a coluna `tipo_pagamento` existe na tabela.
+- O `select` de `loadParcelas` já traz `valor_emprestado` e `numero_parcelas` em `contratos`, então `mapaContrato` tem os dados necessários.
+- Limite padrão de 1000 linhas do Supabase: número de eventos por usuário deve estar bem abaixo disso.

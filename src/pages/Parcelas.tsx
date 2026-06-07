@@ -83,6 +83,7 @@ export default function Parcelas() {
   const [parcelasRecebidoHojeIds, setParcelasRecebidoHojeIds] = useState<string[]>([]);
   const [cardFilter, setCardFilter] = useState<"recebido_hoje" | "vencido" | null>(null);
   const [estornandoId, setEstornandoId] = useState<string | null>(null);
+  const [historicoPagamentos, setHistoricoPagamentos] = useState<{ parcela_id: string; tipo_pagamento: string | null; valor_pago: number | null }[]>([]);
   const { toast } = useToast();
   const { canCreate, userEmail } = useUserRole();
 
@@ -137,6 +138,18 @@ export default function Parcelas() {
 
       if (error) throw error;
       setParcelas(data || []);
+
+      const ids = (data || []).map(p => p.id);
+      if (ids.length > 0) {
+        const { data: eventos } = await supabase
+          .from('parcelas_historico')
+          .select('parcela_id, tipo_pagamento, valor_pago')
+          .eq('tipo_evento', 'pagamento')
+          .in('parcela_id', ids);
+        setHistoricoPagamentos(eventos || []);
+      } else {
+        setHistoricoPagamentos([]);
+      }
     } catch (error: any) {
       toast({ title: "Não foi possível carregar as parcelas", variant: "destructive" });
     }
@@ -272,14 +285,19 @@ export default function Parcelas() {
 
   const totalPendente = dashboardParcelas.filter(p => p.status !== "pago").reduce((acc, p) => acc + Number(p.valor_original || p.valor), 0);
   const totalPago = dashboardParcelas.reduce((acc, p) => acc + (Number(p.valor_pago) || 0), 0);
-  const totalJurosRecebido = dashboardParcelas
-    .filter(p => p.status === "pago" || p.status === "parcialmente_pago")
-    .reduce((acc, p) => {
-      const valorEmprestado = Number(p.contratos?.valor_emprestado || 0);
-      const numeroParcelas = p.contratos?.numero_parcelas || 1;
-      const principalParcela = valorEmprestado / numeroParcelas;
-      const pago = Number(p.valor_pago) || 0;
-      return acc + Math.max(pago - principalParcela, 0);
+  const idsDashboard = new Set(dashboardParcelas.map(p => p.id));
+  const mapaContrato = new Map(dashboardParcelas.map(p => [p.id, p.contratos]));
+  const totalJurosRecebido = (historicoPagamentos || [])
+    .filter(e => idsDashboard.has(e.parcela_id))
+    .reduce((acc, e) => {
+      const valor = Number(e.valor_pago) || 0;
+      if (e.tipo_pagamento === 'juros' || e.tipo_pagamento === 'parcial') return acc + valor;
+      if (e.tipo_pagamento === 'total') {
+        const c = mapaContrato.get(e.parcela_id);
+        const principal = Number(c?.valor_emprestado || 0) / (c?.numero_parcelas || 1);
+        return acc + Math.max(valor - principal, 0);
+      }
+      return acc;
     }, 0);
   const totalVencido = dashboardParcelas
     .filter(p => (p.status === "pendente" || p.status === "parcialmente_pago") && calcularDiasAtraso(p.data_vencimento) > 0)
