@@ -410,7 +410,10 @@ export default function Parcelas() {
           <p className="text-[10px] text-muted-foreground">Parciais e quitações</p>
         </div>
 
-        <div className="metric-card cursor-default border-l-4 border-l-success">
+        <div
+          className="metric-card cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-success"
+          onClick={() => setLucroModalAberto(true)}
+        >
           <div className="flex items-center justify-between mb-1">
             <span className="metric-card-label">Juros Recebidos</span>
             <TrendingUp className="h-3.5 w-3.5 text-success flex-shrink-0" />
