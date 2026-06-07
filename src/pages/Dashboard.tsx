@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, ResponsiveContainer, ComposedChart, Line, Legend, ReferenceLine } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -15,10 +15,10 @@ import {
   PieChart as PieChartIcon,
   ArrowRight,
   Clock,
-  Plus
+  Plus,
+  Percent
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
 import { DashboardSkeleton } from "@/components/LoadingSkeletons";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
@@ -60,8 +60,6 @@ interface CapitalMensal {
 }
 
 export default function Dashboard() {
-  const { toast } = useToast();
-
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
