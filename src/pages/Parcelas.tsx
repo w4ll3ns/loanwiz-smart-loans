@@ -674,6 +674,98 @@ export default function Parcelas() {
       </AlertDialog>
 
       <AccessRestrictedModal open={isAccessModalOpen} onOpenChange={setIsAccessModalOpen} userEmail={userEmail} />
+
+      <Dialog open={lucroModalAberto} onOpenChange={setLucroModalAberto}>
+        <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] flex flex-col gap-0 p-0">
+          <DialogHeader className="p-4 pb-3 border-b">
+            <DialogTitle>Detalhamento do lucro recebido</DialogTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              Juros e pagamentos personalizados contam como 100% de lucro. Pagamentos do tipo "total" contam apenas o juro embutido (valor menos o principal da parcela).
+            </p>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto p-4">
+            {detalhesLucro.length === 0 ? (
+              <EmptyState icon={TrendingUp} title="Nenhum lucro recebido ainda" description="Quando houver pagamentos registrados, eles aparecerão aqui." />
+            ) : (
+              <>
+                {/* Desktop */}
+                <Table className="hidden md:table">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Parcela</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead className="text-right">Valor pago</TableHead>
+                      <TableHead className="text-right">Lucro</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {detalhesLucro.map(d => (
+                      <TableRow key={d.id}>
+                        <TableCell>{format(new Date(d.data), 'dd/MM/yyyy')}</TableCell>
+                        <TableCell className="max-w-[160px] truncate">{d.cliente}</TableCell>
+                        <TableCell>{d.numeroParcela != null ? `#${d.numeroParcela}` : '—'}</TableCell>
+                        <TableCell>
+                          <Badge variant={d.tipo === 'juros' ? 'default' : d.tipo === 'parcial' ? 'secondary' : 'outline'}>
+                            {d.tipo === 'juros' ? 'Juros' : d.tipo === 'parcial' ? 'Parcial' : 'Total'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">{fmtMoeda(d.valorPago)}</TableCell>
+                        <TableCell className="text-right tabular-nums font-medium text-success">
+                          {fmtMoeda(d.lucro)}
+                          {d.tipo === 'total' && (
+                            <span className="block text-[10px] font-normal text-muted-foreground">
+                              valor {fmtMoeda(d.valorPago)} − principal {fmtMoeda(d.principal)}
+                            </span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+
+                {/* Mobile */}
+                <div className="md:hidden space-y-2">
+                  {detalhesLucro.map(d => (
+                    <div key={d.id} className="rounded-lg border p-3 text-sm">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium truncate">{d.cliente}</span>
+                        <Badge variant={d.tipo === 'juros' ? 'default' : d.tipo === 'parcial' ? 'secondary' : 'outline'}>
+                          {d.tipo === 'juros' ? 'Juros' : d.tipo === 'parcial' ? 'Parcial' : 'Total'}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {format(new Date(d.data), 'dd/MM/yyyy')}{d.numeroParcela != null ? ` · Parcela #${d.numeroParcela}` : ''}
+                      </p>
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-xs text-muted-foreground">Valor pago: {fmtMoeda(d.valorPago)}</span>
+                        <span className="font-semibold text-success tabular-nums">{fmtMoeda(d.lucro)}</span>
+                      </div>
+                      {d.tipo === 'total' && (
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          valor {fmtMoeda(d.valorPago)} − principal {fmtMoeda(d.principal)}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          {detalhesLucro.length > 0 && (
+            <div className="border-t p-4 space-y-1.5 text-sm bg-muted/30">
+              <div className="flex justify-between"><span className="text-muted-foreground">Recebido em juros</span><span className="tabular-nums">{fmtMoeda(lucroJuros)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Recebido em parciais</span><span className="tabular-nums">{fmtMoeda(lucroParcial)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Juro dos quitados</span><span className="tabular-nums">{fmtMoeda(lucroTotal)}</span></div>
+              <div className="flex justify-between pt-1.5 border-t font-semibold"><span>Total</span><span className="tabular-nums text-success">{fmtMoeda(totalJurosRecebido)}</span></div>
+              <p className="text-[10px] text-muted-foreground pt-0.5">{detalhesLucro.length} lançamento{detalhesLucro.length !== 1 ? 's' : ''}</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
