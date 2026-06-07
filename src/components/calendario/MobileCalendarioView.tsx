@@ -182,12 +182,14 @@ export function MobileCalendarioView({
   const totPrev = detalhes?.totais.total_previsto ?? 0;
   const qtdRec = detalhes?.totais.qtd_recebimentos ?? 0;
   const qtdPrev = detalhes?.totais.qtd_previstos ?? 0;
+  const totEmp = detalhes?.totais.total_emprestado ?? 0;
+  const qtdEmp = detalhes?.totais.qtd_emprestimos ?? 0;
   // Atrasados: previstos cujo data_vencimento < data selecionada
   const previstosAtrasados = detalhes?.previstos.filter((p) => p.dias_atraso > 0) ?? [];
   const totAtr = previstosAtrasados.reduce((s, p) => s + Math.max(0, p.valor_previsto), 0);
   const qtdAtr = previstosAtrasados.length;
 
-  const temConteudo = !!detalhes && (detalhes.recebimentos.length > 0 || detalhes.previstos.length > 0);
+  const temConteudo = !!detalhes && (detalhes.recebimentos.length > 0 || detalhes.previstos.length > 0 || (detalhes.emprestimos?.length ?? 0) > 0);
 
   return (
     <>
