@@ -199,7 +199,7 @@ export default function Dashboard() {
         <Card className="stat-card-accent border-l-primary">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-muted-foreground">Capital em Circulação</span>
+              <span className="text-xs font-medium text-muted-foreground">Capital aplicado</span>
               <DollarSign className="h-4 w-4 text-primary" />
             </div>
             <p className="text-lg md:text-2xl font-bold tracking-tight tabular-nums truncate">
@@ -240,6 +240,36 @@ export default function Dashboard() {
             </div>
             <p className={`text-lg md:text-2xl font-bold tracking-tight tabular-nums truncate ${stats.lucro >= 0 ? 'text-success' : 'text-destructive'}`}>
               R$ {stats.lucro.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* KPIs de saúde da carteira */}
+      <div className="grid gap-3 grid-cols-2">
+        <Card className="stat-card-accent border-l-destructive">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-muted-foreground">Em atraso</span>
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+            </div>
+            <p className="text-lg md:text-2xl font-bold tracking-tight text-destructive tabular-nums truncate">
+              R$ {stats.valorVencido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {stats.parcelasVencidas} parcela{stats.parcelasVencidas !== 1 ? 's' : ''}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className={`stat-card-accent ${inadimplencia < 10 ? 'border-l-success' : inadimplencia <= 25 ? 'border-l-warning' : 'border-l-destructive'}`}>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-muted-foreground">Inadimplência</span>
+              <Percent className={`h-4 w-4 ${inadimplenciaColor}`} />
+            </div>
+            <p className={`text-lg md:text-2xl font-bold tracking-tight tabular-nums truncate ${inadimplenciaColor}`}>
+              {inadimplencia.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
             </p>
           </CardContent>
         </Card>
