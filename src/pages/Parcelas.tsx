@@ -145,7 +145,7 @@ export default function Parcelas() {
       if (ids.length > 0) {
         const { data: eventos } = await supabase
           .from('parcelas_historico')
-          .select('parcela_id, tipo_pagamento, valor_pago')
+          .select('id, parcela_id, tipo_pagamento, valor_pago, data_pagamento')
           .eq('tipo_evento', 'pagamento')
           .in('parcela_id', ids);
         setHistoricoPagamentos(eventos || []);
