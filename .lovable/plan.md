@@ -1,26 +1,50 @@
 ## Objetivo
 
-Deixar claro para quem usa o painel que os dois gráficos medem coisas diferentes, evitando a expectativa de que os valores "batam".
+Corrigir o cálculo do **lucro** (total e mensal) na RPC `public.dashboard_stats` para usar o **modelo de juros** lido de `parcelas_historico`, manter `valor_vencido`/`total_receber` com **valor cheio** (juros/parcial não abatem a parcela) e eliminar um **vazamento entre usuários** no bloco de lucro mensal.
 
-## Mudança (somente frontend)
+Tudo via `CREATE OR REPLACE FUNCTION` numa **nova migration aditiva** (não destrutiva). Nenhuma mudança de frontend.
 
-Arquivo: `src/pages/Dashboard.tsx`
+## Mudanças na função (apenas estes blocos)
 
-Adicionar um ícone de ajuda (`HelpCircle` do lucide-react) ao lado de cada título de card, com um tooltip explicativo. Usar os componentes já existentes em `src/components/ui/tooltip.tsx` (`Tooltip`, `TooltipTrigger`, `TooltipContent`, `TooltipProvider`).
+### (A) Bloco "-- Totais de parcelas"
+- `total_recebido`, `parcelas_vencidas` e `total_receber`: **mantidos como estão** (`total_receber` continua valor cheio, sem subtrair `valor_pago`).
+- `valor_vencido`: passa a usar **valor cheio**, sem subtrair `valor_pago`:
+  ```sql
+  'valor_vencido', COALESCE(SUM(CASE
+     WHEN p.status IN ('pendente','parcialmente_pago') AND p.data_vencimento < CURRENT_DATE
+     THEN COALESCE(p.valor_original, p.valor) ELSE 0 END), 0),
+  ```
+- A chave `'lucro'` é **removida** deste `jsonb_build_object` (passa a ser calculada em B).
 
-### 1. Card "Evolução do Lucro Mensal"
-Tooltip:
-> Mostra apenas o lucro (juros recebidos) de cada mês — o valor pago menos a parte do principal de cada parcela. Não inclui a devolução do capital emprestado.
+### (B) Recálculo do lucro total pelo modelo de juros (novo bloco logo após A)
+Lê `parcelas_historico` (apenas `tipo_evento = 'pagamento'`):
+- `juros` e `parcial` = 100% lucro;
+- `total` = `valor_pago - (valor_emprestado / numero_parcelas)` (juro embutido).
+```sql
+SELECT v_stats || jsonb_build_object('lucro', COALESCE((
+  SELECT SUM(CASE
+    WHEN h.tipo_pagamento IN ('juros','parcial') THEN COALESCE(h.valor_pago,0)
+    WHEN h.tipo_pagamento = 'total' THEN COALESCE(h.valor_pago,0) - (c.valor_emprestado / NULLIF(c.numero_parcelas,0))
+    ELSE 0 END)
+  FROM parcelas_historico h
+  JOIN parcelas p ON p.id = h.parcela_id
+  JOIN contratos c ON p.contrato_id = c.id
+  JOIN clientes cl ON c.cliente_id = cl.id
+  WHERE cl.user_id = v_user_id AND h.tipo_evento = 'pagamento'
+), 0)) INTO v_stats;
+```
 
-### 2. Card "Fluxo de Capital Mensal"
-Tooltip:
-> Mostra o movimento de caixa do mês: total recebido (principal + juros) menos o total emprestado. O "Saldo do mês" pode ser negativo se você emprestou mais do que recebeu — por isso difere do Lucro Mensal.
+### (C) Substituir todo o bloco "-- Lucro mensal"
+Mesmo modelo de juros do histórico, com o filtro de `user_id` aplicado dentro de subconsulta pré-filtrada (corrige o vazamento que existia no `LEFT JOIN`). Agrupa por mês nos últimos 6 meses usando `h.data_pagamento::date`.
 
-### Detalhes técnicos
-- Importar `HelpCircle` de `lucide-react` e os componentes de tooltip.
-- Envolver os dois ícones com `TooltipProvider` (ou um provider único no topo do retorno).
-- Ícone: `h-3.5 w-3.5 text-muted-foreground`, com `cursor-help`; no mobile o tooltip abre por toque (Radix suporta).
-- Nenhuma alteração na função `dashboard_stats` nem na lógica de dados — apenas apresentação.
+### Blocos NÃO alterados
+KPIs principais, próximos vencimentos, distribuição de status e capital mensal permanecem idênticos.
+
+## Detalhes técnicos
+- A migration será um único `CREATE OR REPLACE FUNCTION public.dashboard_stats()` reescrevendo a função completa com os blocos A/B/C ajustados e os demais preservados literalmente.
+- Mantém `SECURITY DEFINER`, `SET search_path = public`, assinatura e tipo de retorno (`jsonb`).
+- Sem alteração de schema, grants ou RLS.
 
 ## Verificação
-- Conferir build e visual no preview (desktop e mobile), garantindo que os tooltips aparecem e não quebram o layout dos títulos.
+- Conferir que a migration aplica sem erro.
+- Validar via `dashboard_stats()` que `lucro`, `lucro_mensal` e `valor_vencido` retornam valores coerentes e que o lucro mensal não mistura dados de outros usuários.
