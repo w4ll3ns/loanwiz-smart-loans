@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, parseISO, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { AlertTriangle, CalendarOff, Check, Clock, ExternalLink, Wallet } from "lucide-react";
+import { AlertTriangle, ArrowDown, CalendarOff, Check, Clock, ExternalLink, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -20,6 +20,8 @@ type DiaCalendario = {
   ja_recebido_hoje?: number;
   valor_atrasado?: number;
   qtd_atrasados?: number;
+  valor_saida?: number;
+  qtd_saidas?: number;
 };
 
 type Recebimento = {
@@ -55,16 +57,29 @@ type Previsto = {
   contrato_numero_parcelas: number;
 };
 
+type Emprestimo = {
+  contrato_id: string;
+  cliente_nome: string;
+  valor_emprestado: number;
+  numero_parcelas: number;
+  percentual: number;
+  periodicidade: string;
+  data_emprestimo: string;
+};
+
 type DiaDetalhes = {
   data: string;
   tipo: "passado" | "hoje" | "futuro";
   recebimentos: Recebimento[];
   previstos: Previsto[];
+  emprestimos: Emprestimo[];
   totais: {
     total_recebido: number;
     total_previsto: number;
     qtd_recebimentos: number;
     qtd_previstos: number;
+    total_emprestado?: number;
+    qtd_emprestimos?: number;
   };
 };
 
