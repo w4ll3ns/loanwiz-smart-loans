@@ -447,23 +447,33 @@ export default function Dashboard() {
                 config={{
                   emprestado: { label: "Emprestado", color: "hsl(var(--primary))" },
                   recebido: { label: "Recebido", color: "hsl(var(--success))" },
+                  saldo: { label: "Saldo do mês", color: "hsl(var(--foreground))" },
                 }}
                 className="aspect-[2/1] w-full"
               >
-                <BarChart data={capitalMensal} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
+                <ComposedChart data={capitalComSaldo} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
                   <XAxis dataKey="mes" tick={{ fontSize: 11 }} className="fill-muted-foreground" />
                   <YAxis tick={{ fontSize: 11 }} className="fill-muted-foreground" tickFormatter={(v) => `R$${v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}`} />
+                  <ReferenceLine y={0} stroke="hsl(var(--border))" />
                   <ChartTooltip
                     content={
                       <ChartTooltipContent
-                        formatter={(value) => `R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                        formatter={(value, name) => {
+                          const v = Number(value);
+                          if (name === "saldo") {
+                            return `${v >= 0 ? "+" : "−"}R$ ${Math.abs(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+                          }
+                          return `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+                        }}
                       />
                     }
                   />
                   <Bar dataKey="emprestado" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="recebido" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
-                </BarChart>
+                  <Line type="monotone" dataKey="saldo" name="Saldo do mês" stroke="hsl(var(--foreground))" strokeWidth={2} dot />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                </ComposedChart>
               </ChartContainer>
             </CardContent>
           </Card>
