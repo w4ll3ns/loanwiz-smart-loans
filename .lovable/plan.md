@@ -1,43 +1,38 @@
-# Incluir saídas de capital (empréstimos concedidos) no calendário
+# Refletir saídas de capital no calendário
 
-## Objetivo
-Atualizar as duas funções do calendário para também expor as **saídas de capital** (contratos por `data_emprestimo`), além de alinhar o "previsto" à regra de valor cheio. Migration aditiva única com `CREATE OR REPLACE` das duas funções, mantendo filtro por `v_user_id`, `SECURITY DEFINER`, `search_path` e os REVOKE/GRANT existentes.
+A RPC já retorna os novos campos. É necessário apenas atualizar o frontend (3 arquivos) para exibi-los. Tudo em pt-BR com 2 casas, mantendo tema claro/escuro e responsividade.
 
-## 1. `public.calendario_mensal(p_mes, p_ano)`
-- Adicionar CTE `saidas_dia` (capital emprestado por dia):
-  ```sql
-  saidas_dia AS (
-    SELECT c.data_emprestimo AS dia,
-           SUM(COALESCE(c.valor_emprestado, 0))::numeric AS valor,
-           COUNT(*)::int AS qtd
-    FROM contratos c
-    JOIN clientes cl ON cl.id = c.cliente_id
-    WHERE cl.user_id = v_user_id
-      AND c.data_emprestimo BETWEEN v_primeiro_dia AND v_ultimo_dia
-    GROUP BY c.data_emprestimo
-  )
-  ```
-- No bloco `computado`: `LEFT JOIN saidas_dia sd ON sd.dia = d.dia` e colunas `COALESCE(sd.valor,0) AS valor_saida`, `COALESCE(sd.qtd,0) AS qtd_saidas`.
-- No `jsonb_build_object` de cada dia: acrescentar `'valor_saida'` e `'qtd_saidas'`.
-- Novos agregados do mês em `totais`: `'total_emprestado_mes'` = `SUM(valor_saida)`, `'qtd_emprestimos_mes'` = `SUM(qtd_saidas)` (declarar as variáveis correspondentes).
-- Consistência: na CTE `previstos_dia`, trocar `COALESCE(p.valor_original, p.valor) - COALESCE(p.valor_pago, 0)` por `COALESCE(p.valor_original, p.valor)` (valor cheio).
+## 1. Tipos
+Atualizar as definições de tipo (duplicadas em `src/pages/Calendario.tsx` e `src/components/calendario/MobileCalendarioView.tsx`, e em `DetalheDiaModal.tsx`):
+- `DiaCalendario`: adicionar `valor_saida?: number;` e `qtd_saidas?: number;`
+- `CalendarioMensal.totais` (em `Calendario.tsx`): adicionar `total_emprestado_mes?: number;` e `qtd_emprestimos_mes?: number;`
+- `DiaDetalhes`: adicionar lista `emprestimos: Emprestimo[];` e em `totais` `total_emprestado?: number;` e `qtd_emprestimos?: number;`
+- Novo tipo `Emprestimo`: `{ contrato_id: string; cliente_nome: string; valor_emprestado: number; numero_parcelas: number; percentual: number; periodicidade: string; data_emprestimo: string; }`
 
-## 2. `public.calendario_dia_detalhes(p_data)`
-- Adicionar terceira lista `emprestimos` (contratos concedidos no dia):
-  ```sql
-  SELECT c.id AS contrato_id, cl.nome AS cliente_nome, c.valor_emprestado,
-         c.numero_parcelas, c.percentual, c.periodicidade, c.data_emprestimo
-  FROM contratos c JOIN clientes cl ON cl.id = c.cliente_id
-  WHERE cl.user_id = v_user_id AND c.data_emprestimo = p_data
-  ORDER BY cl.nome
-  ```
-  Agregar em `v_total_emprestado` (`SUM(valor_emprestado)`) e `v_qtd_emprestimos` (`COUNT(*)`).
-- No `RETURN`: adicionar chave `'emprestimos'` e, em `totais`, `'total_emprestado'` e `'qtd_emprestimos'`.
-- Consistência: no campo `valor_previsto`, trocar `COALESCE(p.valor_original, p.valor) - COALESCE(p.valor_pago, 0)` por `COALESCE(p.valor_original, p.valor)` (valor cheio).
+## 2. Célula do dia (entrada vs saída)
+Em ambos os grids (desktop em `Calendario.tsx`, mobile em `MobileCalendarioView.tsx`):
+- Ler `valorSaida = info?.valor_saida ?? 0`.
+- Quando `valorSaida > 0`, exibir uma linha adicional na célula com o valor de saída em **vermelho** (`text-destructive`) precedido de uma seta para baixo (`ArrowDown` do lucide, ou caractere "↓"), **separado** do valor de entrada (que permanece verde/azul). Não somar os valores — mostrar ambos empilhados.
+- Atualizar o `aria-label` para mencionar "emprestado {valor}" quando houver saída.
+- No mobile, usar o formato compacto (`formatarCompacto`/equivalente) já usado para o valor de entrada.
 
-## Observações técnicas
-- Mudanças são puramente aditivas no JSON retornado — o frontend atual (tipos `DiaCalendario`/`CalendarioMensal`) continua funcionando sem alterações.
-- Exibir as saídas na UI do calendário (cards/modal) fica como passo opcional posterior; este plano cobre apenas as funções de banco conforme solicitado.
+## 3. Totais do mês
+Em `Calendario.tsx`, nos cards de resumo (desktop com 4 cards e mobile com 2 cards):
+- Adicionar um indicador **"Emprestado"** usando `totais.total_emprestado_mes` (valor) e `totais.qtd_emprestimos_mes` (contagem), em vermelho, com ícone de saída (`ArrowDownCircle`/`TrendingDown`).
+- Desktop: a grade passa de `grid-cols-4` para `grid-cols-5` para acomodar o novo card (ou reorganizar mantendo responsividade). Mobile: adicionar o card "Emprestado" à grade de resumo.
+
+## 4. Seção "Empréstimos do dia" no detalhe
+Em `DetalheDiaModal.tsx` (e replicar o painel inline no `MobileCalendarioView.tsx`):
+- Adicionar uma `section` "Empréstimos do dia" listando cada contrato concedido: nome do cliente, valor emprestado (vermelho), nº de parcelas e percentual. Botão "Ver contrato" reaproveitando `handleVerContrato`.
+- Rodapé da seção com subtotal `totais.total_emprestado` em vermelho.
+- Posicionar a seção após Recebimentos/Previstos.
+- Incluir `emprestimos` na verificação `temConteudo` (para que dias só com empréstimo não mostrem "Nenhuma movimentação"). No mobile, considerar `total_emprestado` no bloco de resumo do dia adicionando uma linha "Emprestado".
+
+## Detalhes técnicos
+- Cores via tokens semânticos: entradas `text-success`/`text-primary`, saídas `text-destructive`. Sem cores hardcoded.
+- Ícones do `lucide-react` já disponível.
+- Formatação com o helper `formatBRL` existente em cada arquivo.
+- Mudanças puramente de apresentação; nenhuma alteração de RPC ou lógica de negócio.
 
 ## Validação
-- Conferir que ambas as funções recriam sem erro e que os novos campos (`valor_saida`, `qtd_saidas`, `total_emprestado_mes`, `qtd_emprestimos_mes`, `emprestimos`, `total_emprestado`, `qtd_emprestimos`) aparecem no retorno para um usuário com contratos.
+Abrir `/calendario` no preview (desktop e mobile) e confirmar: células com saída mostram valor vermelho separado, card "Emprestado" nos totais, e a seção "Empréstimos do dia" no detalhe de um dia com contrato concedido.
