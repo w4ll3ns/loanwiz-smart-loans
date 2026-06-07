@@ -281,6 +281,7 @@ export default function Calendario() {
               const valor = info?.valor ?? 0;
               const tipo = info?.tipo;
               const jaRecebido = info?.ja_recebido_hoje ?? 0;
+              const valorSaida = info?.valor_saida ?? 0;
 
               if (!noMes) {
                 return (
@@ -310,9 +311,11 @@ export default function Calendario() {
 
               const aria = (() => {
                 const dataLabel = format(dia, "d 'de' MMMM", { locale: ptBR });
-                if (!info || valor === 0) return `${dataLabel}, sem movimentações`;
-                if (tipo === "passado") return `${dataLabel}, recebido ${formatBRL(valor)}, ${info.qtd_movimentacoes} movimentações`;
-                return `${dataLabel}, previsto ${formatBRL(valor)}, ${info.qtd_movimentacoes} movimentações`;
+                if (!info || (valor === 0 && valorSaida === 0)) return `${dataLabel}, sem movimentações`;
+                const partes: string[] = [dataLabel];
+                if (valor > 0) partes.push(tipo === "passado" ? `recebido ${formatBRL(valor)}` : `previsto ${formatBRL(valor)}`);
+                if (valorSaida > 0) partes.push(`emprestado ${formatBRL(valorSaida)}`);
+                return partes.join(", ");
               })();
 
               return (
@@ -343,6 +346,13 @@ export default function Calendario() {
                     >
                       <span className="md:hidden">{formatarCompacto(valor)}</span>
                       <span className="hidden md:inline">{formatBRL(valor)}</span>
+                    </span>
+                  )}
+                  {valorSaida > 0 && (
+                    <span className="font-semibold text-[10px] md:text-sm leading-tight truncate text-destructive flex items-center gap-0.5 mt-auto">
+                      <ArrowDown className="h-3 w-3 shrink-0" />
+                      <span className="md:hidden">{formatarCompacto(valorSaida)}</span>
+                      <span className="hidden md:inline">{formatBRL(valorSaida)}</span>
                     </span>
                   )}
                   {tipo === "hoje" && jaRecebido > 0 && (
