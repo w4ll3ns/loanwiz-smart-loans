@@ -120,6 +120,21 @@ export default function Dashboard() {
   const statusDistribuicao = data!.statusDistribuicao;
   const capitalMensal = data!.capitalMensal;
 
+  const capitalComSaldo = capitalMensal.map(c => ({
+    ...c,
+    saldo: Number((c.recebido - c.emprestado).toFixed(2)),
+  }));
+
+  const inadimplencia = stats.totalReceber > 0
+    ? (stats.valorVencido / stats.totalReceber) * 100
+    : 0;
+  const inadimplenciaColor =
+    inadimplencia < 10
+      ? "text-success"
+      : inadimplencia <= 25
+      ? "text-warning"
+      : "text-destructive";
+
   const vencidosHoje = proximosVencimentos.filter(p => p.status === "vence_hoje");
   const vencidos = proximosVencimentos.filter(p => p.status === "vencido");
   const proximos = proximosVencimentos.filter(p => p.status === "proximo");
