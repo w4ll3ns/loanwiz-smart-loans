@@ -528,7 +528,7 @@ export default function Parcelas() {
                       <div className="overflow-hidden">
                         <p className="text-muted-foreground text-[10px] uppercase">Vencimento</p>
                         <p className="font-semibold text-sm">{formatDate(parcela.data_vencimento)}</p>
-                        {calcularDiasAtraso(parcela.data_vencimento) > 0 && (
+                        {parcela.status !== "pago" && calcularDiasAtraso(parcela.data_vencimento) > 0 && (
                           <p className="text-[10px] text-destructive">{calcularDiasAtraso(parcela.data_vencimento)}d atraso</p>
                         )}
                       </div>
