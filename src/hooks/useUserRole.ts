@@ -16,6 +16,7 @@ interface Profile {
   ultimo_acesso: string | null;
   observacoes_admin: string | null;
   created_at: string;
+  avatar_url: string | null;
 }
 
 interface UserRoleState {
