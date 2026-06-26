@@ -165,32 +165,41 @@ export default function Layout({ children }: LayoutProps) {
         </aside>
 
         {/* Main content */}
-        <main className="flex-1 min-w-0 overflow-x-hidden p-4 md:p-6 pb-20 md:pb-6">
+        <main className="flex-1 min-w-0 overflow-x-hidden p-4 md:p-6 pb-24 md:pb-6">
           {children}
         </main>
       </div>
 
       {/* Bottom Navigation - Mobile only */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
-        <div className="flex items-center justify-around h-14">
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 shadow-[0_-3px_14px_rgba(0,0,0,0.06)]"
+        style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))', paddingTop: '0.5rem' }}
+      >
+        <div className="flex items-center justify-around gap-1 px-2">
           {navigation.map((item) => {
             const isActive = location.pathname === item.href;
             return (
               <Link
                 key={item.name}
                 to={item.href}
+                aria-label={item.name}
+                aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors relative",
+                  "flex items-center justify-center h-[46px] min-w-[46px] rounded-full transition-all duration-200 active:scale-95",
                   isActive
-                    ? "text-primary"
-                    : "text-muted-foreground"
+                    ? "bg-primary/10 text-primary px-4"
+                    : "text-muted-foreground px-2.5 hover:text-foreground"
                 )}
               >
-                {isActive && (
-                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-b-full bg-primary" />
-                )}
-                <item.icon className={cn("h-5 w-5", isActive && "fill-primary/20")} />
-                <span className="text-[9px] font-medium">{item.name}</span>
+                <item.icon className="h-[22px] w-[22px] flex-shrink-0" />
+                <span
+                  className={cn(
+                    "overflow-hidden whitespace-nowrap text-[13px] font-semibold transition-all duration-200",
+                    isActive ? "max-w-[120px] opacity-100 ml-1.5" : "max-w-0 opacity-0 ml-0"
+                  )}
+                >
+                  {item.name}
+                </span>
               </Link>
             );
           })}
