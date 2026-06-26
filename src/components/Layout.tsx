@@ -99,7 +99,7 @@ export default function Layout({ children }: LayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-screen h-[100dvh] overflow-hidden bg-background flex flex-col">
       <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
       {/* Header - Desktop only */}
       <header
@@ -164,7 +164,7 @@ export default function Layout({ children }: LayoutProps) {
         </div>
       </header>
 
-      <div className="flex flex-1">
+      <div className="flex flex-1 min-h-0">
         {/* Sidebar - Desktop */}
         <aside className="hidden w-56 border-r bg-card md:block">
           <div className="flex h-full flex-col py-3 px-3">
@@ -192,14 +192,14 @@ export default function Layout({ children }: LayoutProps) {
         </aside>
 
         {/* Main content */}
-        <main className="flex-1 min-w-0 overflow-x-hidden p-4 md:p-6 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-6">
+        <main className="flex-1 min-w-0 overflow-x-hidden overflow-y-auto overscroll-contain p-4 md:p-6">
           {children}
         </main>
       </div>
 
       {/* Bottom Navigation - Mobile only */}
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 shadow-[0_-3px_14px_rgba(0,0,0,0.06)]"
+        className="md:hidden shrink-0 z-50 border-t bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 shadow-[0_-3px_14px_rgba(0,0,0,0.06)]"
         style={{ paddingTop: '0.5rem', paddingBottom: 'max(0.75rem, calc(0.5rem + env(safe-area-inset-bottom)))' }}
       >
         <div className="flex items-center justify-around gap-1 px-2">
