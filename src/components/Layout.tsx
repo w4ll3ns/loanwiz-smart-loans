@@ -99,7 +99,7 @@ export default function Layout({ children }: LayoutProps) {
   };
 
   return (
-    <div className="h-screen h-[100svh] overflow-hidden bg-background flex flex-col">
+    <div className="h-[100dvh] overflow-hidden bg-background flex flex-col">
       <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
       {/* Header - Desktop only */}
       <header
