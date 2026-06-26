@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { TableSkeleton } from "@/components/LoadingSkeletons";
 import { PaginationControls } from "@/components/PaginationControls";
@@ -50,6 +51,16 @@ export default function Clientes() {
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
   const { toast } = useToast();
   const { canCreate, userEmail } = useUserRole();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  useEffect(() => {
+    const q = searchParams.get("q");
+    if (q) {
+      setSearchTerm(q);
+      setSearchParams({}, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const [formData, setFormData] = useState({
     nome: "", telefone: "", endereco: "", observacoes: ""

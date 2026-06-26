@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,18 +7,24 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserRole } from '@/hooks/useUserRole';
-import { User, Phone, Mail, Save, Loader2 } from 'lucide-react';
+import { User, Phone, Mail, Save, Loader2, Camera, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { PageHeader } from '@/components/PageHeader';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getIniciais, resolveAvatarUrl, AVATAR_BUCKET } from '@/lib/avatar';
 
 export default function Perfil() {
   const { profile, isLoading, userEmail } = useUserRole();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [nome, setNome] = useState('');
   const [telefone, setTelefone] = useState('');
   const [saving, setSaving] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [uploadingFoto, setUploadingFoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (profile) {
@@ -25,6 +32,70 @@ export default function Perfil() {
       setTelefone(profile.telefone || '');
     }
   }, [profile]);
+
+  useEffect(() => {
+    let active = true;
+    resolveAvatarUrl(profile?.avatar_url).then((url) => {
+      if (active) setAvatarUrl(url);
+    });
+    return () => { active = false; };
+  }, [profile?.avatar_url]);
+
+  const handleFotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Arquivo inválido', description: 'Selecione uma imagem.', variant: 'destructive' });
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: 'Imagem muito grande', description: 'A imagem deve ter no máximo 2MB.', variant: 'destructive' });
+      return;
+    }
+
+    setUploadingFoto(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Não autenticado');
+
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+
+      const { error: upErr } = await supabase.storage
+        .from(AVATAR_BUCKET)
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (upErr) throw upErr;
+
+      const { error: rpcErr } = await supabase.rpc('update_own_profile', { p_avatar_url: path });
+      if (rpcErr) throw rpcErr;
+
+      const signed = await resolveAvatarUrl(path);
+      setAvatarUrl(signed);
+      await queryClient.invalidateQueries({ queryKey: ['user-role'] });
+      toast({ title: 'Foto atualizada', description: 'Sua foto de perfil foi salva.' });
+    } catch (error: any) {
+      toast({ title: 'Erro ao enviar foto', description: error.message || 'Tente novamente.', variant: 'destructive' });
+    } finally {
+      setUploadingFoto(false);
+    }
+  };
+
+  const handleRemoverFoto = async () => {
+    setUploadingFoto(true);
+    try {
+      const { error } = await supabase.rpc('update_own_profile', { p_avatar_url: '' });
+      if (error) throw error;
+      setAvatarUrl(null);
+      await queryClient.invalidateQueries({ queryKey: ['user-role'] });
+      toast({ title: 'Foto removida' });
+    } catch (error: any) {
+      toast({ title: 'Erro ao remover foto', description: error.message || 'Tente novamente.', variant: 'destructive' });
+    } finally {
+      setUploadingFoto(false);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -67,6 +138,54 @@ export default function Perfil() {
   return (
     <div className="space-y-5 max-w-2xl mx-auto">
       <PageHeader title="Meu Perfil" description="Gerencie suas informações pessoais" />
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Camera className="h-4 w-4" />
+            Foto de Perfil
+          </CardTitle>
+          <CardDescription>Envie uma imagem (máx. 2MB). Usada no menu do topo.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center gap-4">
+          <Avatar className="h-20 w-20">
+            {avatarUrl && <AvatarImage src={avatarUrl} alt="Foto de perfil" />}
+            <AvatarFallback className="bg-primary/10 text-primary text-xl font-semibold">
+              {getIniciais(nome, userEmail)}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex flex-col gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleFotoChange}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingFoto}
+            >
+              {uploadingFoto ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Camera className="h-4 w-4 mr-2" />}
+              Enviar foto
+            </Button>
+            {avatarUrl && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRemoverFoto}
+                disabled={uploadingFoto}
+                className="text-destructive hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Remover foto
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

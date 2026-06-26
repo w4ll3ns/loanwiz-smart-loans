@@ -88,6 +88,13 @@ export default function Contratos() {
   // Auto-open contrato via ?open=<uuid>
   useEffect(() => {
     const openId = searchParams.get("open");
+    const q = searchParams.get("q");
+    if (q) {
+      setSearchTerm(q);
+      setStatusFilter("todos");
+      setSearchParams({}, { replace: true });
+      return;
+    }
     if (!openId || loading || contratos.length === 0) return;
     const target = contratos.find((c) => c.id === openId);
     if (target) {

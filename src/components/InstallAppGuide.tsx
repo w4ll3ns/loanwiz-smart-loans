@@ -6,30 +6,28 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
 
-export function InstallAppGuide() {
-  const [open, setOpen] = useState(false);
-  const { isIOS, isAndroid, canInstall, triggerInstall, showInstallButton } = usePWAInstall();
-
-  if (!showInstallButton) return null;
+/** Controlled install dialog (no trigger) — used from the avatar menu. */
+export function InstallAppDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { isIOS, isAndroid, canInstall, triggerInstall } = usePWAInstall();
 
   const handleAndroidInstall = async () => {
     const success = await triggerInstall();
     if (success) {
-      setOpen(false);
+      onOpenChange(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-          <Download className="h-5 w-5" />
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -144,5 +142,26 @@ export function InstallAppGuide() {
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+export function InstallAppGuide() {
+  const [open, setOpen] = useState(false);
+  const { showInstallButton } = usePWAInstall();
+
+  if (!showInstallButton) return null;
+
+  return (
+    <>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="text-muted-foreground hover:text-foreground"
+        onClick={() => setOpen(true)}
+      >
+        <Download className="h-5 w-5" />
+      </Button>
+      <InstallAppDialog open={open} onOpenChange={setOpen} />
+    </>
   );
 }

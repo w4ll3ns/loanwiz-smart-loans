@@ -1,14 +1,14 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Calculator, Users, FileText, DollarSign, LogOut, Shield, UserCircle, CalendarDays } from "lucide-react";
+import { Calculator, Users, FileText, DollarSign, Shield, CalendarDays, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { useUserRole } from "@/hooks/useUserRole";
-import { InstallAppGuide } from "@/components/InstallAppGuide";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificacoesVencimento } from "@/components/NotificacoesVencimento";
+import { UserMenu } from "@/components/UserMenu";
+import { GlobalSearch } from "@/components/GlobalSearch";
 import type { User } from "@supabase/supabase-js";
 import logo from "@/assets/logo.png";
 
@@ -34,6 +34,7 @@ export default function Layout({ children }: LayoutProps) {
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const { isAdmin } = useUserRole();
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const navigation = isAdmin 
     ? [...baseNavigation, ...adminNavigation]
@@ -51,6 +52,18 @@ export default function Layout({ children }: LayoutProps) {
     });
 
     return () => subscription.unsubscribe();
+  }, []);
+
+  // Global ⌘K / Ctrl+K shortcut to open search
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSearchOpen((o) => !o);
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
   }, []);
 
   // Update ultimo_acesso on mount
@@ -87,6 +100,7 @@ export default function Layout({ children }: LayoutProps) {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
       {/* Header - Desktop only */}
       <header
         className="hidden md:block sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 shadow-sm"
@@ -96,23 +110,25 @@ export default function Layout({ children }: LayoutProps) {
           <div className="flex items-center gap-2.5">
             <img src={logo} alt="WS Empréstimos" className="h-8 w-8" />
             <span className="text-base font-semibold tracking-tight">WS Empréstimos</span>
-          </div>
-          <div className="ml-auto flex items-center gap-2">
             {isAdmin && (
               <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
                 Admin
               </span>
             )}
-            <Link to="/perfil" className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-muted">
-              <UserCircle className="h-4 w-4" />
-              <span className="max-w-[160px] truncate">{user?.email}</span>
-            </Link>
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="flex items-center gap-2 rounded-md border border-input bg-background px-3 h-8 text-sm text-muted-foreground hover:bg-muted transition-colors w-56"
+            >
+              <Search className="h-4 w-4" />
+              <span className="flex-1 text-left truncate">Buscar cliente, contrato…</span>
+              <kbd className="pointer-events-none hidden lg:inline-flex h-5 select-none items-center gap-0.5 rounded border bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
+                ⌘K
+              </kbd>
+            </button>
             <NotificacoesVencimento />
-            <InstallAppGuide />
-            <ThemeToggle />
-            <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair" className="h-8 w-8">
-              <LogOut className="h-4 w-4" />
-            </Button>
+            <UserMenu variant="desktop" onLogout={handleLogout} />
           </div>
         </div>
       </header>
@@ -132,13 +148,18 @@ export default function Layout({ children }: LayoutProps) {
               </span>
             )}
           </div>
-          <div className="flex items-center gap-0.5">
-            <NotificacoesVencimento />
-            <InstallAppGuide />
-            <ThemeToggle />
-            <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair" className="h-8 w-8">
-              <LogOut className="h-4 w-4" />
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSearchOpen(true)}
+              title="Buscar"
+              className="h-8 w-8 text-muted-foreground"
+            >
+              <Search className="h-5 w-5" />
             </Button>
+            <NotificacoesVencimento />
+            <UserMenu variant="mobile" onLogout={handleLogout} />
           </div>
         </div>
       </header>
