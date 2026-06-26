@@ -99,7 +99,7 @@ export default function Layout({ children }: LayoutProps) {
   };
 
   return (
-    <div className="h-screen h-[100dvh] overflow-hidden bg-background flex flex-col">
+    <div className="h-screen h-[100svh] overflow-hidden bg-background flex flex-col">
       <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
       {/* Header - Desktop only */}
       <header
@@ -200,7 +200,7 @@ export default function Layout({ children }: LayoutProps) {
       {/* Bottom Navigation - Mobile only */}
       <nav
         className="md:hidden shrink-0 z-50 border-t bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 shadow-[0_-3px_14px_rgba(0,0,0,0.06)]"
-        style={{ paddingTop: '0.5rem', paddingBottom: 'max(0.75rem, calc(0.5rem + env(safe-area-inset-bottom)))' }}
+        style={{ paddingTop: '0.5rem', paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
       >
         <div className="flex items-center justify-around gap-1 px-2">
           {navigation.map((item) => {
