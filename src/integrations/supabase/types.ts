@@ -270,6 +270,7 @@ export type Database = {
       profiles: {
         Row: {
           ativo: boolean
+          avatar_url: string | null
           created_at: string
           data_expiracao_teste: string | null
           email: string | null
@@ -283,6 +284,7 @@ export type Database = {
         }
         Insert: {
           ativo?: boolean
+          avatar_url?: string | null
           created_at?: string
           data_expiracao_teste?: string | null
           email?: string | null
@@ -296,6 +298,7 @@ export type Database = {
         }
         Update: {
           ativo?: boolean
+          avatar_url?: string | null
           created_at?: string
           data_expiracao_teste?: string | null
           email?: string | null
@@ -518,10 +521,20 @@ export type Database = {
         }
         Returns: Json
       }
-      update_own_profile: {
-        Args: { p_email?: string; p_nome?: string; p_telefone?: string }
-        Returns: undefined
-      }
+      update_own_profile:
+        | {
+            Args: { p_email?: string; p_nome?: string; p_telefone?: string }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_avatar_url?: string
+              p_email?: string
+              p_nome?: string
+              p_telefone?: string
+            }
+            Returns: undefined
+          }
     }
     Enums: {
       app_role: "admin" | "user"
