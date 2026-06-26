@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import { usePagination } from "@/hooks/usePagination";
 import { PaginationControls } from "@/components/PaginationControls";
@@ -88,6 +89,18 @@ export default function Parcelas() {
   const [lucroModalAberto, setLucroModalAberto] = useState(false);
   const { toast } = useToast();
   const { canCreate, userEmail } = useUserRole();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  useEffect(() => {
+    const q = searchParams.get("q");
+    if (q) {
+      setSearchTerm(q);
+      setMostrarTodas(true);
+      setStatusFilter("todos");
+      setSearchParams({}, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const formatDate = (dateString: string) => {
     return format(new Date(dateString + 'T00:00:00'), 'dd/MM/yyyy');
