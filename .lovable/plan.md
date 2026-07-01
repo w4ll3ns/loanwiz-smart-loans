@@ -1,30 +1,30 @@
 ## Objetivo
 
-Fazer o card **"Recebido no mês"** do calendário incluir os pagamentos feitos **hoje**, alinhando com o comportamento do dashboard ("Recebido Hoje"). Hoje, a baixa de R$ 400 do cliente LADSON (feita em 01/07 pelo Italo) não entra no total mensal porque a função só soma dias já no passado.
+Corrigir a data do empréstimo do contrato de R$ 700,00 da cliente **SOLANGE GOMES DE OLIVEIRA LEDA**, que foi gravada errada por troca de dia/mês.
 
-## Diagnóstico confirmado
+## Diagnóstico
 
-Na função `public.calendario_mensal`, o total de recebidos do mês soma apenas os dias marcados como `passado` (`d.dia < CURRENT_DATE`). O pagamento de hoje é guardado no campo por dia `ja_recebido_hoje`, mas **não** entra no total mensal. Como a baixa foi no dia 01/07 (primeiro dia do mês), não há dias anteriores e o total fica R$ 0.
+- Contrato `id`: `70882347-f69c-402e-bfea-98f9b6351c5a`
+- Cadastrado no sistema em **07/04/2026** (`created_at`)
+- Data do empréstimo atual (errada): **04/07/2026** (`data_emprestimo = 2026-07-04`)
+- Causa: dígitos de dia e mês invertidos (`04/07` em vez de `07/04`)
 
-## Mudança (uma migration aditiva, `CREATE OR REPLACE FUNCTION`)
+## Correção
 
-Alterar **somente** os agregados finais da `calendario_mensal`, sem tocar na montagem por dia (a célula do calendário de hoje continua mostrando o previsto normalmente):
+Atualizar **apenas** o campo `data_emprestimo` do contrato:
 
-1. **Total recebido do mês** — passar a somar os pagamentos do passado **mais** os pagamentos de hoje:
-   - de `SUM(CASE WHEN tipo = 'passado' THEN valor ELSE 0 END)`
-   - para `SUM(CASE WHEN tipo = 'passado' THEN valor ELSE 0 END) + SUM(ja_recebido_hoje)`
+- De `2026-07-04` → para `2026-04-07`
 
-2. **Quantidade de recebimentos do mês** — incluir também as movimentações de pagamento de hoje, para o contador do card bater com o valor.
+As parcelas **não serão alteradas** (conforme sua escolha): as datas de vencimento e o pagamento parcial já registrado na 1ª parcela permanecem intactos.
 
-3. Nenhuma outra alteração: previsto do mês, atrasados, saídas de capital, série de dias e isolamento por `v_user_id` permanecem idênticos. REVOKE/GRANT existentes preservados.
+## Detalhe técnico
 
-## Resultado
+Operação de atualização de dado (não é mudança de schema):
 
-- A baixa de hoje (ex.: R$ 400 do LADSON) passa a aparecer imediatamente no card "Recebido no mês".
-- A célula do dia de hoje no calendário continua exibindo o previsto (sem regressão visual).
-- Consistente com o "Recebido Hoje" do dashboard.
+```sql
+UPDATE public.contratos
+SET data_emprestimo = '2026-04-07', updated_at = now()
+WHERE id = '70882347-f69c-402e-bfea-98f9b6351c5a';
+```
 
-## Detalhes técnicos
-
-- O campo `ja_recebido_hoje` já é calculado por dia como `CASE WHEN d.dia = CURRENT_DATE THEN COALESCE(pg.valor,0) ELSE 0 END`, então basta somá-lo ao total mensal — sem novas queries nem novo JOIN.
-- Migration puramente aditiva (`CREATE OR REPLACE`), sem alterar assinatura da função; nenhuma mudança no frontend é necessária (`Calendario.tsx` já consome o total retornado).
+Após aplicar, valido no banco que a `data_emprestimo` ficou `2026-04-07` e que as parcelas continuam inalteradas.
