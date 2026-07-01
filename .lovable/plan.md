@@ -1,39 +1,30 @@
-## Problema
+## Objetivo
 
-Na correção anterior, o `Layout` passou a usar `h-[100dvh]` (dynamic viewport height) com a barra inferior como item flex no rodapé da coluna.
+Fazer o card **"Recebido no mês"** do calendário incluir os pagamentos feitos **hoje**, alinhando com o comportamento do dashboard ("Recebido Hoje"). Hoje, a baixa de R$ 400 do cliente LADSON (feita em 01/07 pelo Italo) não entra no total mensal porque a função só soma dias já no passado.
 
-O `dvh` representa a viewport **dinâmica**: quando a barra de ferramentas do navegador/webview está visível (como no seu print), `100dvh` fica **maior que a área realmente visível**. Resultado: o rodapé (a barra de navegação) é empurrado para baixo da dobra — por isso a pílula "Dashboard" aparece cortada no fim da tela e fica quase impossível de tocar.
+## Diagnóstico confirmado
 
-```text
-┌──────────────┐  ← topo (header)
-│  conteúdo    │
-│   ...        │
-├──────────────┤  ← fim da área VISÍVEL (svh)
-│  NAV (corte) │  ← cai aqui no print, parcialmente fora
-└──────────────┘  ← fim de 100dvh (fora da tela)
-```
+Na função `public.calendario_mensal`, o total de recebidos do mês soma apenas os dias marcados como `passado` (`d.dia < CURRENT_DATE`). O pagamento de hoje é guardado no campo por dia `ja_recebido_hoje`, mas **não** entra no total mensal. Como a baixa foi no dia 01/07 (primeiro dia do mês), não há dias anteriores e o total fica R$ 0.
 
-## Solução
+## Mudança (uma migration aditiva, `CREATE OR REPLACE FUNCTION`)
 
-Trocar a unidade de altura do container raiz de `dvh` para **`svh`** (small viewport height). O `svh` é a viewport **menor/garantida** (com a barra do navegador presente), então a coluna inteira — incluindo a barra inferior — sempre cabe na área visível e fica tocável. Quando a barra do navegador some, sobra apenas um respiro de fundo embaixo, sem cortar nada.
+Alterar **somente** os agregados finais da `calendario_mensal`, sem tocar na montagem por dia (a célula do calendário de hoje continua mostrando o previsto normalmente):
 
-### Mudanças em `src/components/Layout.tsx`
+1. **Total recebido do mês** — passar a somar os pagamentos do passado **mais** os pagamentos de hoje:
+   - de `SUM(CASE WHEN tipo = 'passado' THEN valor ELSE 0 END)`
+   - para `SUM(CASE WHEN tipo = 'passado' THEN valor ELSE 0 END) + SUM(ja_recebido_hoje)`
 
-1. **Container raiz** — trocar a altura:
-   - de `h-screen h-[100dvh] overflow-hidden bg-background flex flex-col`
-   - para `h-screen h-[100svh] overflow-hidden bg-background flex flex-col`
-   - (`h-screen` permanece como fallback para navegadores sem suporte a `svh`).
+2. **Quantidade de recebimentos do mês** — incluir também as movimentações de pagamento de hoje, para o contador do card bater com o valor.
 
-2. **Barra inferior (`<nav>` mobile)** — manter ancorada como item flex (`shrink-0`), preservando o `env(safe-area-inset-bottom)`. Ajustar o padding inferior para um valor mais enxuto, garantindo respiro sem empurrar demais:
-   - `paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))'` (em vez de `calc(0.5rem + env(...))`), evitando padding duplicado em aparelhos com safe-area.
-
-3. Nenhuma outra mudança: header sticky, sidebar desktop, scroll interno do `<main>` (`overflow-y-auto`), tema claro/escuro e a pílula do item ativo continuam idênticos.
+3. Nenhuma outra alteração: previsto do mês, atrasados, saídas de capital, série de dias e isolamento por `v_user_id` permanecem idênticos. REVOKE/GRANT existentes preservados.
 
 ## Resultado
 
-A barra inferior fica sempre dentro da área visível, totalmente clicável, sem cortar a pílula ativa — estável tanto com a barra do navegador visível quanto recolhida, no iOS e Android, sem regredir a correção do jitter de rolagem.
+- A baixa de hoje (ex.: R$ 400 do LADSON) passa a aparecer imediatamente no card "Recebido no mês".
+- A célula do dia de hoje no calendário continua exibindo o previsto (sem regressão visual).
+- Consistente com o "Recebido Hoje" do dashboard.
 
 ## Detalhes técnicos
 
-- `svh` (small viewport) garante que o app nunca exceda a área visível atual; `dvh` muda de tamanho e, com a toolbar presente, ultrapassa a tela. Como o scroll é interno ao `<main>`, dimensionar pela viewport menor não causa conteúdo inacessível — apenas mantém o rodapé sempre visível.
-- Nenhuma lógica de dados, rotas ou navegação muda — apenas CSS/posicionamento.
+- O campo `ja_recebido_hoje` já é calculado por dia como `CASE WHEN d.dia = CURRENT_DATE THEN COALESCE(pg.valor,0) ELSE 0 END`, então basta somá-lo ao total mensal — sem novas queries nem novo JOIN.
+- Migration puramente aditiva (`CREATE OR REPLACE`), sem alterar assinatura da função; nenhuma mudança no frontend é necessária (`Calendario.tsx` já consome o total retornado).
