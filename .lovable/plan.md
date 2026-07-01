@@ -1,30 +1,28 @@
-## Objetivo
-
-Corrigir a data do empréstimo do contrato de R$ 700,00 da cliente **SOLANGE GOMES DE OLIVEIRA LEDA**, que foi gravada errada por troca de dia/mês.
-
 ## Diagnóstico
 
-- Contrato `id`: `70882347-f69c-402e-bfea-98f9b6351c5a`
-- Cadastrado no sistema em **07/04/2026** (`created_at`)
-- Data do empréstimo atual (errada): **04/07/2026** (`data_emprestimo = 2026-07-04`)
-- Causa: dígitos de dia e mês invertidos (`04/07` em vez de `07/04`)
+O calendário está zerado por um **descasamento de contrato** entre a função `calendario_mensal` e a página que a consome — não por perda de dados.
+
+- A função retorna os totais dentro da chave **`resumo`**, com nomes `qtd_recebimentos`, `qtd_previstos`, `atrasado_mes`, `qtd_atrasados`.
+- O frontend (`src/pages/Calendario.tsx`) lê **`data.totais`** com `qtd_recebimentos_mes`, `qtd_previstos_mes`, `total_atrasado_mes`, `qtd_atrasados_mes`.
+- Como `data.totais` não existe, todos os cards caem em `?? 0`.
+
+Confirmado: os dados existem (ex.: Italo em jul/2026 = 2 recebimentos / R$ 1.500 e 22 previstos).
 
 ## Correção
 
-Atualizar **apenas** o campo `data_emprestimo` do contrato:
+Alinhar o **retorno da função** ao que a tela espera (restaura o comportamento anterior sem tocar no frontend). Nova migration aditiva, `CREATE OR REPLACE FUNCTION public.calendario_mensal(integer, integer)`, mantendo TODA a lógica atual (incluindo os pagamentos de hoje no `recebido_mes` e as saídas de capital) e alterando **apenas o bloco `RETURN`**:
 
-- De `2026-07-04` → para `2026-04-07`
+- Trocar a chave wrapper `'resumo'` por `'totais'`.
+- Renomear as chaves internas para o padrão `_mes` esperado:
+  - `qtd_recebimentos` → `qtd_recebimentos_mes`
+  - `qtd_previstos` → `qtd_previstos_mes`
+  - `atrasado_mes` → `total_atrasado_mes`
+  - `qtd_atrasados` → `qtd_atrasados_mes`
+- Manter `recebido_mes`, `previsto_mes`, `total_emprestado_mes`, `qtd_emprestimos_mes` como já estão.
+- Manter a chave `'dias'` inalterada (os campos por dia já batem com o frontend).
 
-As parcelas **não serão alteradas** (conforme sua escolha): as datas de vencimento e o pagamento parcial já registrado na 1ª parcela permanecem intactos.
+Nada mais da função muda (janela do mês, isolamento por usuário, cálculo de previsto/recebido/saídas).
 
-## Detalhe técnico
+## Validação
 
-Operação de atualização de dado (não é mudança de schema):
-
-```sql
-UPDATE public.contratos
-SET data_emprestimo = '2026-04-07', updated_at = now()
-WHERE id = '70882347-f69c-402e-bfea-98f9b6351c5a';
-```
-
-Após aplicar, valido no banco que a `data_emprestimo` ficou `2026-04-07` e que as parcelas continuam inalteradas.
+Após aplicar, valido simulando o usuário Italo em jul/2026 que `totais.recebido_mes` = 1500 e `totais.qtd_previstos_mes` = 22, confirmando que os cards voltam a exibir valores.
